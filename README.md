@@ -1,186 +1,141 @@
-# BioAgent · 阶段一 Demo
+# VerumOS · 明鉴
 
-这个仓库现在提供了一个可直接运行的“阶段一 · 可信科研副驾驶”最小闭环 demo，目标不是再做一个通用 biomedical agent 壳层，而是把路线图里最关键的六个输出模块真正对象化并跑通前后端：
+**可信科研副驾驶** — 生命科学知识引擎
 
-- 当前建议
-- 支持证据
-- 反对证据
-- 时效 / 争议状态
-- 已知无效路径
-- 专家修正版判断
+---
 
-同时，阶段一要求沉积的三类核心资产也已经作为独立对象接入：
+## 项目概述
 
-- 专家纠偏轨迹
-- 有时间轴的知识节点
-- 阴性结果 / 无效路径库
+VerumOS（明鉴）是一个面向生物医学研究者的 AI 辅助决策系统，核心目标是把科研判断过程**可信化、可溯源、可修正**：
+
+- 基于真实文献数据库（PubMed、Semantic Scholar）和知识库（UniProt、STRING、ClinicalTrials.gov）做主动检索，而非凭 LLM 幻觉生成
+- 每次分析沉积三类可信资产：**专家纠偏轨迹**、**有时间轴的知识节点**、**阴性结果/无效路径库**
+- 科学家可通过前端面板提交修正意见（Human-in-Loop），写回知识库并实时更新判断
+
+---
+
+## 当前状态
+
+| 模块 | 状态 |
+|------|------|
+| 前端 Demo | ✅ 已完成（`web/biomedical_agent_demo.html`） |
+| 全架构图 | ✅ 已完成（`plan/bioagent_full_pluggable_architecture.html`） |
+| 实现计划 | ✅ 已完成（`plan/` 共 11 个子任务） |
+| TypeScript 后端 | 🔲 待实现（按 `plan/` 中任务顺序推进） |
+
+---
 
 ## 项目结构
 
 ```text
-BioAgent/
-├── backend/
-│   └── server.py
-├── data/
-│   └── stage1_demo_data.json
-├── demo/
-│   └── biomedical_agent_demo.html
-├── biomedical_ai_roadmap.html
-├── prompt.md
-└── README.md
+VerumOS/
+├── web/
+│   └── biomedical_agent_demo.html   # 前端 Demo（直接用浏览器打开可预览）
+├── plan/
+│   ├── README.md                    # 实现方案总览（本文件的后端规划版）
+│   ├── bioagent_full_pluggable_architecture.html  # 全架构可视化
+│   ├── task-01-project-scaffold.md
+│   ├── task-02-schemas.md
+│   ├── task-03-http-server.md
+│   ├── task-04-scenario-registry.md
+│   ├── task-05-asset-store.md
+│   ├── task-06-data-agent.md
+│   ├── task-07-model-agent.md
+│   ├── task-08-analysis-pipeline.md
+│   ├── task-09-expert-correction.md
+│   ├── task-10-feishu-integration.md
+│   └── task-11-discord-integration.md
+├── biomedical_ai_roadmap.html       # 产品路线图（可视化）
+├── prompt.md                        # 工作指令
+└── README.md                        # 本文件
 ```
 
-## 当前实现了什么
+> 后端代码目录（`src/`、`package.json`、`tsconfig.json`）在 Task 01 实现后创建。
 
-### 1. 前后端打通
+---
 
-- 前端页面不再是纯静态稿，而是通过 `fetch` 调用后端 API。
-- 后端使用 Python 标准库实现，无额外依赖。
-- 服务启动后访问根路径 `/`，会自动打开 stage 1 demo 页面。
+## 前端 Demo
 
-### 2. 阶段一对象 schema
+打开 `web/biomedical_agent_demo.html` 可直接预览完整 UI：
 
-当前锁定了两个核心 Agent 之间的接口契约：
+- **数据** / **模型** / **发现** / **验证** / **写作** 五个功能视图
+- Data Agent 和 Model Agent 对象卡片
+- 决策输出（当前建议 / 支持证据 / 反对证据 / 阴性路径 / 专家修正）
+- Reasoning Trace 推理步骤可视化
+- 知识节点 / 阴性结果 / 修正记录三个右侧 Panel Tab
 
-`Data Object` 必填字段：
+当前为**静态原型**，尚未接入后端 API。
 
-- `source`
-- `created_at`
-- `quality_score`
-- `processing_history`
-- `ontology_tags`
+---
 
-`Model Object` 必填字段：
+## 架构图
 
-- `result`
-- `reasoning_trace`
-- `model_params`
-- `excluded_paths`
-- `protocol_version`
-- `created_at`
+打开 `plan/bioagent_full_pluggable_architecture.html` 查看 8 层可插拔架构：
 
-这和 `prompt.md` 中“schema 在开发启动前锁定，不得单边修改”的要求一致。
-
-### 3. 阶段一闭环能力
-
-当前 demo 已经具备：
-
-- Data Agent 卡片：展示标准化后的 `Data Object`
-- Model Agent 卡片：展示 `Model Object` 与排除路径
-- 决策输出区：完整呈现六个阶段一核心模块
-- Reasoning Trace：展示推理步骤与专家介入点
-- Shared Asset Store：三类阶段一资产同时可见
-- Expert Intervention：可以通过前端表单写入新的专家修正，并实时更新页面状态
-
-### 4. 多场景演示
-
-当前内置了两个可切换场景：
-
-- `TIGIT 在肝癌 TME 中的优先级建议`
-- `KRAS 合成致死线索在 PDAC 中的可信筛选`
-
-这样可以说明这不是单一页面设计，而是一种可复用的判断结构。
-
-## 运行方式
-
-在仓库根目录执行：
-
-```bash
-python3 backend/server.py
+```
+入口层       → VerumOS UI / 飞书 / Discord / +渠道扩展
+HTTP 服务层  → Hono Server + Zod Schemas + Auth Module（可插拔）
+编排层       → Pipeline Orchestrator + Scenario Registry + HITL（可插拔）+ Audit Logger（可插拔）
+Agent 执行层 → Data Agent + Model Agent + Decision Synthesis + Validation Agent（可插拔）
+核心算法层   → Hypothesis Engine / Evidence Scorer / Conflict Resolver / Negative Filter（均可插拔）
+记忆/知识层  → Asset Store + Expert Correction + LTM（可插拔）+ Knowledge Decay（可插拔）
+数据适配层   → Data Connector / Data Formatter / QC / Normalization（均可插拔）
+外部数据库   → PubMed · Semantic Scholar · UniProt · STRING · ClinicalTrials.gov
 ```
 
-默认启动在：
+点击任意模块可查看职责说明、接口定义和可替换实现选项。
 
-```text
-http://127.0.0.1:8000
+---
+
+## 技术栈
+
+- **语言**：TypeScript ESM（Node 22+ / Bun）
+- **HTTP**：Hono（与 openclaw 版本对齐）
+- **校验**：Zod
+- **LLM**：Anthropic SDK — `claude-sonnet-4-6`
+- **工具调用**：Claude Tool Use（Agentic Loop，最多 8 轮）
+- **测试**：Vitest
+
+---
+
+## 后端 API
+
+```
+GET  /api/bootstrap         → 返回场景列表、schema 摘要、资产指标
+POST /api/run-analysis      → 触发分析流水线（20-40s，含真实 DB 检索）
+POST /api/expert-correction → 写入专家修正，更新场景状态
+GET  /                      → 服务静态 Demo HTML
+GET  /health                → 健康检查
 ```
 
-自定义端口：
+---
 
-```bash
-python3 backend/server.py --port 8080
-```
+## 实现计划
 
-## API 说明
+详见 `plan/README.md`，按以下顺序推进：
 
-### `GET /api/bootstrap`
+| 任务 | 核心目标 |
+|------|----------|
+| T01 | 项目脚手架（package.json / tsconfig / 入口） |
+| T02 | Zod Schema 定义（全部数据结构） |
+| T03 | Hono 服务器 + 路由骨架 |
+| T04 | 场景注册表（3 个内置研究场景） |
+| T05 | Asset Store（内存 + JSON 持久化） |
+| T06 | Data Agent（PubMed + Semantic Scholar Tool Use） |
+| T07 | Model Agent（UniProt + STRING + ClinicalTrials Tool Use） |
+| T08 | 分析流水线（Agentic Loop + Decision Synthesis） |
+| T09 | 专家修正写回 |
+| T10 | 飞书集成（openclaw skill） |
+| T11 | Discord 集成（openclaw skill） |
 
-返回：
+---
 
-- 应用基础信息
-- 默认场景与默认问题
-- schema 摘要
-- Shared Asset Store 总指标
-- 场景列表
+## 与 openclaw 的关系
 
-### `POST /api/run-analysis`
+本项目作为独立 HTTP 服务运行，通过 openclaw Plugin SDK 注册为 `bio_research` 工具，复用 openclaw 已有的：
 
-请求体示例：
+- 飞书 / Discord 渠道基础设施（消息接收、签名验证、回复格式化）
+- TypeScript ESM + Hono + Zod 技术栈
+- Plugin SDK（`definePluginEntry`、`api.registerTool`）
 
-```json
-{
-  "scenario_id": "tigit_hcc",
-  "query": "TIGIT 在肝癌肿瘤微环境中的表达模式，是否足以支持其进入下一轮靶点优先级验证？",
-  "mode": "precision",
-  "priority": "target-prioritization"
-}
-```
-
-返回：
-
-- 当前场景完整对象
-- 最新资产计数
-
-### `POST /api/expert-correction`
-
-请求体示例：
-
-```json
-{
-  "scenario_id": "tigit_hcc",
-  "expert": "王磊 教授",
-  "from": "Cluster 7 = Tem",
-  "to": "Cluster 7 = Tpex",
-  "reason": "PDCD1、TCF7、TOX 共表达更符合耗竭前体 T 细胞。"
-}
-```
-
-返回：
-
-- 写入修正后的当前场景对象
-- 更新后的资产计数
-
-## 和 OpenClaw 的兼容思路
-
-这次实现特意保持了“最小但可迁移”的结构，方便后续向 `/Applications/workspace/ailab/research/claw/openclaw` 的能力靠拢：
-
-- `Data Object / Model Object / Asset Store` 被明确拆成接口边界，便于未来挂接真正的 agent runner
-- `protocol_version` 被单独保留，方便以后接协议注册表或 skill 选择器
-- 前端只依赖统一 API，而不是把业务逻辑写死在页面里，后续替换成真实执行层成本更低
-- Shared Asset Store 和场景对象分离，后续可以换成数据库、对象存储或知识图谱后端
-
-目前没有直接复用 OpenClaw 内部模块，原因是这版仓库目标是“先完成阶段一必需功能，避免冗余”。但接口组织方式已经尽量朝兼容方向收敛。
-
-## 后续建议
-
-如果你要把这版 demo 继续推进成更完整的 agent 项目，推荐按下面顺序做：
-
-1. 把 `data/stage1_demo_data.json` 换成真实存储层
-2. 用真实的 Data Agent / Model Agent 执行器替换 mock 返回
-3. 给专家修正、知识节点、阴性结果加版本和检索能力
-4. 把文献证据链与 protocol 选择拆成独立服务
-5. 再启动数据分析 agent 的并行开发
-
-## 本地验证
-
-我已经验证过：
-
-- `python3 -m py_compile backend/server.py`
-- `data/stage1_demo_data.json` JSON 解析通过
-
-如果你希望，我下一步可以继续把这套 demo 再向“真实可扩展项目骨架”推进一层，例如：
-
-- 补一个更正式的后端目录结构
-- 抽出 API schema 文件
-- 加一个简单的持久化层
-- 或者直接对接你想参考的 OpenClaw 模块接口
+不引入 openclaw 的设备配对、Pi 代理运行时、TUI/CLI 框架等与科研 Agent 无关的模块。
