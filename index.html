@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VerumOS · 明鉴</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f0d;
+  --surface: #141510;
+  --surface2: #1a1c16;
+  --surface3: #22241c;
+  --border: rgba(180,175,140,0.12);
+  --border-active: rgba(180,175,140,0.28);
+  --ink: #e8e4d4;
+  --ink-dim: #8a876f;
+  --ink-faint: #3a3830;
+  --accent: #b8d4a0;
+  --accent-dim: rgba(184,212,160,0.15);
+  --accent-glow: rgba(184,212,160,0.08);
+  --amber: #d4a853;
+  --amber-dim: rgba(212,168,83,0.15);
+  --blue: #7aace0;
+  --blue-dim: rgba(122,172,224,0.12);
+  --coral: #e07a7a;
+  --coral-dim: rgba(224,122,122,0.12);
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* grain */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 80px 24px 80px;
+}
+
+/* ── header ── */
+.header {
+  margin-bottom: 64px;
+}
+
+.logo-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.logo-mark {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.logo-zh {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 0.12em;
+  border: 1px solid var(--border-active);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.tagline {
+  font-size: 20px;
+  color: var(--ink);
+  font-weight: 300;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
+}
+
+.tagline em {
+  font-style: italic;
+  font-family: 'Playfair Display', serif;
+  color: var(--accent);
+}
+
+.desc {
+  font-size: 13px;
+  color: var(--ink-dim);
+  line-height: 1.75;
+  max-width: 540px;
+}
+
+.desc strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ── divider ── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 40px 0;
+}
+
+/* ── section label ── */
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+/* ── cards ── */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--border-active);
+  background: var(--surface2);
+}
+
+.card-stripe {
+  width: 3px;
+  flex-shrink: 0;
+}
+
+.card-body {
+  padding: 18px 20px;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.card-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.badge-green {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-color: rgba(184,212,160,0.3);
+}
+
+.badge-amber {
+  color: var(--amber);
+  background: var(--amber-dim);
+  border-color: rgba(212,168,83,0.3);
+}
+
+.badge-blue {
+  color: var(--blue);
+  background: var(--blue-dim);
+  border-color: rgba(122,172,224,0.3);
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.65;
+  margin-bottom: 12px;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  letter-spacing: 0.04em;
+}
+
+.card-arrow {
+  display: flex;
+  align-items: center;
+  padding: 18px 20px 18px 0;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+  font-size: 16px;
+  transition: color 0.15s;
+}
+.card:hover .card-arrow { color: var(--ink-dim); }
+
+/* ── pillars ── */
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 32px;
+}
+
+.pillar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 14px 12px;
+}
+
+.pillar-icon {
+  font-family: 'DM Mono', monospace;
+  font-size: 18px;
+  margin-bottom: 8px;
+  display: block;
+  opacity: 0.7;
+}
+
+.pillar-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.pillar-text {
+  font-size: 11px;
+  color: var(--ink-dim);
+  line-height: 1.6;
+}
+
+/* ── footer ── */
+.footer {
+  margin-top: 64px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer-left {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.06em;
+}
+
+.footer-right {
+  display: flex;
+  gap: 16px;
+}
+
+.footer-link {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color 0.12s;
+}
+.footer-link:hover { color: var(--ink-dim); }
+
+@media (max-width: 600px) {
+  .pillars { grid-template-columns: 1fr; }
+  .page { padding: 48px 18px 48px; }
+  .logo-mark { font-size: 22px; }
+  .tagline { font-size: 17px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="header">
+    <div class="logo-row">
+      <span class="logo-mark">VerumOS</span>
+      <span class="logo-zh">明鉴</span>
+    </div>
+    <div class="tagline">可信科研副驾驶 — <em>不只是更快，而是更可信</em></div>
+    <p class="desc">
+      面向生物医学研究者的 AI 辅助决策系统。基于真实文献数据库主动检索，把
+      <strong>专家纠偏</strong>、<strong>知识时效</strong>与<strong>阴性结果</strong>
+      变成可复用的数据资产，让每次科研判断都有据可查、可修正、可沉积。
+    </p>
+
+    <div style="margin-top:28px;">
+      <div class="pillars">
+        <div class="pillar">
+          <span class="pillar-icon">◈</span>
+          <div class="pillar-title">真实检索</div>
+          <div class="pillar-text">PubMed · Semantic Scholar · UniProt · ClinicalTrials.gov — 不依赖 LLM 幻觉</div>
+        </div>
+        <div class="pillar">
+          <span class="pillar-icon">◎</span>
+          <div class="pillar-title">专家修正</div>
+          <div class="pillar-text">Human-in-Loop 写回，每次修正形成可追溯的纠偏轨迹，持续提升判断质量</div>
+        </div>
+        <div class="pillar">
+          <span class="pillar-icon">⊘</span>
+          <div class="pillar-title">阴性结果库</div>
+          <div class="pillar-text">失败路径系统化管理，防止 Agent 走回头路，实现跨团队经验沉积</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="section-label">项目文档</div>
+
+  <div class="cards">
+
+    <a class="card" href="web/biomedical_agent_demo.html">
+      <div class="card-stripe" style="background: var(--accent);"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <span class="card-title">前端 Demo · VerumOS UI</span>
+          <span class="card-badge badge-green">可交互</span>
+        </div>
+        <div class="card-desc">
+          完整的"可信科研副驾驶"界面原型：数据 · 模型 · 发现 · 验证 · 写作五个视图，展示 Data Agent / Model Agent 对象、决策输出（含支持/反对证据、阴性路径、专家修正）、Reasoning Trace 推理步骤与三类科研资产面板。
+        </div>
+        <div class="card-tags">
+          <span class="tag">数据视图</span>
+          <span class="tag">模型视图</span>
+          <span class="tag">发现视图</span>
+          <span class="tag">验证视图</span>
+          <span class="tag">专家修正</span>
+          <span class="tag">知识节点</span>
+          <span class="tag">阴性结果</span>
+        </div>
+      </div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a class="card" href="plan/bioagent_full_pluggable_architecture.html">
+      <div class="card-stripe" style="background: var(--blue);"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <span class="card-title">全架构图 · 可插拔架构</span>
+          <span class="card-badge badge-blue">8 层</span>
+        </div>
+        <div class="card-desc">
+          BioAgent 完整的 8 层可插拔架构图：从入口层（UI / 飞书 / Discord）到外部数据库，每个可插拔槽位（虚线边框）均有完整的接口定义与可替换实现选项。点击任意模块查看职责说明。
+        </div>
+        <div class="card-tags">
+          <span class="tag">Pipeline Orchestrator</span>
+          <span class="tag">Agentic Loop</span>
+          <span class="tag">HITL Controller</span>
+          <span class="tag">Evidence Scorer</span>
+          <span class="tag">Asset Store</span>
+          <span class="tag">Long-term Memory</span>
+        </div>
+      </div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a class="card" href="biomedical_ai_roadmap.html">
+      <div class="card-stripe" style="background: var(--amber);"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <span class="card-title">产品路线图 · AI-Native 生命科学</span>
+          <span class="card-badge badge-amber">4 阶段</span>
+        </div>
+        <div class="card-desc">
+          从"可信判断副驾驶"到"领域判断基础设施"的完整演进路径：阶段一闭环 demo → 真实 Agent 执行层 → 多机构协作网络 → 领域模型蒸馏。包含每阶段的核心交付物、门控条件和对外叙事框架。
+        </div>
+        <div class="card-tags">
+          <span class="tag">阶段一 · 闭环 Demo</span>
+          <span class="tag">阶段二 · 真实执行</span>
+          <span class="tag">阶段三 · 多机构协作</span>
+          <span class="tag">阶段四 · 领域模型</span>
+        </div>
+      </div>
+      <div class="card-arrow">→</div>
+    </a>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">技术实现计划</div>
+  <p class="desc" style="margin-bottom:0">
+    后端采用 <strong>TypeScript ESM + Hono + Zod + Claude claude-sonnet-4-6</strong> 实现，以 Tool Use Agentic Loop 调用 PubMed、Semantic Scholar、UniProt、STRING DB、ClinicalTrials.gov 五个免费 API 进行真实文献检索。实现计划详见
+    <a href="https://github.com/AGI4Sci/VerumOS/tree/main/plan" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-dim)">plan/</a>
+    目录（11 个子任务，T01–T11）。
+  </p>
+
+  <footer class="footer">
+    <div class="footer-left">VerumOS · 明鉴 · 生命科学知识引擎</div>
+    <div class="footer-right">
+      <a class="footer-link" href="https://github.com/AGI4Sci/VerumOS">GitHub →</a>
+      <a class="footer-link" href="https://github.com/AGI4Sci/VerumOS/tree/main/plan">计划文档 →</a>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>
