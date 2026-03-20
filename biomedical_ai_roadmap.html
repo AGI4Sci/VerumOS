@@ -81,7 +81,7 @@
   </div>
 </div>
 
-<p class="top-note">每个阶段结尾都设置明确的「通关条件」：如果没有形成真实产品价值与可沉积资产，就不进入下一阶段。目标不是堆功能，而是逐步形成无法轻易复制的科研决策体系。点击各阶段展开详情。</p>
+<p class="top-note">阶段一设置了明确的「通关条件」：如果没有形成真实产品价值与可沉积资产，就不进入下一阶段。目标不是堆功能，而是先形成无法轻易复制的科研决策闭环。点击展开详情。</p>
 
 <div class="phase" id="ph1">
   <div class="phase-header" onclick="tog('ph1')">
@@ -158,113 +158,6 @@
   </div>
 </div>
 
-<div class="arrow-row">↓ 不先追求高自主化，而是先证明：这个系统值得被信任、值得被带进真实协作</div>
-
-<div class="phase" id="ph2">
-  <div class="phase-header" onclick="tog('ph2')">
-    <div class="phase-stripe s2"></div>
-    <div class="phase-main">
-      <p class="phase-title">阶段二 · 私有数据接入与决策资产沉积</p>
-      <p class="phase-desc">6–18个月 · 产品：机构级研究对象平台 + 跨场景推理轨迹沉积系统</p>
-    </div>
-    <div class="phase-right">
-      <span class="pill p2">建立壁垒</span>
-      <span class="chevron" id="ph2-chev">▶</span>
-    </div>
-  </div>
-  <div class="body" id="ph2-body">
-    <p class="lbl">这一阶段必须回答的问题</p>
-    <p class="row">当系统开始接入真实机构数据时，我们能否把一次次分析过程，沉积成可版本化、可检索、可复用的 <b>研究决策对象</b>，而不仅仅是一堆日志、对话和分析报告。</p>
-
-    <p class="lbl">这一阶段的关键升级</p>
-    <p class="row"><b>从 demo 到平台：</b>阶段一证明“结果值得信任”；阶段二要证明“信任可以规模化沉积”。</p>
-    <p class="row"><b>从结果到对象：</b>每次任务不再只输出 report，而是形成包含 question、evidence bundle、reasoning trace、expert edits、negative routes、current recommendation 的标准对象。</p>
-    <p class="row"><b>从单点价值到机构价值：</b>合作方接入的不只是数据，而是把自身判断经验、反例经验、审稿式修改逻辑一起资本化。</p>
-
-    <p class="lbl">私有数据接入策略</p>
-    <p class="row"><b>用价值换数据：</b>先用阶段一的可信副驾驶帮助合作方提升分析质量、形成发表或项目推进价值，再谈数据接入与接口规范。</p>
-    <p class="row"><b>联邦优先：</b>数据不必外流，先统一 schema、ontology 与 query interface；我们真正需要沉积的，是跨机构的判断结构，而不仅是原始数据副本。</p>
-    <p class="row"><b>共建优先资产：</b>对最关键的场景与队列，争取形成共建数据与共建评价体系。</p>
-
-    <p class="lbl">本阶段形成的真正壁垒</p>
-    <p class="row"><b>专家纠偏轨迹开始规模化：</b>不同机构、不同角色、不同疾病场景下的修正模式，逐渐形成领域判断语料库。</p>
-    <p class="row"><b>争议知识从文献冲突升级为真实世界冲突：</b>同一结论在不同机构、队列、实验条件下的表现差异，会成为最有价值的科学线索。</p>
-    <p class="row"><b>阴性结果开始产生网络效应：</b>“三家机构都试过无效”的信息，其价值远高于单点经验，会显著提高系统推荐的可信度。</p>
-
-    <div class="gate">
-      <p class="gate-label">通关条件</p>
-      <p class="gate-text">至少接入 <b>5 家机构或团队</b> 的真实使用场景；形成 <b>≥500 条高质量研究决策对象</b>；出现“只有依赖跨机构资产才能给出的判断”；合作伙伴愿意把本机构的修正轨迹或阴性结果持续写入系统，而不是只把它当作一次性分析工具。</p>
-    </div>
-  </div>
-</div>
-
-<div class="arrow-row">↓ 当资产开始累计，系统的价值不再只是回答问题，而是让未来的问题越来越不必从零开始</div>
-
-<div class="phase" id="ph3">
-  <div class="phase-header" onclick="tog('ph3')">
-    <div class="phase-stripe s3"></div>
-    <div class="phase-main">
-      <p class="phase-title">阶段三 · 资产驱动的高自主度科研 Agent</p>
-      <p class="phase-desc">18–36个月 · 产品：能持续学习、持续纠偏、持续优化的高自主科研执行系统</p>
-    </div>
-    <div class="phase-right">
-      <span class="pill p3">核心突破</span>
-      <span class="chevron" id="ph3-chev">▶</span>
-    </div>
-  </div>
-  <div class="body" id="ph3-body">
-    <p class="lbl">这一阶段必须回答的问题</p>
-    <p class="row">当我们已经拥有足够多的研究决策对象后，能否不再主要依赖人工维护 protocol，而是让系统从真实轨迹、真实纠错、真实失败中持续提升自主化程度。</p>
-
-    <p class="lbl">能力来源不是“更多 prompt”，而是“更厚的数据资产”</p>
-    <p class="row"><b>自动优化已有 protocol：</b>分析哪些步骤反复被修改、修改模式是什么、哪些证据更常被采纳，自动更新执行与解释规范。</p>
-    <p class="row"><b>识别 coverage gap：</b>当系统遇到当前 protocol 覆盖不了的任务，记录缺口并生成新 protocol 草案，交由专家审核。</p>
-    <p class="row"><b>失败轨迹成为最关键的训练信号：</b>被否定、被推翻、被修订的推理链，比成功样本更能帮助系统学会边界与不确定性。</p>
-
-    <p class="lbl">高自主化阶段的边界</p>
-    <p class="row">我们追求的是 <b>更少低价值人力介入</b>，不是把所有生物医学决策都自动化。动物实验设计、伦理判断、关键临床解释仍保留人类最终裁决。</p>
-    <p class="row">真正的目标是：让系统自动完成更多准备工作、排除工作和证据整理工作，让专家把注意力集中在高杠杆判断上。</p>
-
-    <div class="gate">
-      <p class="gate-label">通关条件</p>
-      <p class="gate-text">在多个真实任务流中，系统的 <b>端到端任务完成率显著提升</b>，专家修正率相对阶段二下降超过 50%；至少出现 <b>1 个由系统提出、经验证成立、且专家原本未优先考虑的有效假设</b>；新增 protocol 的主要来源转为系统从资产中蒸馏生成，而非纯人工编写。</p>
-    </div>
-  </div>
-</div>
-
-<div class="arrow-row">↓ 当高自主度能力被真实资产稳定支撑，才有资格把这些能力进一步压缩进模型本体</div>
-
-<div class="phase" id="ph4">
-  <div class="phase-header" onclick="tog('ph4')">
-    <div class="phase-stripe s4"></div>
-    <div class="phase-main">
-      <p class="phase-title">阶段四 · 领域科研决策基座模型</p>
-      <p class="phase-desc">36–60个月 · 产品：内化领域推理范式的生命科学基座能力层</p>
-    </div>
-    <div class="phase-right">
-      <span class="pill p4">规模效应</span>
-      <span class="chevron" id="ph4-chev">▶</span>
-    </div>
-  </div>
-  <div class="body" id="ph4-body">
-    <p class="lbl">这一阶段必须回答的问题</p>
-    <p class="row">前面三阶段积累的，能否不仅支撑某些产品能力，还能真正被压缩为可迁移的领域模型能力：面对新疾病、新机制、新数据组合时，系统无需从零开始搭技能，也能延续同样的判断框架。</p>
-
-    <p class="lbl">模型真正要内化的东西</p>
-    <p class="row"><b>不是工具清单，而是推理范式：</b>什么证据优先、何时应该保持不确定、遇到冲突如何处理、何时主动排除旧路径。</p>
-    <p class="row"><b>不是单点 benchmark 技巧，而是领域判断习惯：</b>把专家纠偏、争议节点、负路径语料、成功与失败轨迹一起转化为模型的默认行为模式。</p>
-    <p class="row"><b>不是替代通用模型，而是成为生命科学上的决策层：</b>未来无论是面向合作机构、垂类产品还是内部 agent，都可以从这层能力受益。</p>
-
-    <p class="lbl">阶段四的产品含义</p>
-    <p class="row">对外，它意味着我们不再只是提供一套 workflow 产品，而是能提供 <b>领域推理能力本身</b>：可部署在更广的疾病、机构与场景中。</p>
-    <p class="row">对内，它意味着前述所有资产终于闭环：纠偏、争议、阴性结果与高质量轨迹，不只是被存下来，而是被真正压缩进系统能力。</p>
-
-    <div class="gate">
-      <p class="gate-label">通关条件</p>
-      <p class="gate-text">模型在 <b>未见过的新疾病 / 新任务场景</b> 下，zero-shot 或少样本表现显著优于仅依赖通用模型 + 外挂工具的方案；外显 protocol 的调用频率开始下降，说明关键判断范式已被模型内化；至少有 <b>1 个由该基座能力支持的假设</b> 得到后续实验验证。</p>
-    </div>
-  </div>
-</div>
 
 <script>
 function tog(id) {
