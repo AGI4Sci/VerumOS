@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VerumOS(明鉴) · 生命科学知识引擎</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f0d;
+  --surface: #141510;
+  --surface2: #1a1c16;
+  --surface3: #22241c;
+  --border: rgba(180,175,140,0.12);
+  --border-active: rgba(180,175,140,0.28);
+  --ink: #e8e4d4;
+  --ink-dim: #8a876f;
+  --ink-faint: #3a3830;
+  --accent: #b8d4a0;
+  --accent-dim: rgba(184,212,160,0.15);
+  --accent-glow: rgba(184,212,160,0.08);
+  --amber: #d4a853;
+  --amber-dim: rgba(212,168,83,0.15);
+  --red: #c47070;
+  --red-dim: rgba(196,112,112,0.12);
+  --blue: #7aace0;
+  --blue-dim: rgba(122,172,224,0.12);
+  --radius: 6px;
+  --radius-lg: 10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* ─── LAYOUT ─── */
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr 300px;
+  grid-template-rows: 48px 1fr;
+  height: 100vh;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "sidebar main panel";
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  grid-area: topbar;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 32px;
+  background: var(--surface);
+  position: relative;
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.logo-mark {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.logo-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.topbar-nav {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.nav-item {
+  font-size: 12px;
+  color: var(--ink-dim);
+  padding: 4px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.nav-item:hover { color: var(--ink); background: var(--surface3); }
+.nav-item.active { color: var(--ink); background: var(--surface3); }
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.project-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--amber);
+  background: var(--amber-dim);
+  border: 1px solid rgba(212,168,83,0.2);
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+}
+
+.avatar {
+  width: 28px; height: 28px;
+  background: var(--surface3);
+  border: 1px solid var(--border-active);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--ink-dim);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  grid-area: sidebar;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-section {
+  padding: 16px 0 8px;
+}
+
+.sidebar-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0 16px;
+  margin-bottom: 6px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: all 0.12s;
+  border-left: 2px solid transparent;
+  color: var(--ink-dim);
+  font-size: 12.5px;
+}
+
+.sidebar-item:hover {
+  background: var(--surface2);
+  color: var(--ink);
+}
+
+.sidebar-item.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.sidebar-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.sidebar-item.active .sidebar-icon { opacity: 1; }
+
+.sidebar-count {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  background: var(--surface3);
+  padding: 1px 6px;
+  border-radius: 10px;
+  color: var(--ink-dim);
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
+.knowledge-health {
+  margin: auto 0 0;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.health-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.health-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.health-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.health-name {
+  font-size: 11px;
+  color: var(--ink-dim);
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.health-bar-wrap {
+  flex: 1;
+  height: 3px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.health-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1s ease;
+}
+
+.health-pct {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-dim);
+  width: 26px;
+  text-align: right;
+}
+
+/* ─── MAIN ─── */
+.main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Query bar */
+.query-area {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.query-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.context-chip {
+  padding: 2px 8px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--ink-dim);
+  font-size: 10px;
+}
+
+.context-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.query-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.query-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  resize: none;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.15s;
+  min-height: 42px;
+  max-height: 120px;
+}
+
+.query-input:focus { border-color: var(--border-active); }
+.query-input::placeholder { color: var(--ink-faint); font-style: italic; }
+
+.query-modes {
+  display: flex;
+  gap: 4px;
+}
+
+.mode-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--ink-dim);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.03em;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.mode-btn:hover { border-color: var(--border-active); color: var(--ink); }
+.mode-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+.run-btn {
+  padding: 8px 20px;
+  background: var(--accent);
+  color: #0e1a08;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.02em;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.run-btn:hover { background: #cce8b4; }
+
+/* Reasoning trace */
+.reasoning-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reasoning-area::-webkit-scrollbar { width: 4px; }
+.reasoning-area::-webkit-scrollbar-track { background: transparent; }
+.reasoning-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Trace header */
+.trace-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trace-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-style: italic;
+  color: var(--ink);
+  flex: 1;
+}
+
+.trace-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Reasoning steps */
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step {
+  display: flex;
+  gap: 14px;
+  position: relative;
+}
+
+.step-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.step-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--surface3);
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+  margin-top: 4px;
+  transition: all 0.3s;
+}
+
+.step-dot.done { background: var(--accent); border-color: var(--accent); }
+.step-dot.active { background: var(--amber); border-color: var(--amber); animation: pulse 1.5s infinite; }
+.step-dot.warn { background: var(--red); border-color: var(--red); }
+
+.step-connector {
+  width: 1px;
+  flex: 1;
+  background: var(--border);
+  min-height: 16px;
+}
+
+.step-body {
+  flex: 1;
+  padding-bottom: 16px;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.step-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
+
+.step-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.step-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+.tag-qc { background: var(--blue-dim); color: var(--blue); }
+.tag-lit { background: var(--amber-dim); color: var(--amber); }
+.tag-infer { background: var(--accent-dim); color: var(--accent); }
+.tag-warn { background: var(--red-dim); color: var(--red); }
+
+.step-content {
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  line-height: 1.65;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.step-content b { color: var(--ink); font-weight: 500; }
+
+/* Intervention banner */
+.intervention-banner {
+  background: var(--amber-dim);
+  border: 1px solid rgba(212,168,83,0.25);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+
+.intervention-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.intervention-text {
+  font-size: 12px;
+  color: var(--ink);
+  font-style: italic;
+  font-family: 'Playfair Display', serif;
+  line-height: 1.5;
+}
+
+.intervention-meta {
+  font-size: 11px;
+  color: var(--amber);
+  margin-top: 6px;
+  font-family: 'DM Mono', monospace;
+}
+
+.intervene-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius);
+  color: var(--ink-dim);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.12s;
+}
+
+.intervene-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+/* Result card */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.result-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.result-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.confidence-badge {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+}
+
+.conf-label { color: var(--ink-faint); }
+.conf-value { color: var(--accent); }
+.conf-bar {
+  width: 48px; height: 4px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.conf-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent) 0%, #7fc860 100%);
+  border-radius: 2px;
+}
+
+.result-body { padding: 14px 16px; }
+
+.finding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.finding {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.finding-bullet {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+
+.finding-text {
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  line-height: 1.6;
+  flex: 1;
+}
+
+.finding-text b { color: var(--ink); font-weight: 500; }
+
+.finding-evidence {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  margin-top: 3px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.evid-tag {
+  padding: 1px 6px;
+  background: var(--surface3);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.evid-tag:hover { background: var(--surface); color: var(--amber); }
+
+/* ─── RIGHT PANEL ─── */
+.panel {
+  grid-area: panel;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-tab {
+  flex: 1;
+  padding: 11px 8px;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.12s;
+}
+
+.panel-tab:hover { color: var(--ink-dim); }
+.panel-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.panel-content::-webkit-scrollbar { width: 3px; }
+.panel-content::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* Knowledge nodes */
+.knowledge-node {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+  cursor: pointer;
+}
+
+.knowledge-node:hover { border-color: var(--border-active); }
+
+.kn-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.kn-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.kn-status {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.status-fresh { background: var(--accent-dim); color: var(--accent); }
+.status-aging { background: var(--amber-dim); color: var(--amber); }
+.status-stale { background: var(--red-dim); color: var(--red); }
+.status-disputed { background: rgba(122,172,224,0.12); color: var(--blue); }
+
+.kn-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+
+.kn-evidence-bar {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.kn-ev-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  width: 52px;
+}
+
+.kn-ev-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.kn-dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  background: var(--surface3);
+}
+
+.kn-dot.filled { background: var(--accent); }
+.kn-dot.amber { background: var(--amber); }
+.kn-dot.red { background: var(--red); }
+
+.kn-dispute {
+  background: rgba(122,172,224,0.07);
+  border: 1px solid rgba(122,172,224,0.15);
+  border-radius: 4px;
+  padding: 7px 10px;
+  margin-top: 8px;
+}
+
+.kn-dispute-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--blue);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.kn-dispute-text {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+}
+
+/* Negative results */
+.neg-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--red);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  margin-bottom: 9px;
+}
+
+.neg-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.neg-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--red);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.neg-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+
+.neg-detail {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  line-height: 1.55;
+}
+
+.neg-meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+}
+
+/* Expert corrections log */
+.correction-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  margin-bottom: 9px;
+}
+
+.corr-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.corr-expert {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.corr-time {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  margin-left: auto;
+}
+
+.corr-from {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  margin-bottom: 3px;
+}
+
+.corr-to {
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+
+.corr-reason {
+  font-size: 11px;
+  color: var(--ink-dim);
+  font-style: italic;
+  font-family: 'Playfair Display', serif;
+  line-height: 1.5;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 6px;
+}
+
+/* Panel section headers */
+.panel-section-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  margin-top: 4px;
+}
+
+/* Animate in */
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.step { animation: fadeSlide 0.3s ease both; }
+.step:nth-child(1) { animation-delay: 0.1s; }
+.step:nth-child(2) { animation-delay: 0.3s; }
+.step:nth-child(3) { animation-delay: 0.5s; }
+.step:nth-child(4) { animation-delay: 0.7s; }
+.step:nth-child(5) { animation-delay: 0.9s; }
+
+.result-card { animation: fadeSlide 0.4s 1.1s ease both; }
+.knowledge-node { animation: fadeSlide 0.3s ease both; }
+.knowledge-node:nth-child(1) { animation-delay: 0.1s; }
+.knowledge-node:nth-child(2) { animation-delay: 0.2s; }
+.knowledge-node:nth-child(3) { animation-delay: 0.3s; }
+
+/* Scrollbars */
+.reasoning-area::-webkit-scrollbar,
+.panel-content::-webkit-scrollbar { width: 3px; }
+.reasoning-area::-webkit-scrollbar-thumb,
+.panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Tab switching */
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ─── VIEWS ─── */
+.view-pane { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.view-header {
+  padding: 16px 24px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.view-title { font-family: 'Playfair Display', serif; font-size: 16px; font-style: italic; color: var(--ink); }
+.view-subtitle { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--ink-faint); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 3px; }
+.agent-status { display: flex; align-items: center; gap: 6px; }
+.agent-input-row { display: flex; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+
+/* Data workspace */
+.data-workspace { display: grid; grid-template-columns: 1fr 1fr; gap: 0; flex: 1; overflow: hidden; }
+.data-col { padding: 20px 24px; overflow-y: auto; border-right: 1px solid var(--border); }
+.data-col:last-child { border-right: none; }
+.data-section-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--ink-faint); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 10px; }
+
+.ds-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
+.active-ds { border-color: rgba(184,212,160,0.3); background: var(--accent-glow); }
+.ds-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.ds-name { font-size: 12px; font-weight: 500; color: var(--ink); flex: 1; }
+.ds-badge { font-family: 'DM Mono', monospace; font-size: 9px; padding: 2px 8px; border-radius: 10px; }
+.ds-meta { font-size: 11px; color: var(--ink-faint); margin-bottom: 10px; font-family: 'DM Mono', monospace; }
+.ds-pipeline { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.ds-step { font-family: 'DM Mono', monospace; font-size: 9px; padding: 2px 7px; border-radius: 3px; background: var(--surface3); color: var(--ink-faint); }
+.ds-step.done { background: var(--accent-dim); color: var(--accent); }
+.ds-step.active-step { background: var(--amber-dim); color: var(--amber); animation: pulse 1.5s infinite; }
+.ds-arrow { font-size: 9px; color: var(--ink-faint); }
+
+.do-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
+.do-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.do-field { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; font-size: 11.5px; }
+.do-key { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-faint); min-width: 110px; flex-shrink: 0; }
+.do-val { color: var(--ink-dim); line-height: 1.4; }
+.do-warn { margin-top: 8px; padding: 6px 10px; background: var(--amber-dim); border-radius: 4px; font-size: 11px; color: var(--amber); font-family: 'DM Mono', monospace; }
+.clean-log { background: var(--surface3); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+.log-line { font-family: 'DM Mono', monospace; font-size: 10.5px; color: var(--ink-dim); display: flex; gap: 7px; }
+.log-ok { color: var(--accent); }
+.log-warn { color: var(--amber); }
+
+/* Model workspace */
+.model-workspace { display: grid; grid-template-columns: 1fr 1fr; gap: 0; flex: 1; overflow: hidden; }
+.model-col { padding: 20px 24px; overflow-y: auto; border-right: 1px solid var(--border); }
+.model-col:last-child { border-right: none; }
+.protocol-list { display: flex; flex-direction: column; gap: 4px; }
+.protocol-item { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.12s; }
+.protocol-item:hover { border-color: var(--border-active); background: var(--surface2); }
+.active-protocol { border-color: rgba(184,212,160,0.4); background: var(--accent-glow); }
+.proto-name { font-size: 12px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+.proto-desc { font-family: 'DM Mono', monospace; font-size: 9.5px; color: var(--ink-faint); }
+.param-grid { background: var(--surface3); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.param-row { display: flex; align-items: center; gap: 10px; }
+.param-key { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-faint); flex: 1; }
+.param-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 11px; padding: 3px 8px; width: 80px; outline: none; }
+.param-input:focus { border-color: var(--border-active); }
+
+/* Validation view inside shell override */
+#view-validation { grid-area: main; }
+
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo">
+      <span class="logo-mark">VerumOS</span>
+      <span class="logo-sub">Life Science · Alpha</span>
+    </div>
+    <nav class="topbar-nav">
+      <div class="nav-item" onclick="switchView('data')">数据</div>
+      <div class="nav-item" onclick="switchView('model')">模型</div>
+      <div class="nav-item active" onclick="switchView('discovery')">发现</div>
+      <div class="nav-item" onclick="switchView('validation')">验证</div>
+      <div class="nav-item" onclick="switchView('writing')">写作</div>
+    </nav>
+    <div class="topbar-right">
+      <div class="project-badge">PROJ · 肝癌TME研究 #04</div>
+      <div class="avatar">WL</div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">项目目录</div>
+      <div class="sidebar-item active">
+        <svg class="sidebar-icon" viewBox="0 0 14 14" fill="none">
+          <path d="M3.2 3.2h5.2l1.4 1.4V10.8H3.2V3.2z" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M8.4 3.2V4.9H10.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        写作草稿
+      </div>
+      <div class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 14 14" fill="none">
+          <path d="M2.8 5.2h8.4v7H2.8v-7z" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M2.8 5.2l2-2h2.2l1.2 2H2.8z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        数据目录
+      </div>
+      <div class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 14 14" fill="none">
+          <path d="M4 2.8h6v8.4H4V2.8z" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M3.2 12h7.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        模型与协议
+      </div>
+      <div class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M7 4.3v2.8l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        实验记录
+        <span class="sidebar-count">新</span>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">知识库</div>
+      <div class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 14 14" fill="none"><path d="M7 1.5C4 1.5 1.5 4 1.5 7S4 12.5 7 12.5 12.5 10 12.5 7 10 1.5 7 1.5z" stroke="currentColor" stroke-width="1.2"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        阴性结果库
+        <span class="sidebar-count">47</span>
+      </div>
+      <div class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 14 14" fill="none"><path d="M2 4.5h10M2 7h7M2 9.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        专家修正记录
+        <span class="sidebar-count">128</span>
+      </div>
+      <div class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 14 14" fill="none"><path d="M1.5 7a5.5 5.5 0 1 0 11 0 5.5 5.5 0 0 0-11 0z" stroke="currentColor" stroke-width="1.2"/><path d="M7 4v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        待过期知识
+        <span class="sidebar-count" style="background:var(--red-dim);color:var(--red)">12</span>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">本项目</div>
+      <div class="sidebar-item">历史分析 <span class="sidebar-count">23</span></div>
+      <div class="sidebar-item">实验记录 <span class="sidebar-count">8</span></div>
+      <div class="sidebar-item">协作成员 <span class="sidebar-count">4</span></div>
+    </div>
+
+    <div class="knowledge-health">
+      <div class="health-label">知识库健康度</div>
+      <div class="health-bars">
+        <div class="health-row">
+          <div class="health-name">新鲜度</div>
+          <div class="health-bar-wrap"><div class="health-bar-fill" style="width:71%;background:var(--accent)"></div></div>
+          <div class="health-pct">71%</div>
+        </div>
+        <div class="health-row">
+          <div class="health-name">覆盖度</div>
+          <div class="health-bar-wrap"><div class="health-bar-fill" style="width:58%;background:var(--amber)"></div></div>
+          <div class="health-pct">58%</div>
+        </div>
+        <div class="health-row">
+          <div class="health-name">验证率</div>
+          <div class="health-bar-wrap"><div class="health-bar-fill" style="width:43%;background:var(--blue)"></div></div>
+          <div class="health-pct">43%</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ══ DATA AGENT VIEW ══ -->
+    <div class="view-pane" id="view-data">
+      <div class="view-header">
+        <div class="view-header-left">
+          <div class="view-title">Data Agent</div>
+          <div class="view-subtitle">数据收集 · 清洗 · 规范化</div>
+        </div>
+        <div class="agent-status">
+          <div class="status-dot" style="background:var(--accent);animation:pulse 2s infinite"></div>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent)">待机中</span>
+        </div>
+      </div>
+
+      <div class="data-workspace">
+        <div class="data-col">
+          <div class="data-section-label">数据源</div>
+
+          <div class="ds-card active-ds">
+            <div class="ds-card-header">
+              <div class="ds-name">TCGA-LIHC</div>
+              <div class="ds-badge" style="color:var(--accent);background:var(--accent-dim)">已加载</div>
+            </div>
+            <div class="ds-meta">RNA-seq · 373例 · TPM normalized</div>
+            <div class="ds-pipeline">
+              <div class="ds-step done">收集</div><div class="ds-arrow">→</div>
+              <div class="ds-step done">清洗</div><div class="ds-arrow">→</div>
+              <div class="ds-step done">规范化</div><div class="ds-arrow">→</div>
+              <div class="ds-step done">Data Object</div>
+            </div>
+          </div>
+
+          <div class="ds-card">
+            <div class="ds-card-header">
+              <div class="ds-name">GEO · GSE149614</div>
+              <div class="ds-badge" style="color:var(--amber);background:var(--amber-dim)">处理中</div>
+            </div>
+            <div class="ds-meta">scRNA-seq · 45,000细胞 · 肝癌TME</div>
+            <div class="ds-pipeline">
+              <div class="ds-step done">收集</div><div class="ds-arrow">→</div>
+              <div class="ds-step active-step">清洗</div><div class="ds-arrow">→</div>
+              <div class="ds-step">规范化</div><div class="ds-arrow">→</div>
+              <div class="ds-step">Data Object</div>
+            </div>
+          </div>
+
+          <div class="ds-card" style="border-style:dashed;cursor:pointer;opacity:0.55">
+            <div class="ds-card-header">
+              <div class="ds-name" style="color:var(--ink-dim)">+ 添加数据源</div>
+            </div>
+            <div class="ds-meta">PubMed · GEO · TCGA · UniProt · 上传私有数据</div>
+          </div>
+        </div>
+
+        <div class="data-col">
+          <div class="data-section-label">最新 Data Object</div>
+
+          <div class="do-card">
+            <div class="do-header">
+              <div class="do-id" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-faint)">DO-2025-0847</div>
+              <div class="ds-badge" style="color:var(--accent);background:var(--accent-dim)">QC通过</div>
+            </div>
+            <div class="do-field"><span class="do-key">source</span><span class="do-val">TCGA-LIHC · GEO:GSE149614</span></div>
+            <div class="do-field"><span class="do-key">created_at</span><span class="do-val">2025-03-20 09:14</span></div>
+            <div class="do-field"><span class="do-key">quality_score</span><span class="do-val" style="color:var(--accent)">0.91 · A级</span></div>
+            <div class="do-field"><span class="do-key">ontology_tags</span><span class="do-val">HPO:0030731 · GO:0042110 · MONDO:0007256</span></div>
+            <div class="do-field"><span class="do-key">processing_history</span><span class="do-val">QC → batch_correction → gene_id_norm</span></div>
+            <div class="do-warn">
+              <span style="color:var(--amber)">⚠</span> 检测到3个离群样本，已标记但保留，建议在模型阶段排除
+            </div>
+          </div>
+
+          <div class="data-section-label" style="margin-top:16px">清洗日志</div>
+          <div class="clean-log">
+            <div class="log-line"><span class="log-ok">✓</span> 缺失值填充：47基因 → kNN imputation</div>
+            <div class="log-line"><span class="log-ok">✓</span> 批次效应校正：ComBat-seq (GEO vs TCGA)</div>
+            <div class="log-line"><span class="log-ok">✓</span> 基因ID归一化：Ensembl → HGNC symbol</div>
+            <div class="log-line"><span class="log-warn">⚠</span> 3样本线粒体比例 &gt;18%，已标记</div>
+            <div class="log-line"><span class="log-ok">✓</span> Ontology标注：HPO · GO · MONDO</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="agent-input-row">
+        <textarea class="query-input" rows="1" placeholder="告诉 Data Agent 需要准备哪些数据，或添加新数据源…" style="min-height:38px"></textarea>
+        <button class="run-btn">执行 →</button>
+      </div>
+    </div>
+
+    <!-- ══ MODEL AGENT VIEW ══ -->
+    <div class="view-pane" id="view-model" style="display:none">
+      <div class="view-header">
+        <div class="view-header-left">
+          <div class="view-title">Model Agent</div>
+          <div class="view-subtitle">Protocol选择 · 建模执行 · 结果输出</div>
+        </div>
+        <div class="agent-status">
+          <div class="status-dot" style="background:var(--accent);animation:pulse 2s infinite"></div>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent)">待机中</span>
+        </div>
+      </div>
+
+      <div class="model-workspace">
+        <div class="model-col">
+          <div class="data-section-label">输入 · Data Object</div>
+          <div class="do-card" style="margin-bottom:0">
+            <div class="do-field"><span class="do-key">DO-2025-0847</span><span class="do-val" style="color:var(--accent)">已就绪</span></div>
+            <div class="do-field"><span class="do-key">样本量</span><span class="do-val">373例（3个离群已排除）</span></div>
+            <div class="do-field"><span class="do-key">数据类型</span><span class="do-val">bulk RNA-seq + scRNA-seq</span></div>
+          </div>
+
+          <div class="data-section-label" style="margin-top:16px">Protocol 选择</div>
+          <div class="protocol-list">
+            <div class="protocol-item active-protocol" onclick="selectProtocol(this)">
+              <div class="proto-name">差异表达分析</div>
+              <div class="proto-desc">DESeq2 · edgeR · limma</div>
+            </div>
+            <div class="protocol-item" onclick="selectProtocol(this)">
+              <div class="proto-name">生存分析</div>
+              <div class="proto-desc">Cox PH · Kaplan-Meier</div>
+            </div>
+            <div class="protocol-item" onclick="selectProtocol(this)">
+              <div class="proto-name">靶点优先级排序</div>
+              <div class="proto-desc">多组学整合评分</div>
+            </div>
+            <div class="protocol-item" onclick="selectProtocol(this)">
+              <div class="proto-name">细胞亚群识别</div>
+              <div class="proto-desc">scVI · Seurat · Harmony</div>
+            </div>
+          </div>
+
+          <div class="data-section-label" style="margin-top:16px">参数配置</div>
+          <div class="param-grid">
+            <div class="param-row"><span class="param-key">p_value_threshold</span><input class="param-input" value="0.05"/></div>
+            <div class="param-row"><span class="param-key">fold_change_cutoff</span><input class="param-input" value="1.5"/></div>
+            <div class="param-row"><span class="param-key">correction_method</span><input class="param-input" value="BH"/></div>
+          </div>
+        </div>
+
+        <div class="model-col">
+          <div class="data-section-label">Model Object · 最新输出</div>
+          <div class="do-card">
+            <div class="do-header">
+              <div class="do-id" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-faint)">MO-2025-0312</div>
+              <div class="ds-badge" style="color:var(--accent);background:var(--accent-dim)">已完成</div>
+            </div>
+            <div class="do-field"><span class="do-key">protocol</span><span class="do-val">差异表达分析 · DESeq2 v1.38</span></div>
+            <div class="do-field"><span class="do-key">protocol_version</span><span class="do-val">deseq2_lihc_v3</span></div>
+            <div class="do-field"><span class="do-key">result</span><span class="do-val">247个显著基因 · TIGIT top 5%</span></div>
+            <div class="do-field"><span class="do-key">model_params</span><span class="do-val">p&lt;0.05 · FC≥1.5 · BH校正</span></div>
+            <div class="do-field" style="align-items:flex-start"><span class="do-key">reasoning_trace</span><span class="do-val">选择DESeq2：bulk RNA-seq count矩阵，负二项分布假设更适合；edgeR备选，结果一致性验证</span></div>
+            <div class="do-field" style="align-items:flex-start"><span class="do-key">excluded_paths</span><span class="do-val" style="color:var(--red)">× limma-voom：样本量&gt;200时DESeq2显著性更高 × 未校正t检验：批次效应未消除</span></div>
+          </div>
+
+          <div class="data-section-label" style="margin-top:16px">选择理由记录</div>
+          <div class="clean-log">
+            <div class="log-line"><span class="log-ok">✓</span> 选择DESeq2：count数据 + 样本量充足</div>
+            <div class="log-line"><span class="log-ok">✓</span> BH多重比较校正：FDR控制优于Bonferroni</div>
+            <div class="log-line"><span class="log-warn">→</span> FC阈值1.5：基于肝癌文献惯例设定</div>
+            <div class="log-line" style="color:var(--red);opacity:0.7"><span class="log-warn">×</span> 排除：limma（count数据次优）</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="agent-input-row">
+        <textarea class="query-input" rows="1" placeholder="描述建模需求，或修改 Protocol 参数…" style="min-height:38px"></textarea>
+        <button class="run-btn">运行模型 →</button>
+      </div>
+    </div>
+
+    <!-- ══ DISCOVERY VIEW (original) ══ -->
+    <div class="view-pane" id="view-discovery">
+    <div class="query-area">
+      <div class="query-context">
+        <span style="color:var(--ink-faint)">上下文：</span>
+        <div class="context-chip active">肝癌TME</div>
+        <div class="context-chip active">TCGA-LIHC</div>
+        <div class="context-chip">GEO:GSE149614</div>
+        <div class="context-chip">+ 添加数据集</div>
+      </div>
+      <div class="query-input-row">
+        <textarea class="query-input" rows="2" placeholder="提出你的研究问题，或描述你的数据…">TIGIT在肝癌肿瘤微环境中的表达模式，以及与T细胞耗竭的关系是什么？</textarea>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="query-modes" id="query-modes" style="display:none">
+            <div class="mode-btn active">精准</div>
+            <div class="mode-btn">宽泛</div>
+          </div>
+          <button class="run-btn">运行分析 →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="reasoning-area">
+
+      <div class="trace-meta">
+        <div class="trace-title">TIGIT · 肿瘤微环境 · T细胞耗竭</div>
+        <div class="trace-status">
+          <div class="status-dot"></div>
+          推理中 · 步骤 4/5
+        </div>
+      </div>
+
+      <div class="step-list">
+
+        <!-- Step 1 -->
+        <div class="step">
+          <div class="step-line">
+            <div class="step-dot done"></div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-header">
+              <div class="step-num">01</div>
+              <div class="step-name">数据质控与加载</div>
+              <div class="step-tag tag-qc">QC</div>
+            </div>
+            <div class="step-content">
+              已加载 <b>TCGA-LIHC</b>（373例，RNA-seq TPM）及项目上下文知识。线粒体基因比例中位值 <b>4.2%</b>，均通过阈值（&lt;20%）。检测到 <b>3个离群样本</b>，已自动标记。Skill调用：<code style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)">scvi_qc_pipeline_v2</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step">
+          <div class="step-line">
+            <div class="step-dot done"></div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-header">
+              <div class="step-num">02</div>
+              <div class="step-name">文献证据链构建</div>
+              <div class="step-tag tag-lit">文献</div>
+            </div>
+            <div class="step-content">
+              检索到 <b>214篇</b> 相关文献（2018–2025），筛选后保留 <b>47篇</b> 高相关性文献。TIGIT相关证据：<b>32篇</b>正向支持，<b>4篇</b>有异议（主要来自胃癌队列）。
+              <div class="finding-evidence" style="margin-top:8px">
+                <span class="evid-tag">Johnston 2014 · Cell</span>
+                <span class="evid-tag">Chauvin 2017 · JCI</span>
+                <span class="evid-tag">Zhang 2024 · Nature</span>
+                <span class="evid-tag" style="color:var(--amber)">⚠ Chen 2023 · 有争议</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 - with expert intervention -->
+        <div class="step">
+          <div class="step-line">
+            <div class="step-dot warn"></div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-header">
+              <div class="step-num">03</div>
+              <div class="step-name">T细胞亚群识别</div>
+              <div class="step-tag tag-warn">已修正</div>
+            </div>
+            <div class="step-content">
+              初始分析将 Cluster 7 标注为<b>「效应记忆T细胞（Tem）」</b>。依据：<i>CCR7<sup>−</sup> CD45RO<sup>+</sup></i> marker组合，符合标准定义。
+            </div>
+            <div class="intervention-banner">
+              <div class="intervention-label">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v4M5 7.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                专家介入 · 检查点 #3
+              </div>
+              <div class="intervention-text">「这个cluster的 PDCD1 表达异常高（top 5%），结合本队列肝癌微环境特征，应分类为 <b>耗竭前体T细胞（Tpex）</b>，而非 Tem。Tpex 在TIGIT研究里是关键亚群，不能混入。」</div>
+              <div class="intervention-meta">— 王磊 教授 · 2025-03-17 14:32 · 已写入知识库</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4 - active -->
+        <div class="step">
+          <div class="step-line">
+            <div class="step-dot active"></div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-header">
+              <div class="step-num">04</div>
+              <div class="step-name">TIGIT表达与耗竭相关性分析</div>
+              <div class="step-tag tag-infer">推理中</div>
+            </div>
+            <div class="step-content">
+              基于修正后的Tpex定义，正在重新计算 TIGIT 表达与耗竭标志物（<i>PDCD1、HAVCR2、LAG3</i>）的相关系数矩阵… 预计30秒完成。
+            </div>
+            <button class="intervene-btn">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v4M1 5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              在此介入 / 修正判断
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 5 - pending -->
+        <div class="step">
+          <div class="step-line">
+            <div class="step-dot"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-header">
+              <div class="step-num">05</div>
+              <div class="step-name">假设生成 + 可证伪性评分</div>
+              <div class="step-tag tag-infer" style="opacity:0.4">等待</div>
+            </div>
+            <div class="step-content" style="opacity:0.35">
+              将生成3–5个可检验假设，附带实验成本评估和知识库交叉比对。
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Result preview -->
+      <div class="result-card">
+        <div class="result-header">
+          <div class="result-title">初步发现 · 步骤1–3综合</div>
+          <div class="confidence-badge">
+            <span class="conf-label">置信度</span>
+            <div class="conf-bar"><div class="conf-fill" style="width:72%"></div></div>
+            <span class="conf-value">B级 · 72%</span>
+          </div>
+        </div>
+        <div class="result-body">
+          <div class="finding-list">
+            <div class="finding">
+              <div class="finding-bullet"></div>
+              <div>
+                <div class="finding-text">TIGIT在TCGA-LIHC中的表达与 <b>Tpex亚群比例显著正相关</b>（Pearson r=0.67, p&lt;0.001），这一关联在修正Cluster 7分类后更加显著。</div>
+                <div class="finding-evidence">
+                  <span class="evid-tag">基于本队列计算</span>
+                  <span class="evid-tag">Wang教授修正确认</span>
+                </div>
+              </div>
+            </div>
+            <div class="finding">
+              <div class="finding-bullet" style="background:var(--amber)"></div>
+              <div>
+                <div class="finding-text"><b>注意：</b>知识库中有争议节点——Chen 2023 在胃癌中发现TIGIT高表达与Tpex <i>负相关</i>，本队列（肝癌）结果相反。可能为癌种特异性差异，建议作为后续验证假设。</div>
+                <div class="finding-evidence">
+                  <span class="evid-tag" style="color:var(--blue)">🔵 跨癌种争议 · 已标记</span>
+                  <span class="evid-tag">Chen 2023 · Nat Immunol</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    </div><!-- /view-discovery -->
+    
+    <!-- ══ WRITING VIEW ══ -->
+    <div class="view-pane" id="view-writing" style="display:none;flex-direction:column;">
+      <div class="view-header">
+        <div class="view-header-left">
+          <div class="view-title">写作</div>
+          <div class="view-subtitle">摘要 · 结构 · 证据串联</div>
+        </div>
+        <div class="agent-status">
+          <div class="status-dot" style="background:var(--accent);animation:pulse 2s infinite"></div>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent)">写作助手就绪</span>
+        </div>
+      </div>
+
+      <div style="flex:1;overflow:hidden;display:flex;gap:14px;padding:18px 24px 24px;">
+        <div style="flex:1;min-width:320px;display:flex;flex-direction:column;gap:12px;">
+          <div class="data-section-label" style="margin-bottom:2px">手稿草稿（可直接粘贴）</div>
+          <textarea class="query-input" rows="10" placeholder="粘贴摘要/引言/方法… 我会帮你提炼主张、补齐过渡语和证据链。" style="flex:1;min-height:220px;max-height:360px;"></textarea>
+          <div class="agent-input-row" style="padding:0;border-top:none;background:transparent;flex-shrink:0;margin-top:auto;">
+            <button class="run-btn">生成论文框架 →</button>
+            <button class="intervene-btn">一键改写（学术风格）</button>
+          </div>
+        </div>
+
+        <div style="width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+          <div class="data-section-label" style="margin-bottom:2px">推荐写作结构</div>
+          <div class="do-card" style="margin-bottom:0;">
+            <div class="do-field" style="margin-bottom:10px;"><span class="do-key">01</span><span class="do-val"><b>摘要</b>：研究问题 + 关键发现 + 意义</span></div>
+            <div class="do-field" style="margin-bottom:10px;"><span class="do-key">02</span><span class="do-val"><b>引言</b>：背景缺口 + 本研究贡献</span></div>
+            <div class="do-field" style="margin-bottom:10px;"><span class="do-key">03</span><span class="do-val"><b>方法</b>：数据来源 + 分析流程 + 评估指标</span></div>
+            <div class="do-field" style="margin-bottom:10px;"><span class="do-key">04</span><span class="do-val"><b>结果</b>：图表指引 + 关键统计</span></div>
+            <div class="do-field"><span class="do-key">05</span><span class="do-val"><b>讨论</b>：机制解释 + 争议点 + 局限与展望</span></div>
+          </div>
+
+          <div class="do-warn" style="margin-top:auto;">
+            <span style="color:var(--amber)">⚑</span> 已把当前 `发现/验证` 视图要点用于证据串联（演示文本）。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /view-discovery -->
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="panel">
+    <div class="panel-tabs">
+      <div class="panel-tab active" onclick="switchTab('knowledge')">知识节点</div>
+      <div class="panel-tab" onclick="switchTab('negative')">阴性结果</div>
+      <div class="panel-tab" onclick="switchTab('corrections')">修正记录</div>
+    </div>
+
+    <div class="panel-content">
+
+      <!-- Knowledge tab -->
+      <div class="tab-pane active" id="tab-knowledge">
+        <div class="panel-section-title">本次分析涉及节点</div>
+
+        <div class="knowledge-node">
+          <div class="kn-header">
+            <div class="kn-title">TIGIT作为T细胞耗竭标志物</div>
+            <div class="kn-status status-fresh">新鲜</div>
+          </div>
+          <div class="kn-meta">
+            <span>最新证据 · 2024-11</span>
+            <span>47篇支持</span>
+          </div>
+          <div class="kn-evidence-bar">
+            <div class="kn-ev-label">证据强度</div>
+            <div class="kn-ev-dots">
+              <div class="kn-dot filled"></div>
+              <div class="kn-dot filled"></div>
+              <div class="kn-dot filled"></div>
+              <div class="kn-dot filled"></div>
+              <div class="kn-dot"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="knowledge-node">
+          <div class="kn-header">
+            <div class="kn-title">Tpex与TIGIT联合抑制治疗响应</div>
+            <div class="kn-status status-aging">更新中</div>
+          </div>
+          <div class="kn-meta">
+            <span>最新证据 · 2022-06</span>
+            <span>12篇支持</span>
+            <span style="color:var(--amber)">⚠ 可能过期</span>
+          </div>
+          <div class="kn-evidence-bar">
+            <div class="kn-ev-label">证据强度</div>
+            <div class="kn-ev-dots">
+              <div class="kn-dot filled"></div>
+              <div class="kn-dot filled"></div>
+              <div class="kn-dot amber"></div>
+              <div class="kn-dot"></div>
+              <div class="kn-dot"></div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--amber);margin-top:6px;font-family:'DM Mono',monospace">
+            → 建议查阅 2024年后临床试验数据
+          </div>
+        </div>
+
+        <div class="knowledge-node">
+          <div class="kn-header">
+            <div class="kn-title">TIGIT在肝癌vs胃癌中的差异表达</div>
+            <div class="kn-status status-disputed">争议</div>
+          </div>
+          <div class="kn-meta">
+            <span>2篇正向 / 1篇反向</span>
+          </div>
+          <div class="kn-evidence-bar">
+            <div class="kn-ev-label">证据强度</div>
+            <div class="kn-ev-dots">
+              <div class="kn-dot filled"></div>
+              <div class="kn-dot red"></div>
+              <div class="kn-dot"></div>
+              <div class="kn-dot"></div>
+              <div class="kn-dot"></div>
+            </div>
+          </div>
+          <div class="kn-dispute">
+            <div class="kn-dispute-label">争议详情</div>
+            <div class="kn-dispute-text">Chen 2023 报告胃癌中TIGIT<sup>+</sup> Tpex比例与肿瘤退缩<i>负相关</i>，与本队列方向相反。可能的癌种特异性机制尚不明确。</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Negative results tab -->
+      <div class="tab-pane" id="tab-negative">
+        <div class="panel-section-title">相关阴性结果 · 3条</div>
+
+        <div class="neg-card">
+          <div class="neg-header">
+            <div class="neg-label">× 无效路径</div>
+          </div>
+          <div class="neg-title">TIGIT单药阻断在HCC小鼠模型中无效</div>
+          <div class="neg-detail">3家机构独立验证：单药TIGIT阻断在DEN诱导HCC模型中未观察到肿瘤退缩（p=0.43）。可能原因：缺乏CD8<sup>+</sup>T细胞浸润作为前提条件。</div>
+          <div class="neg-meta">
+            <span>3家机构共同提交</span>
+            <span>2023–2024</span>
+            <span style="color:var(--red)">已阻断此假设方向</span>
+          </div>
+        </div>
+
+        <div class="neg-card">
+          <div class="neg-header">
+            <div class="neg-label">× 无相关</div>
+          </div>
+          <div class="neg-title">TIGIT表达与AFP水平无显著相关</div>
+          <div class="neg-detail">TCGA-LIHC全队列分析（n=373），TIGIT表达与血清AFP（替代肿瘤负荷标志物）无显著相关（r=0.08, p=0.12）。</div>
+          <div class="neg-meta">
+            <span>本机构数据</span>
+            <span>2024-09</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Corrections tab -->
+      <div class="tab-pane" id="tab-corrections">
+        <div class="panel-section-title">专家修正记录 · 本项目</div>
+
+        <div class="correction-item">
+          <div class="corr-header">
+            <div class="corr-expert">王磊 教授</div>
+            <div class="corr-time">2025-03-17</div>
+          </div>
+          <div class="corr-from">Cluster 7 → 效应记忆T细胞（Tem）</div>
+          <div class="corr-to">Cluster 7 → 耗竭前体T细胞（Tpex）</div>
+          <div class="corr-reason">「PDCD1高表达且CCR7<sup>−</sup>在本队列中不足以区分 Tem 和 Tpex，需结合 TCF7 和 TOX 共表达判断。」</div>
+        </div>
+
+        <div class="correction-item">
+          <div class="corr-header">
+            <div class="corr-expert">李明 博士</div>
+            <div class="corr-time">2025-02-28</div>
+          </div>
+          <div class="corr-from">置信度评级：A级</div>
+          <div class="corr-to">置信度评级：B级</div>
+          <div class="corr-reason">「TCGA数据为bulk RNA-seq，无法区分肿瘤浸润T细胞的空间分布，置信度应降一级，等scRNA-seq验证。」</div>
+        </div>
+
+        <div style="margin-top:16px;padding:12px;background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);cursor:pointer">
+          <div style="font-size:11.5px;color:var(--ink-dim);text-align:center;line-height:1.6">
+            + 添加你的修正<br>
+            <span style="font-size:10px;color:var(--ink-faint);font-family:'DM Mono',monospace">每次修正都会写入知识库</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </aside>
+
+</div>
+
+<!-- ══ VALIDATION VIEW ══ -->
+<div class="view-pane" id="view-validation" style="display:none;grid-area:main;background:var(--bg);flex-direction:column;overflow:hidden">
+  <div class="view-header" style="border-bottom:1px solid var(--border)">
+    <div class="view-header-left">
+      <div class="view-title">验证</div>
+      <div class="view-subtitle">假设检验 · 交叉验证 · 可重复性评估</div>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px">待验证假设</div>
+
+    <div class="do-card">
+      <div class="do-header" style="margin-bottom:10px">
+        <div style="font-size:13px;font-weight:500;color:var(--ink);flex:1">TIGIT高表达 → Tpex比例升高在独立队列中可重复</div>
+        <div class="ds-badge" style="color:var(--amber);background:var(--amber-dim)">待验证</div>
+      </div>
+      <div class="do-field"><span class="do-key">来源分析</span><span class="do-val">MO-2025-0312 · 发现视图步骤3</span></div>
+      <div class="do-field"><span class="do-key">建议验证集</span><span class="do-val">GEO:GSE14520 · ICGC-LICA-FR</span></div>
+      <div class="do-field"><span class="do-key">可证伪条件</span><span class="do-val">独立队列 Pearson r &lt; 0.3 则推翻</span></div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="run-btn" style="font-size:11px;padding:6px 14px">启动交叉验证 →</button>
+        <button class="intervene-btn">标记为阴性结果</button>
+      </div>
+    </div>
+
+    <div class="do-card" style="opacity:0.55">
+      <div class="do-header" style="margin-bottom:10px">
+        <div style="font-size:13px;font-weight:500;color:var(--ink);flex:1">TIGIT单药阻断在HCC中有效（已排除）</div>
+        <div class="ds-badge" style="color:var(--red);background:var(--red-dim)">已证伪</div>
+      </div>
+      <div class="do-field"><span class="do-key">阴性结果</span><span class="do-val">3家机构独立验证 · p=0.43</span></div>
+      <div class="do-field"><span class="do-key">写入</span><span class="do-val" style="color:var(--red)">阴性结果库 · 已阻断此假设方向</span></div>
+    </div>
+
+    <div class="agent-input-row" style="margin-top:auto">
+      <textarea class="query-input" rows="1" placeholder="输入需要验证的假设，或上传外部数据集…" style="min-height:38px"></textarea>
+      <button class="run-btn">验证 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.panel-tab').forEach((t, i) => {
+    const names = ['knowledge', 'negative', 'corrections'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p => {
+    p.classList.toggle('active', p.id === 'tab-' + name);
+  });
+}
+
+// Simulate step 4 completing after 3s
+setTimeout(() => {
+  const dots = document.querySelectorAll('.step-dot');
+  if (dots[3]) {
+    dots[3].classList.remove('active');
+    dots[3].classList.add('done');
+  }
+  const statusEl = document.querySelector('.trace-status');
+  if (statusEl) {
+    statusEl.innerHTML = '<div class="status-dot" style="background:var(--amber);animation:pulse 2s infinite"></div>推理中 · 步骤 5/5';
+  }
+}, 3000);
+
+// switchView
+function switchView(name) {
+  const views = ['data','model','discovery','validation','writing'];
+  document.querySelectorAll('.nav-item').forEach((el, i) => {
+    el.classList.toggle('active', views[i] === name);
+  });
+  views.forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if (!el) return;
+    if (v === name) {
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+  // Validation lives outside .shell, need special grid handling
+  const val = document.getElementById('view-validation');
+  if (val) val.style.display = name === 'validation' ? 'flex' : 'none';
+}
+
+function selectProtocol(el) {
+  document.querySelectorAll('.protocol-item').forEach(p => p.classList.remove('active-protocol'));
+  el.classList.add('active-protocol');
+}
+
+// Nav items (overridden by switchView now)
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Sidebar items
+document.querySelectorAll('.sidebar-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Mode buttons
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Native 生命科学对外路线图</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f9f8f5; color: #1a1a18; padding: 32px 24px; max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.01em; }
+  .subtitle { font-size: 13px; color: #5f5e5a; margin-bottom: 18px; }
+  .hero { background: #ffffff; border: 0.5px solid #d3d1c7; border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .hero-claim { font-size: 16px; line-height: 1.55; color: #1a1a18; margin-bottom: 10px; }
+  .hero-claim b { font-weight: 600; }
+  .hero-sub { font-size: 13px; line-height: 1.6; color: #5f5e5a; }
+  .hero-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .hero-card { background: #f1efe8; border-radius: 10px; padding: 10px 12px; }
+  .hero-card-title { font-size: 11px; font-weight: 600; color: #1a1a18; margin-bottom: 4px; }
+  .hero-card-text { font-size: 11px; color: #5f5e5a; line-height: 1.5; }
+  .top-note { font-size: 13px; color: #5f5e5a; margin: 0 0 20px; line-height: 1.6; border-left: 3px solid #d3d1c7; padding-left: 12px; }
+  .phase { border: 0.5px solid #d3d1c7; border-radius: 12px; margin: 0 0 10px; overflow: hidden; background: #fff; }
+  .phase-header { display: flex; align-items: stretch; cursor: pointer; user-select: none; }
+  .phase-stripe { width: 5px; flex-shrink: 0; }
+  .phase-main { padding: 13px 16px; flex: 1; min-width: 0; }
+  .phase-title { font-size: 14px; font-weight: 600; color: #1a1a18; margin: 0 0 3px; }
+  .phase-desc { font-size: 12px; color: #5f5e5a; margin: 0; line-height: 1.45; }
+  .phase-right { padding: 13px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .pill { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+  .chevron { font-size: 10px; color: #888780; transition: transform 0.2s; display: inline-block; }
+  .chevron.open { transform: rotate(90deg); }
+  .body { display: none; border-top: 0.5px solid #d3d1c7; padding: 14px 16px 14px 21px; }
+  .body.open { display: block; }
+  .lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: #888780; margin: 13px 0 6px; text-transform: uppercase; }
+  .lbl:first-child { margin-top: 0; }
+  .row { color: #5f5e5a; margin: 0 0 6px; line-height: 1.58; font-size: 13px; }
+  .row b { color: #1a1a18; font-weight: 600; }
+  .quote { margin: 8px 0 2px; padding: 10px 12px; background: #faf8f1; border-left: 3px solid #b4b2a9; border-radius: 8px; font-size: 13px; line-height: 1.55; color: #3d3c38; }
+  .gate { margin: 12px 0 0; background: #f1efe8; border-radius: 8px; padding: 10px 12px; border-left: 3px solid #b4b2a9; }
+  .gate-label { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: #888780; margin: 0 0 4px; text-transform: uppercase; }
+  .gate-text { font-size: 12px; color: #5f5e5a; margin: 0; line-height: 1.55; }
+  .gate-text b { color: #1a1a18; font-weight: 600; }
+  .arrow-row { text-align: center; font-size: 11px; color: #888780; margin: 0 0 10px; line-height: 1.8; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 0; }
+  .mini-card { background: #f1efe8; border-radius: 8px; padding: 9px 10px; }
+  .mini-card-title { font-size: 11px; font-weight: 600; color: #1a1a18; margin: 0 0 4px; }
+  .mini-card-text { font-size: 11px; color: #5f5e5a; margin: 0; line-height: 1.45; }
+  .s1 { background: #1D9E75; }
+  .s2 { background: #185FA5; }
+  .s3 { background: #534AB7; }
+  .s4 { background: #854F0B; }
+  .p1 { background: #E1F5EE; color: #085041; }
+  .p2 { background: #E6F1FB; color: #0C447C; }
+  .p3 { background: #EEEDFE; color: #3C3489; }
+  .p4 { background: #FAEEDA; color: #633806; }
+  @media (max-width: 640px) {
+    .hero-grid, .two-col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>AI-Native 生命科学对外路线图</h1>
+<p class="subtitle">不是再做一个会调工具的 biomedical agent，而是建设可复用、可沉积、可迁移的科研决策基础设施</p>
+
+<div class="hero">
+  <p class="hero-claim"><b>核心定位：</b>我们不只自动化分析流程；我们把 <b>专家纠偏</b>、<b>知识时效</b> 与 <b>阴性结果</b> 变成可复用的数据资产，持续提升生命科学研究中的判断质量、协作效率与决策可靠性。</p>
+  <p class="hero-sub">对外叙事不应停留在 “Skills 更多、工具更全、自动化更强”。真正的差异在于：别人主要帮助用户更快得到结论，我们要帮助用户更可靠地判断 <b>哪个结论值得相信、为什么值得相信、哪些路径不该再重复尝试</b>。</p>
+  <div class="hero-grid">
+    <div class="hero-card">
+      <p class="hero-card-title">为什么现在做</p>
+      <p class="hero-card-text">工具调用型 agent 已经普及，但生命科学真正稀缺的是可追溯判断、跨机构经验沉积与对失败路径的系统管理。</p>
+    </div>
+    <div class="hero-card">
+      <p class="hero-card-title">我们卖什么</p>
+      <p class="hero-card-text">不是一次性分析报告，而是不断增值的研究对象：证据、推理、纠偏、争议与负路径一起沉积。</p>
+    </div>
+    <div class="hero-card">
+      <p class="hero-card-title">最终护城河</p>
+      <p class="hero-card-text">随着真实使用增长，系统积累的不是日志，而是别人拿不到的领域判断资产，可进一步蒸馏为高自主度 agent 与领域模型。</p>
+    </div>
+  </div>
+</div>
+
+<p class="top-note">每个阶段结尾都设置明确的「通关条件」：如果没有形成真实产品价值与可沉积资产，就不进入下一阶段。目标不是堆功能，而是逐步形成无法轻易复制的科研决策体系。点击各阶段展开详情。</p>
+
+<div class="phase" id="ph1">
+  <div class="phase-header" onclick="tog('ph1')">
+    <div class="phase-stripe s1"></div>
+    <div class="phase-main">
+      <p class="phase-title">阶段一 · 可信科研副驾驶 Demo</p>
+      <p class="phase-desc">0–6个月 · 产品：公开数据上的高价值场景闭环 + 三类核心资产的数据结构</p>
+    </div>
+    <div class="phase-right">
+      <span class="pill p1">现在启动</span>
+      <span class="chevron open" id="ph1-chev">▶</span>
+    </div>
+  </div>
+  <div class="body open" id="ph1-body">
+    <p class="lbl">这一阶段必须回答的问题</p>
+    <p class="row">我们能否先不用强调“全自动科研”，而是先做出一个用户愿意拿来讨论真实问题的 <b>可信科研副驾驶</b>：它不仅给结论，还能告诉用户证据来自哪里、哪些地方存在冲突、哪些常见路径已经被排除，以及专家为什么会修改 AI 的判断。</p>
+
+    <div class="quote">阶段一对外最重要的认知，不是“我们也有 biomedical skills”，而是：<b>这是第一个把专家纠偏、知识时效、阴性结果同时产品化的生命科学科研副驾驶。</b></div>
+
+    <div class="quote" style="margin-top: 8px; border-left-color: #1D9E75; background: #f0faf6; font-size: 14px; font-style: italic; color: #1a1a18;">💬 对外一句话定位：<b>其他 AI 告诉你答案是什么，我们告诉你这个答案值不值得赌上你的实验经费。</b></div>
+
+    <p class="lbl">对外 demo 应该长什么样</p>
+    <p class="row"><b>不要做：</b>一个“给我数据，我自动出报告”的通用分析 demo。这种形态很容易被理解为又一个基于 skills 的 biomedical agent 壳层。</p>
+    <p class="row"><b>要做：</b>一个围绕高价值科研问题的闭环 demo，输出至少包含五个模块：当前建议、支持证据、反对证据、时效/争议状态、已知无效路径、专家修正版判断。</p>
+    <p class="row"><b>最适合的首个场景：</b>“文献证据链 + 靶点/通路优先级建议” 优先于 “单细胞自动注释”。前者更能体现证据冲突、时间更新、负路径排除与专家纠偏的价值。</p>
+
+    <p class="lbl">阶段一要沉积的不是 skills 数量，而是可复用资产结构</p>
+    <div class="two-col">
+      <div class="mini-card">
+        <p class="mini-card-title">资产 1｜专家纠偏轨迹</p>
+        <p class="mini-card-text">AI 初始判断、专家修改内容、修改理由、引用依据、替代结论。核心价值是把“专家不同意 AI 的瞬间”变成高质量训练数据。</p>
+      </div>
+      <div class="mini-card">
+        <p class="mini-card-title">资产 2｜有时间轴的知识节点</p>
+        <p class="mini-card-text">每条知识都记录时间戳、证据强度、争议状态与来源。系统不会把新旧结论静默覆盖，而会显式呈现冲突与更新。</p>
+      </div>
+      <div class="mini-card" style="grid-column: 1 / -1;">
+        <p class="mini-card-title">资产 3｜阴性结果 / 无效路径库</p>
+        <p class="mini-card-text">把“这条路试过但没有用”作为一等对象管理。长期看，这比正向案例更能节省科研成本，也更容易形成跨机构网络效应。</p>
+      </div>
+    </div>
+
+    <p class="lbl">需要构建的基础能力</p>
+    <p class="row"><b>执行层：</b>把专家流程结构化为可执行 protocol，但对外不要把它作为主要卖点；它是基础设施，不是品牌心智。</p>
+    <p class="row"><b>呈现层：</b>所有输出必须自带证据来源、判断依据、争议标记与已排除路径，确保结果可辩护、可讨论、可复查。</p>
+    <p class="row"><b>交互层：</b>在关键步骤预设专家介入点，让修正过程被记录，而不是只保留最终结论。</p>
+
+    <p class="lbl">对外差异化表达</p>
+    <p class="row"><b>用户为什么不用 Biomni / OpenClaw 类产品，而选择我们：</b>它们已经证明了 tool orchestration 和 skill loading 可以规模化；例如 Biomni 将自己定位为通用 biomedical AI agent，OpenClaw 则以 SKILL.md 机制加载并筛选技能。 但对于真实科研协作，用户更缺的不是“更多工具”，而是 <b>更可信的判断结构、更可追溯的专家分歧、以及对失败路径的系统管理</b>。</p>
+
+    <div class="gate">
+      <p class="gate-label">通关条件</p>
+      <p class="gate-text"><b>完成 1 个高价值 demo 闭环</b>，且至少有 1 位外部合作方愿意在真实讨论中使用；输出中 <b>专家纠偏、知识时效、阴性结果</b> 三类结构全部上线；系统能稳定生成“建议 + 证据 + 反证 + 时效 + 负路径 + 专家修正”的标准对象；用户反馈的核心价值点是“更可信、更可辩护”，而不是只评价“跑得更快”。</p>
+    </div>
+
+    <p class="lbl" style="margin-top: 18px;">阶段一基础服务：Data Agent 与 Model Agent</p>
+    <p class="row">Demo 的最小可交付闭环由两个 Agent 支撑。<b>Data Agent</b> 负责将原始生物数据转化为可溯源的结构化数据对象；<b>Model Agent</b> 接收 Data Object 与建模需求，执行分析并交付带推理链的高质量模型结果。两者串联运行，输出共同写入 Shared Asset Store，为三类核心资产的沉积打地基。</p>
+
+    <div class="two-col">
+      <div class="mini-card">
+        <p class="mini-card-title">Data Agent · 职责与模块</p>
+        <p class="mini-card-text"><b>Collector：</b>对接公开数据库（GEO、PubMed、TCGA、UniProt），支持用户上传私有数据（RNA-seq、scRNA-seq、临床表型）。<br><br><b>Cleaner：</b>处理缺失值、批次效应与格式不一致；对文献数据提取结构化字段（PMID、摘要、结论、发表时间）。<br><br><b>Normalizer：</b>统一 ontology 标注（HPO 表型、GO 功能注释、MONDO 疾病分类）；基因 ID 归一化（Ensembl / HGNC）。<br><br><b>输出 Data Object：</b>source · created_at · quality_score · processing_history · ontology_tags。所有字段必须填写，不允许静默缺失。</p>
+      </div>
+      <div class="mini-card">
+        <p class="mini-card-title">Model Agent · 职责与模块</p>
+        <p class="mini-card-text"><b>Protocol Selector：</b>根据数据类型与用户需求匹配分析模板（差异表达、生存分析、靶点优先级排序等）；记录模板选择理由。<br><br><b>Model Runner：</b>执行分析；记录超参数、模型选择依据与关键中间结果；核心参数（p_value_threshold、fold_change_cutoff 等）可由用户配置。<br><br><b>输出 Model Object：</b>result · reasoning_trace · model_params · excluded_paths · protocol_version · created_at。推理链与排除路径为必填字段，直接写入 Asset Store 供后续阶段复用。</p>
+      </div>
+    </div>
+
+    <div class="gate" style="margin-top: 12px;">
+      <p class="gate-label">协作约定</p>
+      <p class="gate-text">Data Object 是两个 Agent 之间的接口契约，<b>schema 在开发启动前锁定，不得单边修改</b>。Model Agent 只消费经过 Normalizer 处理的 Data Object，不直接读取原始文件。两者输出均写入 Shared Asset Store（专家纠偏轨迹、知识时效节点、阴性结果库）。<b>数据分析 Agent 在 Data Agent 与 Model Agent 稳定交付后再启动，不并行开发。</b></p>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">↓ 不先追求高自主化，而是先证明：这个系统值得被信任、值得被带进真实协作</div>
+
+<div class="phase" id="ph2">
+  <div class="phase-header" onclick="tog('ph2')">
+    <div class="phase-stripe s2"></div>
+    <div class="phase-main">
+      <p class="phase-title">阶段二 · 私有数据接入与决策资产沉积</p>
+      <p class="phase-desc">6–18个月 · 产品：机构级研究对象平台 + 跨场景推理轨迹沉积系统</p>
+    </div>
+    <div class="phase-right">
+      <span class="pill p2">建立壁垒</span>
+      <span class="chevron" id="ph2-chev">▶</span>
+    </div>
+  </div>
+  <div class="body" id="ph2-body">
+    <p class="lbl">这一阶段必须回答的问题</p>
+    <p class="row">当系统开始接入真实机构数据时，我们能否把一次次分析过程，沉积成可版本化、可检索、可复用的 <b>研究决策对象</b>，而不仅仅是一堆日志、对话和分析报告。</p>
+
+    <p class="lbl">这一阶段的关键升级</p>
+    <p class="row"><b>从 demo 到平台：</b>阶段一证明“结果值得信任”；阶段二要证明“信任可以规模化沉积”。</p>
+    <p class="row"><b>从结果到对象：</b>每次任务不再只输出 report，而是形成包含 question、evidence bundle、reasoning trace、expert edits、negative routes、current recommendation 的标准对象。</p>
+    <p class="row"><b>从单点价值到机构价值：</b>合作方接入的不只是数据，而是把自身判断经验、反例经验、审稿式修改逻辑一起资本化。</p>
+
+    <p class="lbl">私有数据接入策略</p>
+    <p class="row"><b>用价值换数据：</b>先用阶段一的可信副驾驶帮助合作方提升分析质量、形成发表或项目推进价值，再谈数据接入与接口规范。</p>
+    <p class="row"><b>联邦优先：</b>数据不必外流，先统一 schema、ontology 与 query interface；我们真正需要沉积的，是跨机构的判断结构，而不仅是原始数据副本。</p>
+    <p class="row"><b>共建优先资产：</b>对最关键的场景与队列，争取形成共建数据与共建评价体系。</p>
+
+    <p class="lbl">本阶段形成的真正壁垒</p>
+    <p class="row"><b>专家纠偏轨迹开始规模化：</b>不同机构、不同角色、不同疾病场景下的修正模式，逐渐形成领域判断语料库。</p>
+    <p class="row"><b>争议知识从文献冲突升级为真实世界冲突：</b>同一结论在不同机构、队列、实验条件下的表现差异，会成为最有价值的科学线索。</p>
+    <p class="row"><b>阴性结果开始产生网络效应：</b>“三家机构都试过无效”的信息，其价值远高于单点经验，会显著提高系统推荐的可信度。</p>
+
+    <div class="gate">
+      <p class="gate-label">通关条件</p>
+      <p class="gate-text">至少接入 <b>5 家机构或团队</b> 的真实使用场景；形成 <b>≥500 条高质量研究决策对象</b>；出现“只有依赖跨机构资产才能给出的判断”；合作伙伴愿意把本机构的修正轨迹或阴性结果持续写入系统，而不是只把它当作一次性分析工具。</p>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">↓ 当资产开始累计，系统的价值不再只是回答问题，而是让未来的问题越来越不必从零开始</div>
+
+<div class="phase" id="ph3">
+  <div class="phase-header" onclick="tog('ph3')">
+    <div class="phase-stripe s3"></div>
+    <div class="phase-main">
+      <p class="phase-title">阶段三 · 资产驱动的高自主度科研 Agent</p>
+      <p class="phase-desc">18–36个月 · 产品：能持续学习、持续纠偏、持续优化的高自主科研执行系统</p>
+    </div>
+    <div class="phase-right">
+      <span class="pill p3">核心突破</span>
+      <span class="chevron" id="ph3-chev">▶</span>
+    </div>
+  </div>
+  <div class="body" id="ph3-body">
+    <p class="lbl">这一阶段必须回答的问题</p>
+    <p class="row">当我们已经拥有足够多的研究决策对象后，能否不再主要依赖人工维护 protocol，而是让系统从真实轨迹、真实纠错、真实失败中持续提升自主化程度。</p>
+
+    <p class="lbl">能力来源不是“更多 prompt”，而是“更厚的数据资产”</p>
+    <p class="row"><b>自动优化已有 protocol：</b>分析哪些步骤反复被修改、修改模式是什么、哪些证据更常被采纳，自动更新执行与解释规范。</p>
+    <p class="row"><b>识别 coverage gap：</b>当系统遇到当前 protocol 覆盖不了的任务，记录缺口并生成新 protocol 草案，交由专家审核。</p>
+    <p class="row"><b>失败轨迹成为最关键的训练信号：</b>被否定、被推翻、被修订的推理链，比成功样本更能帮助系统学会边界与不确定性。</p>
+
+    <p class="lbl">高自主化阶段的边界</p>
+    <p class="row">我们追求的是 <b>更少低价值人力介入</b>，不是把所有生物医学决策都自动化。动物实验设计、伦理判断、关键临床解释仍保留人类最终裁决。</p>
+    <p class="row">真正的目标是：让系统自动完成更多准备工作、排除工作和证据整理工作，让专家把注意力集中在高杠杆判断上。</p>
+
+    <div class="gate">
+      <p class="gate-label">通关条件</p>
+      <p class="gate-text">在多个真实任务流中，系统的 <b>端到端任务完成率显著提升</b>，专家修正率相对阶段二下降超过 50%；至少出现 <b>1 个由系统提出、经验证成立、且专家原本未优先考虑的有效假设</b>；新增 protocol 的主要来源转为系统从资产中蒸馏生成，而非纯人工编写。</p>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">↓ 当高自主度能力被真实资产稳定支撑，才有资格把这些能力进一步压缩进模型本体</div>
+
+<div class="phase" id="ph4">
+  <div class="phase-header" onclick="tog('ph4')">
+    <div class="phase-stripe s4"></div>
+    <div class="phase-main">
+      <p class="phase-title">阶段四 · 领域科研决策基座模型</p>
+      <p class="phase-desc">36–60个月 · 产品：内化领域推理范式的生命科学基座能力层</p>
+    </div>
+    <div class="phase-right">
+      <span class="pill p4">规模效应</span>
+      <span class="chevron" id="ph4-chev">▶</span>
+    </div>
+  </div>
+  <div class="body" id="ph4-body">
+    <p class="lbl">这一阶段必须回答的问题</p>
+    <p class="row">前面三阶段积累的，能否不仅支撑某些产品能力，还能真正被压缩为可迁移的领域模型能力：面对新疾病、新机制、新数据组合时，系统无需从零开始搭技能，也能延续同样的判断框架。</p>
+
+    <p class="lbl">模型真正要内化的东西</p>
+    <p class="row"><b>不是工具清单，而是推理范式：</b>什么证据优先、何时应该保持不确定、遇到冲突如何处理、何时主动排除旧路径。</p>
+    <p class="row"><b>不是单点 benchmark 技巧，而是领域判断习惯：</b>把专家纠偏、争议节点、负路径语料、成功与失败轨迹一起转化为模型的默认行为模式。</p>
+    <p class="row"><b>不是替代通用模型，而是成为生命科学上的决策层：</b>未来无论是面向合作机构、垂类产品还是内部 agent，都可以从这层能力受益。</p>
+
+    <p class="lbl">阶段四的产品含义</p>
+    <p class="row">对外，它意味着我们不再只是提供一套 workflow 产品，而是能提供 <b>领域推理能力本身</b>：可部署在更广的疾病、机构与场景中。</p>
+    <p class="row">对内，它意味着前述所有资产终于闭环：纠偏、争议、阴性结果与高质量轨迹，不只是被存下来，而是被真正压缩进系统能力。</p>
+
+    <div class="gate">
+      <p class="gate-label">通关条件</p>
+      <p class="gate-text">模型在 <b>未见过的新疾病 / 新任务场景</b> 下，zero-shot 或少样本表现显著优于仅依赖通用模型 + 外挂工具的方案；外显 protocol 的调用频率开始下降，说明关键判断范式已被模型内化；至少有 <b>1 个由该基座能力支持的假设</b> 得到后续实验验证。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function tog(id) {
+  const body = document.getElementById(id + '-body');
+  const chev = document.getElementById(id + '-chev');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+</script>
+</body>
+</html>
