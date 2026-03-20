@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioAgent — Full Pluggable Architecture</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --bg2: #f7f6f2;
+  --bg3: #f1efe8;
+  --border: rgba(0,0,0,0.1);
+  --border-md: rgba(0,0,0,0.2);
+  --border-strong: rgba(0,0,0,0.35);
+  --text: #1a1a18;
+  --text-2: #5a5a54;
+  --text-3: #9a9990;
+  --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --sans: -apple-system, 'Segoe UI', sans-serif;
+  --radius: 8px;
+  --radius-lg: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a18;
+    --bg2: #222220;
+    --bg3: #2a2a28;
+    --border: rgba(255,255,255,0.1);
+    --border-md: rgba(255,255,255,0.2);
+    --border-strong: rgba(255,255,255,0.35);
+    --text: #e8e6dc;
+    --text-2: #a8a69c;
+    --text-3: #68665e;
+  }
+  .c-purple { background:#26215C !important; border-color:#534AB7 !important; color:#CECBF6 !important; }
+  .c-teal   { background:#04342C !important; border-color:#0F6E56 !important; color:#9FE1CB !important; }
+  .c-coral  { background:#4A1B0C !important; border-color:#993C1D !important; color:#F5C4B3 !important; }
+  .c-amber  { background:#412402 !important; border-color:#854F0B !important; color:#FAC775 !important; }
+  .c-blue   { background:#042C53 !important; border-color:#185FA5 !important; color:#B5D4F4 !important; }
+  .c-gray   { background:#2C2C2A !important; border-color:#5F5E5A !important; color:#D3D1C7 !important; }
+  .c-green  { background:#173404 !important; border-color:#3B6D11 !important; color:#C0DD97 !important; }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.wrap { padding: 20px 20px 32px; max-width: 900px; margin: 0 auto; }
+h1 {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.subtitle { font-size: 11px; color: var(--text-3); margin-bottom: 16px; font-family: var(--mono); }
+
+.legend {
+  display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-3); }
+.leg-box { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.leg-dashed { width: 10px; height: 10px; border-radius: 2px; border: 1.5px dashed var(--border-md); flex-shrink: 0; }
+
+.layer { margin-bottom: 6px; }
+.layer-label {
+  font-size: 10px; color: var(--text-3);
+  letter-spacing: .1em; text-transform: uppercase;
+  margin-bottom: 5px; padding-left: 2px;
+}
+.row { display: flex; gap: 6px; }
+.mod {
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all .15s;
+  flex: 1; min-width: 0;
+  border: 1px solid transparent;
+  user-select: none;
+}
+.mod:hover { opacity: .85; transform: translateY(-1px); }
+.mod.active { outline: 2px solid var(--border-strong); outline-offset: 1px; }
+.mod-title { font-size: 12px; font-weight: 500; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-sub   { font-size: 10px; opacity: .72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.c-purple { background:#EEEDFE; border-color:#AFA9EC; color:#26215C; }
+.c-teal   { background:#E1F5EE; border-color:#5DCAA5; color:#04342C; }
+.c-coral  { background:#FAECE7; border-color:#F0997B; color:#4A1B0C; }
+.c-amber  { background:#FAEEDA; border-color:#EF9F27; color:#412402; }
+.c-blue   { background:#E6F1FB; border-color:#85B7EB; color:#042C53; }
+.c-gray   { background:#F1EFE8; border-color:#B4B2A9; color:#2C2C2A; }
+.c-green  { background:#EAF3DE; border-color:#97C459; color:#173404; }
+.plug     { border-style: dashed; opacity: .88; }
+
+.arrow-down { width: 1px; height: 14px; background: var(--border-md); margin: 3px auto; }
+
+.detail {
+  background: var(--bg2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-top: 12px;
+  display: none;
+}
+.detail.show { display: block; }
+.det-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.det-title { font-size: 14px; font-weight: 500; color: var(--text); }
+.det-why {
+  font-size: 12px; color: var(--text-2); line-height: 1.75;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.det-iface-label { font-size: 10px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+.det-iface {
+  font-size: 11px; font-family: var(--mono); color: var(--text-2);
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 10px; line-height: 1.8;
+  white-space: pre;
+  margin-bottom: 10px;
+}
+.det-alts { font-size: 11px; color: var(--text-3); }
+.det-alts-label { display: inline; }
+.det-alts span {
+  display: inline-block;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 7px; margin: 2px 3px 2px 0;
+  color: var(--text-2);
+}
+.close-btn {
+  font-size: 11px; color: var(--text-3); cursor: pointer;
+  padding: 3px 10px; border: 1px solid var(--border-md);
+  border-radius: 4px; flex-shrink: 0; background: var(--bg);
+  transition: color .12s;
+}
+.close-btn:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>BioAgent — Full Pluggable Architecture</h1>
+<p class="subtitle">点击任意模块查看职责说明 · 虚线边框 = 可插拔槽位</p>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-box" style="background:#AFA9EC"></div>入口 / HTTP</div>
+  <div class="leg-item"><div class="leg-box" style="background:#5DCAA5"></div>编排 Pipeline</div>
+  <div class="leg-item"><div class="leg-box" style="background:#F0997B"></div>Agent 执行</div>
+  <div class="leg-item"><div class="leg-box" style="background:#EF9F27"></div>核心算法</div>
+  <div class="leg-item"><div class="leg-box" style="background:#85B7EB"></div>记忆 / 知识</div>
+  <div class="leg-item"><div class="leg-box" style="background:#97C459"></div>数据适配</div>
+  <div class="leg-item"><div class="leg-box" style="background:#B4B2A9"></div>外部数据库</div>
+  <div class="leg-item"><div class="leg-dashed"></div>可插拔（plug-in）</div>
+</div>
+
+<div class="layer">
+  <div class="layer-label">入口层</div>
+  <div class="row">
+    <div class="mod c-purple" onclick="show('ui')"><div class="mod-title">VerumOS UI</div><div class="mod-sub">REST API 客户端</div></div>
+    <div class="mod c-purple plug" onclick="show('feishu')"><div class="mod-title">飞书集成</div><div class="mod-sub">@mention → pipeline</div></div>
+    <div class="mod c-purple plug" onclick="show('discord')"><div class="mod-title">Discord 集成</div><div class="mod-sub">slash command</div></div>
+    <div class="mod c-purple plug" onclick="show('channel-ext')"><div class="mod-title">+ 渠道扩展</div><div class="mod-sub">Slack / 邮件 / API</div></div>
+  </div>
+</div>
+<div class="arrow-down"></div>
+
+<div class="layer">
+  <div class="layer-label">HTTP 服务层</div>
+  <div class="row">
+    <div class="mod c-purple" onclick="show('server')"><div class="mod-title">Hono Server</div><div class="mod-sub">路由 + 校验</div></div>
+    <div class="mod c-purple" onclick="show('schemas')"><div class="mod-title">Zod Schemas</div><div class="mod-sub">API 契约边界</div></div>
+    <div class="mod c-purple plug" onclick="show('auth')"><div class="mod-title">Auth Module</div><div class="mod-sub">JWT / API Key</div></div>
+  </div>
+</div>
+<div class="arrow-down"></div>
+
+<div class="layer">
+  <div class="layer-label">编排层 — 为什么必须存在（点击了解）</div>
+  <div class="row">
+    <div class="mod c-teal" onclick="show('pipeline')"><div class="mod-title">Pipeline Orchestrator</div><div class="mod-sub">有序多步 · 状态管理</div></div>
+    <div class="mod c-teal" onclick="show('scenarios')"><div class="mod-title">Scenario Registry</div><div class="mod-sub">研究场景元数据</div></div>
+    <div class="mod c-teal plug" onclick="show('hitl')"><div class="mod-title">HITL Controller</div><div class="mod-sub">暂停 · 审批 · 恢复</div></div>
+    <div class="mod c-teal plug" onclick="show('audit')"><div class="mod-title">Audit Logger</div><div class="mod-sub">溯源 · 可重复性</div></div>
+  </div>
+</div>
+<div class="arrow-down"></div>
+
+<div class="layer">
+  <div class="layer-label">Agent 执行层</div>
+  <div class="row">
+    <div class="mod c-coral" onclick="show('data-agent')"><div class="mod-title">Data Agent</div><div class="mod-sub">PubMed · Semantic Scholar</div></div>
+    <div class="mod c-coral" onclick="show('model-agent')"><div class="mod-title">Model Agent</div><div class="mod-sub">UniProt · STRING · CT</div></div>
+    <div class="mod c-coral" onclick="show('decision')"><div class="mod-title">Decision Synthesis</div><div class="mod-sub">LLM 综合 · 置信评估</div></div>
+    <div class="mod c-coral plug" onclick="show('valid-agent')"><div class="mod-title">Validation Agent</div><div class="mod-sub">交叉验证 · 证伪</div></div>
+  </div>
+</div>
+<div class="arrow-down"></div>
+
+<div class="layer">
+  <div class="layer-label">核心算法层 ⚡（可插拔）</div>
+  <div class="row">
+    <div class="mod c-amber plug" onclick="show('hyp-engine')"><div class="mod-title">Hypothesis Engine</div><div class="mod-sub">假设生成 · 优先级排序</div></div>
+    <div class="mod c-amber plug" onclick="show('evidence-scorer')"><div class="mod-title">Evidence Scorer</div><div class="mod-sub">置信度计算策略</div></div>
+    <div class="mod c-amber plug" onclick="show('conflict-resolver')"><div class="mod-title">Conflict Resolver</div><div class="mod-sub">争议证据裁决</div></div>
+    <div class="mod c-amber plug" onclick="show('neg-filter')"><div class="mod-title">Negative Filter</div><div class="mod-sub">阴性结果拦截</div></div>
+  </div>
+</div>
+<div class="arrow-down"></div>
+
+<div class="layer">
+  <div class="layer-label">记忆 / 知识层</div>
+  <div class="row">
+    <div class="mod c-blue" onclick="show('asset-store')"><div class="mod-title">Asset Store</div><div class="mod-sub">内存 + 文件持久化</div></div>
+    <div class="mod c-blue plug" onclick="show('ltm')"><div class="mod-title">Long-term Memory</div><div class="mod-sub">知识节点 · 向量索引</div></div>
+    <div class="mod c-blue plug" onclick="show('knowledge-decay')"><div class="mod-title">Knowledge Decay</div><div class="mod-sub">新鲜度 · 过期策略</div></div>
+    <div class="mod c-blue" onclick="show('expert-correction')"><div class="mod-title">Expert Correction</div><div class="mod-sub">Human-in-loop 写回</div></div>
+  </div>
+</div>
+<div class="arrow-down"></div>
+
+<div class="layer">
+  <div class="layer-label">数据适配层（可插拔）</div>
+  <div class="row">
+    <div class="mod c-green plug" onclick="show('data-connector')"><div class="mod-title">Data Connector</div><div class="mod-sub">GEO · TCGA · 私有 DB</div></div>
+    <div class="mod c-green plug" onclick="show('data-formatter')"><div class="mod-title">Data Formatter</div><div class="mod-sub">AnnData · SeuratObj</div></div>
+    <div class="mod c-green plug" onclick="show('qc-module')"><div class="mod-title">QC Module</div><div class="mod-sub">可替换 QC 标准</div></div>
+    <div class="mod c-green plug" onclick="show('norm-module')"><div class="mod-title">Normalization</div><div class="mod-sub">TPM · SCTransform…</div></div>
+  </div>
+</div>
+<div class="arrow-down"></div>
+
+<div class="layer">
+  <div class="layer-label">外部数据库（免费 API）</div>
+  <div class="row">
+    <div class="mod c-gray" onclick="show('pubmed')"><div class="mod-title">PubMed / NCBI</div><div class="mod-sub">E-utilities</div></div>
+    <div class="mod c-gray" onclick="show('semantic')"><div class="mod-title">Semantic Scholar</div><div class="mod-sub">语义检索</div></div>
+    <div class="mod c-gray" onclick="show('uniprot')"><div class="mod-title">UniProt + STRING</div><div class="mod-sub">蛋白质 · 互作</div></div>
+    <div class="mod c-gray" onclick="show('ct')"><div class="mod-title">ClinicalTrials.gov</div><div class="mod-sub">临床试验 v2</div></div>
+  </div>
+</div>
+
+<div id="detail" class="detail">
+  <div class="det-head">
+    <div class="det-title" id="d-title"></div>
+    <button class="close-btn" onclick="closePanel()">关闭</button>
+  </div>
+  <div class="det-why" id="d-why"></div>
+  <div class="det-iface-label">接口 / 数据结构</div>
+  <div class="det-iface" id="d-iface"></div>
+  <div class="det-alts" id="d-alts"></div>
+</div>
+
+</div>
+<script>
+const D = {
+  ui:{t:'VerumOS UI',w:'已完成的前端界面，通过三条 REST API 与后端通信。前端只依赖 Zod Schemas 定义的契约，后端任何内部变更对它透明。',i:'GET /api/bootstrap\nPOST /api/run-analysis\nPOST /api/expert-correction',a:[]},
+  feishu:{t:'飞书集成',w:'科学家在飞书群中 @BioAgent 提问，消息经 openclaw @openclaw/feishu 渠道扩展路由，调用 /api/run-analysis，结果格式化为富文本 Markdown 卡片回复。可插拔：只需实现同一套渠道适配接口即可接入其他 IM。',i:'interface ChannelAdapter {\n  receive(msg): AnalysisRequest\n  send(result): void\n}',a:['Slack Adapter','邮件 Adapter','企业微信 Adapter']},
+  discord:{t:'Discord 集成',w:'通过 /bioagent slash command 触发，结果格式化为 Discord Embed / Components v2。与飞书集成共享同一个 ChannelAdapter 接口。',i:'interface ChannelAdapter {\n  receive(msg): AnalysisRequest\n  send(result): void\n}',a:['飞书 Adapter','Slack Adapter']},
+  'channel-ext':{t:'渠道扩展插槽',w:'任何新的消息渠道只需实现 ChannelAdapter 接口后注册到 server.ts 的渠道路由表，不需要修改 Pipeline 或 Agent 层任何代码。Open/Closed 原则的典型应用。',i:'// 注册新渠道\nchannelRouter.register("slack", new SlackAdapter())',a:['Slack','邮件','企业微信','API 直调']},
+  server:{t:'Hono Server',w:'HTTP 服务器与路由挂载层。负责请求校验（交给 Zod）、错误处理、静态文件服务。本身无业务逻辑，业务全部委托给 Pipeline 和 Asset Store。',i:'app.get("/api/bootstrap", bootstrapHandler)\napp.post("/api/run-analysis", runAnalysisHandler)\napp.post("/api/expert-correction", correctionHandler)',a:[]},
+  schemas:{t:'Zod Schemas',w:'全系统唯一的类型契约中心。所有 API 输入输出、Agent 内部数据结构都在此定义。前端、后端、测试代码共享同一套 schema，杜绝运行时类型不一致。',i:'RunAnalysisRequest\nRunAnalysisResponse\nDecisionOutput  // 含真实 PMID\nExpertCorrectionRequest',a:[]},
+  auth:{t:'Auth Module（可插拔）',w:'当前阶段可留空（内网使用）。生产环境按需插入：JWT Token 验证、API Key 校验、或 OAuth2。实现同一个 AuthProvider 接口后注入到 Hono 中间件即可。',i:'interface AuthProvider {\n  verify(token: string): User | null\n}',a:['JWT','API Key','OAuth2','无认证（开发模式）']},
+  pipeline:{t:'Pipeline Orchestrator — 编排层存在的理由',w:'Skills / Tools 描述"能做什么"（原子能力），Pipeline 决定"按什么顺序、在什么条件下做"（有状态协调）。\n\n科研分析是有约束的多步流程：① QC 必须在归一化之前；② 阴性结果过滤必须在假设生成之前（否则重复走死路）；③ Data Agent 的输出必须作为 Model Agent 的上下文输入——这些顺序约束如果靠对话维持会很脆，换个问法就会跳步。\n\nPipeline 把约束固化，让每个 Agent 只专注于本步的智能决策，而不是还要操心"我应该在第几步被调用"。',i:'// 固化的执行顺序\nstep1: negativeFilter.check(query)    // 先拦截死路\nstep2: dataAgent.retrieve(query)      // 文献检索\nstep3: modelAgent.analyze(step2)      // 机制推断\nstep4: hypothesisEngine.generate()   // 假设生成\nstep5: decisionSynthesis.run()        // 综合决策',a:[]},
+  scenarios:{t:'Scenario Registry',w:'内置研究场景的静态元数据。每个场景声明关联基因列表、默认数据源、已知阴性结果种子。新增场景追加条目即可，Pipeline 自动适配，无需改动 Agent 代码。',i:'interface Scenario {\n  id: string\n  genes: string[]\n  dataSources: string[]\n  negativeSeeds: NegativeResult[]\n}',a:[]},
+  hitl:{t:'HITL Controller（可插拔）',w:'Human-in-the-Loop 控制器。Pipeline 在关键节点调用 hitl.checkpoint()，模块决定是否暂停等待专家审批。简单场景可插入"自动通过"实现，生产环境插入"等待飞书/邮件确认"实现，接口不变。',i:'interface HITLController {\n  checkpoint(\n    step: string,\n    data: any\n  ): Promise<"approve" | "reject" | "modify">\n}',a:['自动通过（开发模式）','飞书审批卡片','邮件确认','Web 审批界面']},
+  audit:{t:'Audit Logger（可插拔）',w:'每一步分析的输入输出、调用的工具、LLM 推理过程全部记录，满足科研可重复性要求。可插拔实现：本地 JSON 文件、结构化日志服务、或专用实验记录系统。',i:'interface AuditLogger {\n  log(step: string, input: any, output: any): void\n  replay(sessionId: string): StepLog[]\n}',a:['本地 JSON 文件','结构化日志（Loki）','MLflow','Weights & Biases']},
+  'data-agent':{t:'Data Agent',w:'使用 Claude claude-sonnet-4-6 + Tool Use，负责文献检索层面的推理。Agent 自主决定检索关键词、迭代策略和停止条件，输出带真实 PMID 的证据列表。',i:'tools:\n  search_pubmed(query, maxResults)\n  search_semantic_scholar(query, fields)\n\noutput: EvidenceList',a:[]},
+  'model-agent':{t:'Model Agent',w:'在 Data Agent 产出的证据列表基础上，做基因/蛋白质/临床层面的深层推断。以 Data Agent 输出作为 system context 注入，保证两个 Agent 的推理连贯。',i:'tools:\n  get_gene_info(geneSymbol)\n  get_protein_interactions(protein, minScore)\n  search_clinical_trials(condition, intervention)\n\ninput: EvidenceList  // 来自 Data Agent',a:[]},
+  decision:{t:'Decision Synthesis',w:'流水线最后一步，单独一次 LLM 调用，把 Data Agent + Model Agent 的所有输出作为上下文，生成最终 DecisionOutput。这一步做置信度评分、矛盾检测、阴性结果标记。置信度评分策略可插拔替换。',i:'input: EvidenceList + ModelAnalysis\noutput: DecisionOutput {\n  findings: Finding[]\n  confidence: number   // 来自 EvidenceScorer\n  negativeResults: NegativeResult[]\n  citations: Citation[]  // 含真实 PMID\n}',a:[]},
+  'valid-agent':{t:'Validation Agent（可插拔）',w:'独立的假设验证子 Agent。对 Discovery 阶段产生的假设，在独立数据集（GEO/ICGC）上进行交叉验证。当前阶段可先不实现，Pipeline 检测到此模块未注册时跳过验证步骤。',i:'interface ValidationAgent {\n  crossValidate(\n    hypothesis: Hypothesis,\n    datasets: string[]\n  ): ValidationResult\n}\n\nValidationResult {\n  passed: boolean\n  r: number\n  p: number\n}',a:['统计交叉验证','LLM 辅助验证','外部实验反馈']},
+  'hyp-engine':{t:'Hypothesis Engine（核心算法，可插拔）',w:'假设生成与优先级排序是科研 Agent 最核心的算法模块。输入：当前知识节点 + 证据列表 + 阴性结果库。\n\n可插拔原因：不同领域对"好假设"的标准不同——肿瘤免疫优先临床可转化性，基础研究优先机制新颖性。插入不同的排序策略不应改动 Pipeline。',i:'interface HypothesisEngine {\n  generate(\n    evidence: EvidenceList,\n    knowledgeGraph: KnowledgeNode[],\n    negatives: NegativeResult[]\n  ): Hypothesis[]\n  rank(hypotheses, strategy): Hypothesis[]\n}\n\nstrategies: "clinical" | "mechanistic" | "exploratory"',a:['LLM 直接生成','规则 + LLM 混合','知识图谱遍历','贝叶斯优先级']},
+  'evidence-scorer':{t:'Evidence Scorer（核心算法，可插拔）',w:'置信度计算策略。同一批文献用不同评分方法会得到不同置信度，对科研决策影响很大。前端"证据强度"5个点的显示就来自这里。\n\n可插拔原因：bulk RNA-seq 和 scRNA-seq 的证据权重不同；不同实验室有自己的内部评分体系。',i:'interface EvidenceScorer {\n  score(evidence: Evidence[]): number  // 0-1\n  explain(evidence): ScoreExplanation\n}\n\nbuilt-in strategies:\n  SimpleCount | WeightedJournal | BayesianUpdate',a:['简单计数','期刊加权','贝叶斯更新','专家自定义']},
+  'conflict-resolver':{t:'Conflict Resolver（核心算法，可插拔）',w:'当两篇文献结论相反时（如 demo 里"Chen 2023 与本队列方向相反"），需要一个策略来处理。这个策略不应硬编码在 Decision Synthesis 的 prompt 里，而应该是可替换的独立模块。',i:'interface ConflictResolver {\n  resolve(\n    pos: Evidence[],\n    neg: Evidence[]\n  ): ConflictResult\n}\n\nConflictResult {\n  verdict: "positive" | "negative" | "disputed"\n  explanation: string\n  suggestHITL: boolean\n}',a:['LLM 裁决','样本量加权','癌种特异性规则','强制 HITL']},
+  'neg-filter':{t:'Negative Filter（核心算法，可插拔）',w:'在假设生成之前，先检查阴性结果库，拦截已被证伪的方向。这是防止 Agent 走回头路的关键机制。\n\n可插拔原因：相似度匹配策略不同——精确匹配 vs 语义匹配 vs 规则匹配，不同策略的召回率/精确率权衡不同。',i:'interface NegativeFilter {\n  check(query: string): BlockedResult | null\n}\n\nBlockedResult {\n  blockedBy: NegativeResult\n  similarity: number\n  recommendation: string\n}',a:['精确匹配','向量语义匹配','通路级规则','LLM 判断']},
+  'asset-store':{t:'Asset Store',w:'当前阶段的轻量记忆实现：内存 Map 作为一级缓存，JSON 文件持久化。存储三类资产：KnowledgeNode、NegativeResult、ExpertCorrection。是 Long-term Memory 模块的最简实现。',i:'interface AssetStore {\n  get/set KnowledgeNode\n  get/set NegativeResult\n  get/set ExpertCorrection\n}',a:[]},
+  ltm:{t:'Long-term Memory（可插拔）',w:'Asset Store 的生产级替代。当知识节点超过几千条时，需要向量索引支持语义检索（"找和这个假设语义最近的已有知识"）。',i:'interface LongTermMemory extends AssetStore {\n  semanticSearch(query: string, topK: number): KnowledgeNode[]\n  embed(node: KnowledgeNode): number[]\n}',a:['Pinecone','Weaviate','pgvector','本地 FAISS']},
+  'knowledge-decay':{t:'Knowledge Decay（可插拔）',w:'知识节点的"新鲜度"不应只是一个静态标签，而应该是可配置的衰减策略。免疫治疗方向的知识可能半年就过期，解剖学知识几十年不变。不同领域、不同知识类型应该有不同的衰减参数。',i:'interface KnowledgeDecay {\n  isStale(node: KnowledgeNode): boolean\n  freshnessScore(node: KnowledgeNode): number\n}\n\n// 配置示例\ndecay.register("immunotherapy", { halfLifeDays: 180 })\ndecay.register("anatomy",       { halfLifeDays: 3650 })',a:['固定时间窗口','领域自适应','引用数驱动','专家手动标记']},
+  'expert-correction':{t:'Expert Correction',w:'专家通过前端"修正记录"面板提交修正，后端写回 Asset Store 并更新对应知识节点的置信度评级。每条修正记录保留专家姓名、时间、原因，形成完整的 Human-in-Loop 审计链。',i:'POST /api/expert-correction\n→ assetStore.addCorrection(correction)\n→ knowledgeNode.updateConfidence()\n→ auditLogger.log("expert_correction", ...)',a:[]},
+  'data-connector':{t:'Data Connector（可插拔）',w:'不同数据源（GEO、TCGA、私有医院数据库）的接入适配器。每个数据源实现同一个 DataConnector 接口，Data Agent 通过接口调用，不感知数据来自哪里。',i:'interface DataConnector {\n  fetch(datasetId: string): RawDataset\n  list(): DatasetMeta[]\n}',a:['GEO','TCGA','私有 DB','上传文件']},
+  'data-formatter':{t:'Data Formatter（可插拔）',w:'把各种原始数据格式标准化为 Agent 可处理的内部格式。bulk RNA-seq 产出 TPM 矩阵，scRNA-seq 产出 AnnData 对象，两者处理逻辑完全不同，必须解耦。',i:'interface DataFormatter {\n  format(raw: RawDataset): NormalizedDataset\n}\n\nNormalizedDataset {\n  type: "bulk" | "single-cell" | "spatial"\n  matrix: number[][]\n  metadata: Record<string, any>\n}',a:['BulkRNA Formatter','scRNA (AnnData)','SeuratObj','Spatial Transcriptomics']},
+  'qc-module':{t:'QC Module（可插拔）',w:'质量控制标准因数据类型和研究目的而异。scRNA-seq 的 QC 看线粒体基因比例和 UMI 分布，bulk RNA-seq 看样本相关性和批次效应。可插拔后每种数据类型挂载专属 QC 策略。',i:'interface QCModule {\n  check(dataset: NormalizedDataset): QCReport\n  filter(dataset, thresholds): NormalizedDataset\n}\n\nQCReport { passed: boolean, warnings: string[], metrics: {} }',a:['scRNA-seq QC','bulk RNA-seq QC','Spatial QC','自定义阈值']},
+  'norm-module':{t:'Normalization Module（可插拔）',w:'归一化方法对下游分析结果影响巨大，且没有统一最优解。同一个实验室可能对不同数据集用不同方法。可插拔后实验者可以在"模型"视图里切换，不影响其他层。',i:'interface Normalization {\n  normalize(dataset: NormalizedDataset): NormalizedDataset\n  name: string  // 用于 audit log\n}',a:['TPM / RPKM','DESeq2 VST','SCTransform','log1p + scale']},
+  pubmed:{t:'PubMed / NCBI E-utilities',w:'美国国家医学图书馆文献数据库，免费无需注册。Data Agent 通过 search_pubmed tool 调用，esearch 检索 PMID，efetch 获取摘要。结果直接写入 DecisionOutput 作为真实引用来源。',i:'esearch: keyword → PMID[]\nefetch: PMID → Abstract + Authors + Year',a:[]},
+  semantic:{t:'Semantic Scholar API',w:'Allen AI 学术论文语义检索，补充 PubMed 关键词检索的盲区。支持自然语言查询，按语义相关度排序。免费，有速率限制，Agent 内部做退避重试。',i:'POST /graph/v1/paper/search\n  query: string\n  fields: title, abstract, year, citationCount',a:[]},
+  uniprot:{t:'UniProt + STRING DB',w:'蛋白质功能注释与蛋白互作网络。Model Agent 用 get_protein_interactions tool 调用 STRING DB，获取互作网络作为机制推断的分子层依据。',i:'UniProt REST: /uniprotkb/{accession}\nSTRING: /json/network?identifiers=...&species=9606',a:[]},
+  ct:{t:'ClinicalTrials.gov v2',w:'临床试验注册数据库。Model Agent 用于判断某一生物标志物假设是否已进入临床验证阶段，结果作为置信度评分的重要加权因素。',i:'GET /api/v2/studies\n  query.term: condition / intervention\n  filter.overallStatus: RECRUITING | COMPLETED',a:[]},
+};
+
+let cur = null;
+function show(id) {
+  const d = D[id]; if (!d) return;
+  if (cur === id) { closePanel(); return; }
+  cur = id;
+  document.querySelectorAll('.mod').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('d-title').textContent = d.t;
+  document.getElementById('d-why').innerHTML = d.w.replace(/\n/g, '<br>');
+  document.getElementById('d-iface').textContent = d.i;
+  const altsEl = document.getElementById('d-alts');
+  if (d.a.length) {
+    altsEl.innerHTML = '可替换实现：' + d.a.map(a => `<span>${a}</span>`).join('');
+  } else {
+    altsEl.innerHTML = '';
+  }
+  const panel = document.getElementById('detail');
+  panel.classList.add('show');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function closePanel() {
+  cur = null;
+  document.querySelectorAll('.mod').forEach(el => el.classList.remove('active'));
+  document.getElementById('detail').classList.remove('show');
+}
+</script>
+</body>
+</html>
