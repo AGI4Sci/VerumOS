@@ -151,7 +151,7 @@ curl -X POST http://localhost:3000/api/upload \
 
 | 操作 | 说明 |
 |------|------|
-| `read_file` | 读取 CSV/TSV/Excel 文件 |
+| `read_file` | 读取 CSV/TSV/Excel 文件，支持编码自动检测（UTF-8、GBK、GB2312、Latin1） |
 | `explore_data` | 数据探索（统计、缺失值、质量） |
 | `transform_data` | 数据转换（filter、normalize、log2） |
 | `merge_data` | 按键合并多个数据集 |

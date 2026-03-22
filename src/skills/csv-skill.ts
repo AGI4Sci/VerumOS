@@ -274,11 +274,29 @@ file_ext = ${JSON.stringify(ext)}
 
 def read_table(path):
     ext = path.lower().split('.')[-1] if '.' in path else ''
+    # 编码回退列表：先尝试 UTF-8，再尝试常见中文编码
+    encodings = ['utf-8', 'gbk', 'gb2312', 'latin1']
+
     if ext == 'tsv':
-        return pd.read_csv(path, sep='\\t')
+        for enc in encodings:
+            try:
+                return pd.read_csv(path, sep='\\t', encoding=enc)
+            except UnicodeDecodeError:
+                continue
+        # 所有编码都失败，用 errors='replace' 强制读取
+        return pd.read_csv(path, sep='\\t', encoding='utf-8', errors='replace')
+
     if ext in ('xlsx', 'xls'):
         return pd.read_excel(path)
-    return pd.read_csv(path)
+
+    # CSV 文件
+    for enc in encodings:
+        try:
+            return pd.read_csv(path, encoding=enc)
+        except UnicodeDecodeError:
+            continue
+    # 所有编码都失败，用 errors='replace' 强制读取
+    return pd.read_csv(path, encoding='utf-8', errors='replace')
 
 def safe_float(value):
     if pd.isna(value):
