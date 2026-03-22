@@ -1,0 +1,12 @@
+# OpenClaw 等客户端会传 reasoning_effort；vLLM OpenAI 兼容后端不支持时需丢弃，否则会 400
+litellm_settings:
+  drop_params: true
+
+model_list:
+  - model_name: glm-5-fp8
+    litellm_params:
+      model: openai/glm-5-fp8
+      api_base: http://127.0.0.1:8001/v1
+      api_key: "dummy"
+      # 强制使用 Chat Completions 接口
+      use_responses_api: false
