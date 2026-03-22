@@ -1,298 +1,287 @@
-# 架构重构：Agent Runtime 与业务逻辑分离
+# VerumOS Bug 修复 - Job ID 一致性与重命名
 
-## 参考架构：pi-mono `@mariozechner/pi-agent-core`
+## 问题描述
 
-pi-mono 的 Agent Runtime 是一个**纯执行引擎**，不含任何业务逻辑：
+1. **Job 重命名失败**：`重命名失败: jobId, oldPath and newName are required`
+2. **Job ID 和目录名不一致**：API 返回的 job.id 和实际目录名不同
+3. **浏览器 prompt() 被阻止**：点击 "+" 按钮创建 Job 时无法输入名称
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    agentLoop (核心循环)                  │
-│  for await (const event of agentLoop(messages, ctx)) {} │
-└─────────────────────────────────────────────────────────┘
-                           │
-           ┌───────────────┼───────────────┐
-           ▼               ▼               ▼
-      agent_start    message_start    tool_execution_start
-      turn_start     message_update   tool_execution_end
-      turn_end       message_end      tool_result
-      agent_end
-```
+## 根因分析
 
-**核心能力**（全部业务无关）：
+### Bug 1: 重命名调用错误 API
 
-| 能力 | 说明 |
-|------|------|
-| LLM 调用 | 统一的 multi-provider API |
-| 工具执行 | parallel/sequential 模式，before/after 钩子 |
-| 事件流 | 订阅式事件，支持 streaming |
-| 状态管理 | messages、tools、isStreaming |
-| 消息转换 | `convertToLlm` 过滤/转换自定义类型 |
-| 运行时注入 | steering（中断）、follow-up（追加） |
+前端 `contextAction('rename')` 对所有类型（job/folder/file）都调用 `/api/files/rename`，但对于 `type === 'job'`：
+- `path` 为空
+- `oldPath` 是必填参数
 
-**业务 Agent 只定义**：
+正确做法：Job 重命名应调用 `PATCH /api/jobs/:jobId`。
+
+### Bug 2: generateJobId() 被调用两次
 
 ```typescript
-// DataAgent 不继承 runtime，只声明能力
-const dataAgent = {
-  id: 'data-agent',
-  tools: [csvSkill, bioinfoSkill],
-  systemPrompt: '你是一个数据分析助手...',
-  convertToLlm: (messages) => messages.filter(m => m.role !== 'notification'),
-};
-```
+// manager.ts
+export async function createJob(sessionId: string, intent?: Intent): Promise<string> {
+  const jobId = generateJobId();  // 第1次 - 目录名
+  const jobDir = getJobDir(jobId);
 
----
+  const job = createJobObject(sessionId, intent);  // 内部第2次
 
-## 当前问题
+  return jobId;
+}
 
-VerumOS 的 `BaseAgent` 混合了执行引擎和业务逻辑：
-
-```typescript
-// base.ts - 执行引擎部分（正确）
-async callLLM(prompt, context) { ... }
-async callSkill(skillName, toolName, params) { ... }
-
-// base.ts - 业务逻辑部分（错误，不该在基类）
-private heuristicIntent(message) {
-  if (/上传|加载|读取|file|csv/.test(message)) {  // 硬编码关键词
-    return { type: 'upload' };
-  }
+// types.ts
+export function createJob(sessionId: string, intent?: Intent): Job {
+  return {
+    id: generateJobId(),  // 和目录名不同！
+  };
 }
 ```
 
----
+### Bug 3: window.prompt() 不可靠
 
-## 推荐架构
-
-```
-src/
-├── runtime/                      # 纯执行引擎（业务无关）
-│   ├── agent-loop.ts             # 核心循环：async generator
-│   ├── agent-state.ts            # 状态：messages, tools, streaming
-│   ├── tool-executor.ts          # 工具执行：parallel/sequential
-│   ├── event-emitter.ts          # 事件订阅
-│   └── types.ts                  # AgentMessage, AgentEvent, AgentTool
-│
-├── agents/                       # 业务 Agent（只声明，不继承）
-│   ├── data-agent.ts             # systemPrompt + tools + convertToLlm
-│   ├── model-agent.ts
-│   └── registry.ts               # Agent 注册表
-│
-├── skills/                       # 工具实现
-│   ├── csv-skill.ts
-│   └── bioinfo-skill.ts
-│
-└── app.ts                        # 组装 runtime + agents
-```
+现代浏览器可能阻止 `window.prompt()`，应使用自定义的 Input Dialog。
 
 ---
 
-## 核心 API 设计
+## 解决方案
+
+### Step 1: 修复 `src/job/types.ts` - createJobObject 接受 jobId 参数
 
 ```typescript
-// runtime/agent-loop.ts
-export async function* agentLoop(
-  messages: AgentMessage[],
-  context: AgentContext,
-  config: AgentLoopConfig
-): AsyncGenerator<AgentEvent> {
-  while (true) {
-    // 1. 调用 LLM
-    yield { type: 'turn_start' };
-    const response = await callLlm(context, config);
-
-    // 2. 流式产出
-    for await (const chunk of response.stream) {
-      yield { type: 'message_update', delta: chunk };
-    }
-
-    // 3. 检查工具调用
-    const toolCalls = response.toolCalls;
-    if (toolCalls.length === 0) {
-      yield { type: 'turn_end' };
-      break;
-    }
-
-    // 4. 执行工具（parallel 或 sequential）
-    yield { type: 'tool_execution_start', toolCalls };
-    const results = await executeTools(toolCalls, config);
-    yield { type: 'tool_execution_end', results };
-
-    // 5. 注入 toolResult，继续循环
-    context.messages.push(...results.map(toToolResultMessage));
-
-    // 6. 检查 steering/follow-up
-    if (context.steeringQueue.length > 0) {
-      context.messages.push(...context.steeringQueue);
-      context.steeringQueue = [];
-    }
-  }
-}
-
-// 业务 Agent 使用
-const dataAgent = {
-  systemPrompt: '你是一个数据分析助手...',
-  tools: [readFileTool, exploreDataTool, transformDataTool],
-  convertToLlm: (messages) => messages.filter(m => ['user', 'assistant', 'toolResult'].includes(m.role)),
-};
-
-const context = { systemPrompt: dataAgent.systemPrompt, messages: [], tools: dataAgent.tools };
-const config = { model: getModel('anthropic', 'claude-sonnet-4'), ...dataAgent };
-
-for await (const event of agentLoop([{ role: 'user', content: '分析这份数据' }], context, config)) {
-  console.log(event.type);
+/**
+ * 创建初始 Job
+ */
+export function createJob(sessionId: string, intent?: Intent, jobId?: string): Job {
+  const now = new Date().toISOString();
+  return {
+    id: jobId || generateJobId(),  // 使用传入的 jobId 或生成新的
+    sessionId,
+    status: 'created',
+    createdAt: now,
+    updatedAt: now,
+    intent,
+    traces: [],
+    state: { datasets: [], messages: [] },
+  };
 }
 ```
 
----
-
-## 迁移步骤
-
-1. **新建 `runtime/` 目录**，从零实现 agentLoop（不依赖现有 BaseAgent）
-2. **抽取工具定义**，把 `csv-skill`、`bioinfo-skill` 改成 `AgentTool` 格式
-3. **改造 DataAgent**，删除继承，改为声明式配置
-4. **删除 BaseAgent**，用 runtime 替代
-5. **前端接入事件流**，通过 WebSocket 订阅 agentLoop 事件
-
----
-
-## 配置硬编码问题
-
-### 当前问题
-
-`src/config.ts` 有硬编码的默认值：
+### Step 2: 修复 `src/job/manager.ts` - 传递 jobId 给 createJobObject
 
 ```typescript
-baseUrl: process.env.LLM_BASE_URL || 'http://35.220.164.252:3888/v1/',
-model: process.env.LLM_MODEL || 'glm-5',
-pythonPath: process.env.PYTHON_PATH || '/opt/homebrew/Caskroom/miniconda/base/bin/python',
+export async function createJob(sessionId: string, intent?: Intent): Promise<string> {
+  const jobId = generateJobId();
+  const jobDir = getJobDir(jobId);
+  const inputsDir = path.join(jobDir, 'inputs');
+  const outputsDir = path.join(jobDir, 'outputs');
+
+  // 创建目录结构
+  await fs.mkdir(inputsDir, { recursive: true });
+  await fs.mkdir(outputsDir, { recursive: true });
+
+  // 创建 Job 对象 - 传递 jobId
+  const job = createJobObject(sessionId, intent, jobId);
+
+  // 写入 job.json
+  await fs.writeFile(
+    path.join(jobDir, 'job.json'),
+    JSON.stringify(job, null, 2)
+  );
+
+  return jobId;
+}
 ```
 
-### 建议修复
+### Step 3: 修复 `web/index.html` - Job 重命名调用正确 API
 
-```typescript
-// config.ts
-export function loadConfig(): AppConfig {
-  const apiKey = process.env.LLM_API_KEY;
-  if (!apiKey) {
-    console.warn('[config] LLM_API_KEY not set, LLM features will be disabled');
+找到 `contextAction` 函数中的 `case 'rename'` 部分，修改为：
+
+```javascript
+case 'rename':
+  showInputDialog('重命名', path.split('/').pop(), async (newName) => {
+    try {
+      let response;
+      if (type === 'job') {
+        // Job 重命名调用 /api/jobs/:jobId
+        response = await fetch(`/api/jobs/${jobId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newName }),
+        });
+      } else {
+        // 文件/文件夹重命名调用 /api/files/rename
+        response = await fetch('/api/files/rename', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId, oldPath: path, newName }),
+        });
+      }
+      const payload = await response.json();
+      if (payload.ok) {
+        if (type === 'job') {
+          await loadJobs();  // 刷新 job 列表
+        } else {
+          await loadFileTree(jobId, path.split('/').slice(0, -1).join('/') || '');
+        }
+      } else {
+        alert(`重命名失败: ${payload.error}`);
+      }
+    } catch (error) {
+      alert(`重命名失败: ${error.message}`);
+    }
+  });
+  break;
+```
+
+### Step 4: 修复 `web/index.html` - Job 删除调用正确 API
+
+找到 `contextAction` 函数中的 `case 'delete'` 部分，修改为：
+
+```javascript
+case 'delete':
+  const itemName = type === 'job' ? (jobs.find(j => j.id === jobId)?.summary || jobId) : path.split('/').pop();
+  if (!confirm(`确定要删除 ${itemName} 吗？`)) return;
+
+  try {
+    let response;
+    if (type === 'job') {
+      response = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+    } else {
+      response = await fetch(`/api/files?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(path)}`, {
+        method: 'DELETE',
+      });
+    }
+    const payload = await response.json();
+    if (payload.ok) {
+      if (type === 'job') {
+        currentJobId = null;
+        await loadJobs();
+      } else {
+        await loadFileTree(jobId, path.split('/').slice(0, -1).join('/') || '');
+      }
+    } else {
+      alert(`删除失败: ${payload.error}`);
+    }
+  } catch (error) {
+    alert(`删除失败: ${error.message}`);
   }
+  break;
+```
 
-  return schema.parse({
-    llm: {
-      apiKey: apiKey || '',
-      baseUrl: process.env.LLM_BASE_URL,  // 必填，由 zod 校验
-      model: process.env.LLM_MODEL || 'glm-5',  // model 可以有默认值
-    },
-    // ...
+### Step 5: 修复 `web/index.html` - createNewJob 使用 Input Dialog
+
+找到 `createNewJob` 函数，修改为：
+
+```javascript
+async function createNewJob() {
+  showInputDialog('新建任务', '', async (name) => {
+    try {
+      const response = await fetch('/api/jobs/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name || undefined }),
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        currentJobId = payload.job.id;
+        sessionId = payload.job.sessionId;
+        await loadJobs();
+        connectWebSocket();
+      } else {
+        alert(`创建失败: ${payload.error}`);
+      }
+    } catch (error) {
+      alert(`创建失败: ${error.message}`);
+    }
   });
 }
 ```
 
----
+### Step 6: 修复 `web/index.html` - 根据类型显示不同上下文菜单
 
-## 任务持久化与 Workspace 架构
+修改 `showContextMenu` 函数，根据 `type` 调整菜单选项：
 
-### 当前问题
+```javascript
+function showContextMenu(event, type, jobId, path = '') {
+  event.preventDefault();
+  event.stopPropagation();
 
-1. **数据处理后不保存** - `transform_data` 只返回结果，不写入文件
-2. **会话不持久化** - `session-store.ts` 是内存 Map，重启即丢
-3. **文件混在一起** - `data/` 是扁平目录，无任务隔离
-4. **无执行轨迹** - 没有记录任务的执行历史
-5. **无法恢复任务** - 中断后续不上
+  contextTarget = { type, jobId, path };
 
-### 建议架构：Job Workspace
+  const menu = document.getElementById('contextMenu');
 
-```
-data/
-├── jobs/
-│   ├── job_20260322_2201_a1b2c3/          # 任务 workspace
-│   │   ├── job.json                        # 任务元数据（状态、创建时间、意图）
-│   │   ├── trace.jsonl                     # 执行轨迹（每步操作记录）
-│   │   ├── inputs/                         # 输入资产
-│   │   │   ├── count_matrix.csv
-│   │   │   └── cell_metadata.csv
-│   │   ├── outputs/                        # 输出资产
-│   │   │   ├── normalized_matrix.csv
-│   │   │   └── qc_report.json
-│   │   └── checkpoints/                    # 中间状态（用于恢复）
-│   │       └── step_001.json
-│   └── job_20260322_2230_d4e5f6/
-│       └── ...
-└── uploads/                                # 临时上传区（入库后移动到 job/inputs）
-```
-
-### 核心数据结构
-
-```typescript
-// job.json
-interface JobMeta {
-  id: string;                    // job_20260322_2201_a1b2c3
-  sessionId: string;             // 关联的会话 ID
-  status: 'created' | 'running' | 'paused' | 'completed' | 'failed';
-  intent: Intent;                // 初始意图
-  createdAt: string;
-  updatedAt: string;
-  summary?: string;              // 任务摘要（用于历史列表展示）
-}
-
-// trace.jsonl（每行一个 JSON）
-interface TraceEntry {
-  timestamp: string;
-  step: number;
-  type: 'intent' | 'tool_call' | 'tool_result' | 'llm_call' | 'checkpoint';
-  data: Record<string, unknown>;
-}
-```
-
-### 任务恢复机制
-
-```typescript
-// 从 job.json 和 trace.jsonl 恢复
-async function resumeJob(jobId: string): Promise<ConversationContext> {
-  const jobMeta = await readJson(`data/jobs/${jobId}/job.json`);
-  const traces = await readTrace(`data/jobs/${jobId}/trace.jsonl`);
-
-  // 重建 context
-  const context = createEmptyContext(jobMeta.sessionId);
-  context.jobDir = `data/jobs/${jobId}`;
-  context.stepCount = traces.length;
-
-  // 重放历史（可选：只加载关键状态）
-  for (const trace of traces) {
-    if (trace.type === 'tool_result' && trace.data.dataset) {
-      context.datasets.set(trace.data.dataset.id, trace.data.dataset);
-    }
+  // 根据类型显示不同的菜单选项
+  if (type === 'job') {
+    menu.innerHTML = `
+      <div class="context-menu-item" onclick="contextAction('rename')">
+        <span>✏️</span> 重命名
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item danger" onclick="contextAction('delete')">
+        <span>🗑️</span> 删除
+      </div>
+    `;
+  } else if (type === 'folder') {
+    menu.innerHTML = `
+      <div class="context-menu-item" onclick="contextAction('open')">
+        <span>📂</span> 打开
+      </div>
+      <div class="context-menu-item" onclick="contextAction('rename')">
+        <span>✏️</span> 重命名
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item danger" onclick="contextAction('delete')">
+        <span>🗑️</span> 删除
+      </div>
+    `;
+  } else {
+    menu.innerHTML = `
+      <div class="context-menu-item" onclick="contextAction('open')">
+        <span>📂</span> 打开
+      </div>
+      <div class="context-menu-item" onclick="contextAction('rename')">
+        <span>✏️</span> 重命名
+      </div>
+      <div class="context-menu-item" onclick="contextAction('download')">
+        <span>⬇️</span> 下载
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item danger" onclick="contextAction('delete')">
+        <span>🗑️</span> 删除
+      </div>
+    `;
   }
 
-  return context;
+  menu.style.display = 'block';
+  menu.style.left = `${event.clientX}px`;
+  menu.style.top = `${event.clientY}px`;
 }
 ```
 
-### 前端需求
-
-1. **历史任务列表** - `GET /api/jobs` 返回所有 job 目录的元数据
-2. **加载任务** - `POST /api/session/resume` 传入 jobId，返回恢复的 session
-3. **任务详情** - `GET /api/jobs/:jobId` 返回 trace + assets 列表
-
 ---
 
-## 建议优先级
+## 验收标准
 
-1. **P1**: 抽取 `runtime/` 目录，实现 agentLoop（参考 pi-mono 架构）
-2. **P1**: 移除配置硬编码，关键配置缺失时抛错或警告
-3. **P1**: 实现 Job Workspace 架构（任务隔离 + 持久化 + trace）
-4. **P2**: 改造 DataAgent 为声明式配置，删除 BaseAgent 继承
-5. **P2**: 前端历史任务浏览与恢复
-6. **P3**: 添加 steering/follow-up 机制
+1. **Job ID 一致性**：
+   - 创建新 Job 后，API 返回的 job.id 和目录名一致
+   - 刷新页面后 job 列表正确显示
+
+2. **Job 重命名**：
+   - 右键点击 Job，显示"重命名"和"删除"选项
+   - 重命名成功后 job 列表更新
+
+3. **Job 删除**：
+   - 删除 Job 后，目录被删除，列表更新
+
+4. **新建 Job**：
+   - 点击 "+" 显示 Input Dialog
+   - 输入名称后创建成功
 
 ---
 
 ## 收尾工作
 
 - [ ] 修改相关代码文件
-- [ ] 更新 README.md 使项目状态与描述一致
-- [ ] 提交 git commit，message 格式：`fix: xxx` / `feat: xxx` / `refactor: xxx`
+- [ ] 清理 debug.md 中已解决的问题
+- [ ] 提交 git commit，message 格式：`fix: resolve job ID mismatch and rename issues`
 - [ ] push 到远程仓库
-
-工作结束后必需修改相关文件和 README.md, 使得项目状态与描述一致, 最后 push 到 git"

@@ -1843,11 +1843,12 @@ function renderJobTree(job) {
 async function toggleJobFolder(jobId) {
   if (expandedFolders.has(jobId)) {
     expandedFolders.delete(jobId);
+    renderJobList();
   } else {
     expandedFolders.add(jobId);
-    await loadFileTree(jobId, '');
+    renderJobList();  // 先渲染创建容器
+    await loadFileTree(jobId, '');  // 再加载数据
   }
-  renderJobList();
 }
 
 async function loadFileTree(jobId, dirPath) {
@@ -1884,7 +1885,8 @@ function renderDirectoryTree(jobId, entries, parentPath) {
             <span class="tree-folder-icon">▶</span>
             <span class="tree-folder-name">${escapeHtml(entry.name)}</span>
             <span class="tree-folder-actions">
-              <button class="tree-action" onclick="event.stopPropagation(); createSubFolder('${jobId}', '${fullPath}')" title="新建">📁</button>
+              <button class="tree-action" onclick="event.stopPropagation(); createSubFolder('${jobId}', '${fullPath}')" title="新建文件夹">📁</button>
+              <button class="tree-action" onclick="event.stopPropagation(); uploadToFolder('${jobId}', '${fullPath}')" title="上传文件">📤</button>
             </span>
           </div>
           <div class="tree-children" id="tree-${jobId}-${fullPath.replace(/\//g, '-')}">
@@ -2001,10 +2003,20 @@ function showContextMenu(event, type, jobId, path = '') {
       <div class="context-menu-item" onclick="contextAction('open')">
         <span>📂</span> 打开
       </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" onclick="contextAction('newFolder')">
+        <span>📁</span> 新建文件夹
+      </div>
+      <div class="context-menu-item" onclick="contextAction('newFile')">
+        <span>📄</span> 新建文件
+      </div>
+      <div class="context-menu-item" onclick="contextAction('upload')">
+        <span>📤</span> 上传文件
+      </div>
+      <div class="context-menu-divider"></div>
       <div class="context-menu-item" onclick="contextAction('rename')">
         <span>✏️</span> 重命名
       </div>
-      <div class="context-menu-divider"></div>
       <div class="context-menu-item danger" onclick="contextAction('delete')">
         <span>🗑️</span> 删除
       </div>
@@ -2119,6 +2131,50 @@ async function contextAction(action) {
     case 'download':
       window.open(`/api/files/content?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(path)}&download=1`);
       break;
+
+    case 'newFolder':
+      showInputDialog('新建文件夹', '新建文件夹', async (name) => {
+        try {
+          const response = await fetch('/api/files/mkdir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId, path: `${path}/${name}` }),
+          });
+          const payload = await response.json();
+          if (payload.ok) {
+            await loadSubDirectory(jobId, path);
+          } else {
+            alert(`创建失败: ${payload.error}`);
+          }
+        } catch (error) {
+          alert(`创建失败: ${error.message}`);
+        }
+      });
+      break;
+
+    case 'newFile':
+      showInputDialog('新建文件', '新文件.txt', async (name) => {
+        try {
+          const response = await fetch('/api/files/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId, path: `${path}/${name}`, content: '' }),
+          });
+          const payload = await response.json();
+          if (payload.ok) {
+            await loadSubDirectory(jobId, path);
+          } else {
+            alert(`创建失败: ${payload.error}`);
+          }
+        } catch (error) {
+          alert(`创建失败: ${error.message}`);
+        }
+      });
+      break;
+
+    case 'upload':
+      await uploadToFolder(jobId, path);
+      break;
   }
 }
 
@@ -2186,6 +2242,41 @@ async function uploadToJob(jobId) {
       if (payload.ok) {
         await loadFileTree(jobId, '');
         addMessage('system', `文件 ${file.name} 上传成功`);
+      } else {
+        alert(`上传失败: ${payload.error}`);
+      }
+    } catch (error) {
+      alert(`上传失败: ${error.message}`);
+    }
+  };
+  picker.click();
+}
+
+// Upload to specific subfolder
+async function uploadToFolder(jobId, folderPath) {
+  const picker = document.createElement('input');
+  picker.type = 'file';
+  picker.accept = '.csv,.tsv,.xlsx,.xls,.json,.txt,.md';
+  picker.onchange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('jobId', jobId);
+    formData.append('path', folderPath);
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        // 刷新父目录
+        const parentPath = folderPath.split('/').slice(0, -1).join('/');
+        await loadFileTree(jobId, parentPath || '');
+        addMessage('system', `文件 ${file.name} 上传到 ${folderPath} 成功`);
       } else {
         alert(`上传失败: ${payload.error}`);
       }

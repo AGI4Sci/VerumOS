@@ -66,11 +66,13 @@ fileRouter.get('/files/tree', async (c) => {
 /**
  * 读取文件内容
  * GET /api/files/content?jobId=xxx&path=inputs/count_matrix.csv
+ * GET /api/files/content?jobId=xxx&path=inputs/count_matrix.csv&download=1
  */
 fileRouter.get('/files/content', async (c) => {
   try {
     const jobId = c.req.query('jobId');
     const filePath = c.req.query('path');
+    const download = c.req.query('download') === '1';
 
     if (!jobId || !filePath) {
       return c.json({ ok: false, error: 'jobId and path are required' }, 400);
@@ -85,6 +87,35 @@ fileRouter.get('/files/content', async (c) => {
 
     const stats = await fs.stat(fullPath);
 
+    // 下载模式：直接返回文件流
+    if (download) {
+      const fileName = path.basename(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      
+      // MIME 类型映射
+      const mimeTypes: Record<string, string> = {
+        '.csv': 'text/csv',
+        '.tsv': 'text/tab-separated-values',
+        '.json': 'application/json',
+        '.md': 'text/markdown',
+        '.txt': 'text/plain',
+        '.log': 'text/plain',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.xls': 'application/vnd.ms-excel',
+      };
+      
+      const contentType = mimeTypes[ext] || 'application/octet-stream';
+      
+      return new Response(await fs.readFile(fullPath), {
+        headers: {
+          'Content-Type': contentType,
+          'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
+          'Content-Length': stats.size.toString(),
+        },
+      });
+    }
+
+    // 预览模式：返回 JSON（带大小限制）
     // 大文件限制（5MB）
     if (stats.size > 5 * 1024 * 1024) {
       return c.json({
