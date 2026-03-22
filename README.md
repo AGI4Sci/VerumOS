@@ -43,15 +43,10 @@
 ```text
 VerumOS/
 ├── data/                     # 运行时数据目录
-│   ├── jobs/                 # 任务 workspace
-│   │   └── job_YYYYMMDD_HHMM_xxx/
-│   │       ├── job.json      # 任务元数据
-│   │       ├── trace.jsonl   # 执行轨迹
-│   │       ├── inputs/       # 输入资产
-│   │       ├── outputs/      # 输出资产
-│   │       └── checkpoints/  # 中间状态
-│   ├── sessions/             # 会话持久化
-│   └── 需求文档_单细胞分析.md  # 示例需求文档
+│   └── job_YYYYMMDD_HHMM_xxx/  # 任务 workspace（直接在 data/ 下）
+│       ├── job.json          # 任务元数据 + 轨迹 + 状态（一个文件搞定）
+│       ├── inputs/           # 输入文件
+│       └── outputs/          # 输出文件
 ├── skills/
 │   ├── csv-skill/
 │   │   └── SKILL.md         # CSV Skill 描述文件
@@ -85,12 +80,10 @@ VerumOS/
 │   │   ├── csv-skill.ts     # CSV Skill 实现
 │   │   ├── bioinfo-skill.ts # Bioinfo Skill 实现
 │   │   └── index.ts         # Skill 注册表
-│   ├── utils/               # 工具函数
 │   ├── ws/                  # WebSocket 服务
 │   ├── app.ts               # Hono app
 │   ├── config.ts            # 环境配置
-│   ├── server.ts            # 服务入口
-│   └── session-store.ts     # 会话持久化存储
+│   └── server.ts            # 服务入口
 ├── web/
 │   └── index.html           # 前端 Demo
 ├── .env.example
@@ -200,16 +193,47 @@ curl -X POST http://localhost:3000/api/upload \
 
 ## Job Workspace 架构
 
-每个任务有独立的工作空间：
+每个任务有独立的工作空间，直接在 `data/` 目录下：
 
 ```
-data/jobs/job_20260322_2201_a1b2c3/
-├── job.json          # 任务元数据（状态、创建时间、意图）
-├── trace.jsonl       # 执行轨迹（每步操作记录）
-├── inputs/           # 输入资产
-├── outputs/          # 输出资产
-└── checkpoints/      # 中间状态（用于恢复）
+data/job_20260322_2201_a1b2c3/
+├── job.json          # 元数据 + 轨迹 + 状态（一个文件搞定）
+├── inputs/           # 输入文件
+│   ├── count_matrix.csv
+│   └── cell_metadata.csv
+└── outputs/          # 输出文件
+    ├── normalized_matrix.csv
+    └── qc_report.json
 ```
+
+### job.json 结构
+
+```json
+{
+  "id": "job_20260322_2201_a1b2c3",
+  "sessionId": "sess_xxx",
+  "status": "running",
+  "summary": "单细胞数据分析 - 细胞类型鉴定",
+  "createdAt": "2026-03-22T14:01:00Z",
+  "updatedAt": "2026-03-22T14:30:00Z",
+  "intent": { "type": "requirement", "confidence": 0.95 },
+  "traces": [
+    { "step": 1, "timestamp": "...", "type": "tool_call", "data": { "tool": "read_file" } },
+    { "step": 2, "timestamp": "...", "type": "tool_result", "data": { "shape": {"rows": 1000} } }
+  ],
+  "state": {
+    "activeDatasetId": "ds_001",
+    "datasets": [{ "id": "ds_001", "name": "count_matrix.csv" }],
+    "messages": [{ "role": "user", "content": "分析这份数据" }]
+  }
+}
+```
+
+**简化点**：
+- 去掉 `jobs/` 前缀，job 目录直接在 `data/` 下
+- 合并 `trace.jsonl` → `job.json` 里的 `traces` 数组
+- 去掉 `checkpoints/`，中间状态记在 `job.json.state` 里
+- 去掉 `uploads/`、`sessions/` 中间目录
 
 ### 任务恢复
 
@@ -294,7 +318,8 @@ const dataAgentConfig = {
    - DataAgent 改为声明 `systemPrompt`、`tools`、`convertToLlm`
    - 意图规则由各 Agent 声明，便于扩展
 
-3. **Job Workspace 架构**
-   - 任务隔离：每个任务有独立的 inputs/outputs/checkpoints 目录
-   - 执行轨迹：trace.jsonl 记录每步操作
-   - 任务恢复：支持从 checkpoint 恢复
+3. **Job Workspace 简化**
+   - 目录扁平化：job 目录直接在 `data/` 下，去掉 `jobs/` 前缀
+   - 文件合并：`trace.jsonl` 合并到 `job.json` 的 `traces` 数组
+   - 状态内嵌：运行时状态存在 `job.json.state` 里
+   - 删除冗余：移除 `session-store.ts`、`utils/data.ts`

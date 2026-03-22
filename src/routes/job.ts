@@ -1,13 +1,12 @@
 import { Hono } from 'hono';
+import path from 'node:path';
+import fs from 'node:fs/promises';
 import {
   listJobs,
-  loadJobMeta,
-  readTraces,
+  getJob,
   deleteJob,
   resumeJob,
-  getJobWorkspace,
 } from '../job/index.js';
-import { getOrCreateSession, updateSession } from '../session-store.js';
 
 const jobRouter = new Hono();
 
@@ -32,25 +31,26 @@ jobRouter.get('/jobs', async (c) => {
 jobRouter.get('/jobs/:jobId', async (c) => {
   try {
     const jobId = c.req.param('jobId');
-    const meta = await loadJobMeta(jobId);
+    const job = await getJob(jobId);
 
-    if (!meta) {
+    if (!job) {
       return c.json({ ok: false, error: 'Job not found' }, 404);
     }
-
-    const traces = await readTraces(jobId);
-    const workspace = getJobWorkspace(jobId);
 
     return c.json({
       ok: true,
       job: {
-        meta,
-        traces,
-        workspace: {
-          dir: workspace.dir,
-          inputsDir: workspace.inputsDir,
-          outputsDir: workspace.outputsDir,
-        },
+        id: job.id,
+        sessionId: job.sessionId,
+        status: job.status,
+        summary: job.summary,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+        intent: job.intent,
+        traces: job.traces,
+        state: job.state,
+        inputsDir: `data/${jobId}/inputs`,
+        outputsDir: `data/${jobId}/outputs`,
       },
     });
   } catch (error) {
@@ -78,10 +78,6 @@ jobRouter.post('/session/resume', async (c) => {
       return c.json({ ok: false, error: 'Job not found or cannot be resumed' }, 404);
     }
 
-    // 确保会话存在
-    await getOrCreateSession(context.sessionId);
-    await updateSession(context);
-
     return c.json({
       ok: true,
       sessionId: context.sessionId,
@@ -91,6 +87,7 @@ jobRouter.post('/session/resume', async (c) => {
         activeDatasetId: context.activeDatasetId,
         currentIntent: context.currentIntent,
         datasets: Array.from(context.datasets.values()),
+        messages: context.messages,
       },
     });
   } catch (error) {

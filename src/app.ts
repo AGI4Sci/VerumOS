@@ -8,8 +8,7 @@ import uploadRouter from './routes/upload.js';
 import requirementRouter from './routes/requirement.js';
 import jobRouter from './routes/job.js';
 import { initializeSkills } from './skills/index.js';
-import { ensureDataDir } from './utils/data.js';
-import { ensureJobDirs } from './job/index.js';
+import { ensureDataDir } from './job/index.js';
 
 const app = new Hono();
 
@@ -26,7 +25,6 @@ app.use('/*', serveStatic({ root: './web' }));
 
 export async function initializeApp(): Promise<Hono> {
   await ensureDataDir();
-  await ensureJobDirs();
   await initializeSkills();
   return app;
 }

@@ -136,12 +136,29 @@ export class LLMClient {
     }
 
     try {
-      const openaiMessages = messages.map((m) => ({
-        role: m.role as 'user' | 'assistant' | 'system' | 'tool',
-        content: m.content,
-        ...(m.toolCallId ? { tool_call_id: m.toolCallId } : {}),
-        ...(m.name ? { name: m.name } : {}),
-      }));
+      // 构建 OpenAI 消息格式
+      const openaiMessages: Array<
+        | { role: 'system'; content: string }
+        | { role: 'user'; content: string }
+        | { role: 'assistant'; content: string; tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }> }
+        | { role: 'tool'; content: string; tool_call_id: string }
+      > = messages.map((m) => {
+        if (m.role === 'tool' && m.toolCallId) {
+          return { role: 'tool' as const, content: m.content, tool_call_id: m.toolCallId };
+        }
+        if (m.role === 'assistant' && m.toolCalls) {
+          return {
+            role: 'assistant' as const,
+            content: m.content,
+            tool_calls: m.toolCalls.map((tc) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+            })),
+          };
+        }
+        return { role: m.role as 'system' | 'user' | 'assistant', content: m.content };
+      });
 
       const toolDefinitions = tools.map((t) => ({
         type: 'function' as const,

@@ -1,106 +1,76 @@
 /**
- * Job Manager - 任务管理器
+ * Job Manager - 任务管理器（简化版）
  *
- * 职责：
- * - 创建/加载/更新 Job
- * - 管理目录结构
- * - 记录执行轨迹
- * - 任务恢复
+ * 只保留核心函数：
+ * - createJob: 创建 Job
+ * - getJob: 读取 Job
+ * - updateJob: 更新 Job
+ * - listJobs: 列出所有 Job
  */
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.js';
-import type { ConversationContext, Dataset } from '../agents/types.js';
-import type { JobMeta, JobStatus, JobWorkspace, TraceEntry } from './types.js';
-import { createJobMeta, generateJobId } from './types.js';
-
-const JOBS_DIR = 'jobs';
-const UPLOADS_DIR = 'uploads';
+import type { Intent, Dataset, Message } from '../agents/types.js';
+import type { Job, TraceEntry } from './types.js';
+import { createJob as createJobObject, generateJobId } from './types.js';
 
 /**
- * 获取 jobs 目录路径
- */
-function getJobsDir(): string {
-  return path.join(config.data.dir, JOBS_DIR);
-}
-
-/**
- * 获取 uploads 目录路径
- */
-function getUploadsDir(): string {
-  return path.join(config.data.dir, UPLOADS_DIR);
-}
-
-/**
- * 获取 Job 工作空间路径
+ * 获取 Job 目录路径
  */
 function getJobDir(jobId: string): string {
-  return path.join(getJobsDir(), jobId);
+  return path.join(config.data.dir, jobId);
 }
 
 /**
- * 创建 Job 工作空间
+ * 创建 Job（首次上传时调用）
  */
-export async function createJobWorkspace(
-  sessionId: string,
-  intent?: ConversationContext['currentIntent']
-): Promise<JobWorkspace> {
-  const jobMeta = createJobMeta(sessionId, intent);
-  const jobDir = getJobDir(jobMeta.id);
+export async function createJob(sessionId: string, intent?: Intent): Promise<string> {
+  const jobId = generateJobId();
+  const jobDir = getJobDir(jobId);
+  const inputsDir = path.join(jobDir, 'inputs');
+  const outputsDir = path.join(jobDir, 'outputs');
 
   // 创建目录结构
-  await fs.mkdir(path.join(jobDir, 'inputs'), { recursive: true });
-  await fs.mkdir(path.join(jobDir, 'outputs'), { recursive: true });
-  await fs.mkdir(path.join(jobDir, 'checkpoints'), { recursive: true });
+  await fs.mkdir(inputsDir, { recursive: true });
+  await fs.mkdir(outputsDir, { recursive: true });
 
-  // 写入元数据
+  // 创建 Job 对象
+  const job = createJobObject(sessionId, intent);
+
+  // 写入 job.json
   await fs.writeFile(
     path.join(jobDir, 'job.json'),
-    JSON.stringify(jobMeta, null, 2)
+    JSON.stringify(job, null, 2)
   );
 
-  // 创建空的轨迹文件
-  await fs.writeFile(path.join(jobDir, 'trace.jsonl'), '');
-
-  return {
-    id: jobMeta.id,
-    dir: jobDir,
-    metaPath: path.join(jobDir, 'job.json'),
-    tracePath: path.join(jobDir, 'trace.jsonl'),
-    inputsDir: path.join(jobDir, 'inputs'),
-    outputsDir: path.join(jobDir, 'outputs'),
-    checkpointsDir: path.join(jobDir, 'checkpoints'),
-  };
+  return jobId;
 }
 
 /**
- * 加载 Job 元数据
+ * 读取 Job
  */
-export async function loadJobMeta(jobId: string): Promise<JobMeta | null> {
-  const metaPath = path.join(getJobDir(jobId), 'job.json');
+export async function getJob(jobId: string): Promise<Job | null> {
+  const jobPath = path.join(getJobDir(jobId), 'job.json');
   try {
-    const content = await fs.readFile(metaPath, 'utf-8');
-    return JSON.parse(content) as JobMeta;
+    const content = await fs.readFile(jobPath, 'utf-8');
+    return JSON.parse(content) as Job;
   } catch {
     return null;
   }
 }
 
 /**
- * 更新 Job 元数据
+ * 更新 Job（追加轨迹、更新状态）
  */
-export async function updateJobMeta(
-  jobId: string,
-  updates: Partial<JobMeta>
-): Promise<JobMeta | null> {
-  const meta = await loadJobMeta(jobId);
-  if (!meta) {
-    return null;
+export async function updateJob(jobId: string, updates: Partial<Job>): Promise<void> {
+  const job = await getJob(jobId);
+  if (!job) {
+    throw new Error(`Job not found: ${jobId}`);
   }
 
-  const updated: JobMeta = {
-    ...meta,
+  const updated: Job = {
+    ...job,
     ...updates,
     updatedAt: new Date().toISOString(),
   };
@@ -109,8 +79,6 @@ export async function updateJobMeta(
     path.join(getJobDir(jobId), 'job.json'),
     JSON.stringify(updated, null, 2)
   );
-
-  return updated;
 }
 
 /**
@@ -118,51 +86,43 @@ export async function updateJobMeta(
  */
 export async function appendTrace(
   jobId: string,
-  entry: Omit<TraceEntry, 'timestamp'>
+  entry: Omit<TraceEntry, 'step' | 'timestamp'>
 ): Promise<void> {
-  const tracePath = path.join(getJobDir(jobId), 'trace.jsonl');
+  const job = await getJob(jobId);
+  if (!job) {
+    throw new Error(`Job not found: ${jobId}`);
+  }
+
+  const step = job.traces.length + 1;
   const fullEntry: TraceEntry = {
     ...entry,
+    step,
     timestamp: new Date().toISOString(),
   };
-  await fs.appendFile(tracePath, JSON.stringify(fullEntry) + '\n');
-}
 
-/**
- * 读取执行轨迹
- */
-export async function readTraces(jobId: string): Promise<TraceEntry[]> {
-  const tracePath = path.join(getJobDir(jobId), 'trace.jsonl');
-  try {
-    const content = await fs.readFile(tracePath, 'utf-8');
-    const lines = content.trim().split('\n').filter(Boolean);
-    return lines.map((line) => JSON.parse(line) as TraceEntry);
-  } catch {
-    return [];
-  }
+  await updateJob(jobId, {
+    traces: [...job.traces, fullEntry],
+  });
 }
 
 /**
  * 列出所有 Job
  */
-export async function listJobs(): Promise<JobMeta[]> {
-  const jobsDir = getJobsDir();
+export async function listJobs(): Promise<Job[]> {
   try {
-    const entries = await fs.readdir(jobsDir, { withFileTypes: true });
+    const entries = await fs.readdir(config.data.dir, { withFileTypes: true });
     const jobDirs = entries.filter((e) => e.isDirectory() && e.name.startsWith('job_'));
 
-    const jobs: JobMeta[] = [];
+    const jobs: Job[] = [];
     for (const dir of jobDirs) {
-      const meta = await loadJobMeta(dir.name);
-      if (meta) {
-        jobs.push(meta);
+      const job = await getJob(dir.name);
+      if (job) {
+        jobs.push(job);
       }
     }
 
     // 按创建时间倒序排列
-    return jobs.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   } catch {
     return [];
   }
@@ -184,32 +144,46 @@ export async function deleteJob(jobId: string): Promise<boolean> {
 /**
  * 恢复 Job 上下文
  */
-export async function resumeJob(jobId: string): Promise<ConversationContext | null> {
-  const meta = await loadJobMeta(jobId);
-  if (!meta) {
+export async function resumeJob(jobId: string): Promise<{
+  sessionId: string;
+  messages: Message[];
+  datasets: Map<string, Dataset>;
+  activeDatasetId?: string;
+  currentIntent?: Intent;
+} | null> {
+  const job = await getJob(jobId);
+  if (!job) {
     return null;
   }
 
-  const traces = await readTraces(jobId);
-
-  // 重建上下文
-  const context: ConversationContext = {
-    sessionId: meta.sessionId,
-    messages: [],
-    datasets: new Map(),
-    currentIntent: meta.intent,
-  };
-
-  // 重放轨迹，恢复数据集
-  for (const trace of traces) {
-    if (trace.type === 'tool_result' && trace.data.dataset) {
-      const dataset = trace.data.dataset as Dataset;
-      context.datasets.set(dataset.id, dataset);
-      context.activeDatasetId = dataset.id;
-    }
+  // 从 state 恢复
+  const datasets = new Map<string, Dataset>();
+  for (const dataset of job.state.datasets) {
+    datasets.set(dataset.id, dataset);
   }
 
-  return context;
+  return {
+    sessionId: job.sessionId,
+    messages: job.state.messages,
+    datasets,
+    activeDatasetId: job.state.activeDatasetId,
+    currentIntent: job.intent,
+  };
+}
+
+/**
+ * 保存文件到 inputs
+ */
+export async function saveToInputs(
+  jobId: string,
+  filename: string,
+  content: Buffer
+): Promise<string> {
+  const inputsDir = path.join(getJobDir(jobId), 'inputs');
+  const safeName = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const savedPath = path.join(inputsDir, safeName);
+  await fs.writeFile(savedPath, content);
+  return savedPath;
 }
 
 /**
@@ -226,39 +200,16 @@ export async function saveOutput(
 }
 
 /**
- * 移动上传文件到 Job inputs
+ * 根据 sessionId 查找 Job
  */
-export async function moveToInputs(
-  jobId: string,
-  sourcePath: string,
-  filename?: string
-): Promise<string> {
-  const destFilename = filename || path.basename(sourcePath);
-  const destPath = path.join(getJobDir(jobId), 'inputs', destFilename);
-  await fs.rename(sourcePath, destPath);
-  return destPath;
+export async function findJobBySessionId(sessionId: string): Promise<Job | null> {
+  const jobs = await listJobs();
+  return jobs.find((j) => j.sessionId === sessionId) || null;
 }
 
 /**
- * 确保 jobs 和 uploads 目录存在
+ * 确保 data 目录存在
  */
-export async function ensureJobDirs(): Promise<void> {
-  await fs.mkdir(getJobsDir(), { recursive: true });
-  await fs.mkdir(getUploadsDir(), { recursive: true });
-}
-
-/**
- * 获取 Job 工作空间信息
- */
-export function getJobWorkspace(jobId: string): JobWorkspace {
-  const jobDir = getJobDir(jobId);
-  return {
-    id: jobId,
-    dir: jobDir,
-    metaPath: path.join(jobDir, 'job.json'),
-    tracePath: path.join(jobDir, 'trace.jsonl'),
-    inputsDir: path.join(jobDir, 'inputs'),
-    outputsDir: path.join(jobDir, 'outputs'),
-    checkpointsDir: path.join(jobDir, 'checkpoints'),
-  };
+export async function ensureDataDir(): Promise<void> {
+  await fs.mkdir(config.data.dir, { recursive: true });
 }

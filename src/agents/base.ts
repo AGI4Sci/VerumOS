@@ -17,8 +17,10 @@ import type { Agent, AgentCapabilities, AgentResponse, ConversationContext } fro
  *
  * 提供通用的 LLM 和 Skill 调用方法。
  * 不建议继承此类，建议使用声明式配置。
+ *
+ * @deprecated 请使用声明式配置
  */
-export class BaseAgent implements Agent {
+export abstract class BaseAgent implements Agent {
   abstract id: string;
   abstract name: string;
   abstract description: string;
