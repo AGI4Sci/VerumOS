@@ -1,7 +1,16 @@
+/**
+ * Data Agent - 声明式配置
+ *
+ * 不继承 runtime，只声明能力：
+ * - systemPrompt
+ * - tools
+ * - convertToLlm
+ */
+
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import { BaseAgent } from './base.js';
+import type { AgentConfig, AgentTool, AgentMessage } from '../runtime/agent-loop.js';
 import type { AgentCapabilities, AgentResponse, ConversationContext, Dataset, DatasetColumn, DatasetMetadata, Intent, IntentRule, IntentType } from './types.js';
 import { csvSkill } from '../skills/csv-skill.js';
 import { bioinfoSkill } from '../skills/bioinfo-skill.js';
@@ -80,17 +89,285 @@ const DATA_AGENT_INTENT_TYPES = [
   'unknown',
 ];
 
-export class DataAgent extends BaseAgent {
-  id = 'data-agent';
-  name = 'Data Agent';
-  description = '处理 CSV/Excel 数据的探索与问答，支持生物信息学分析';
+/**
+ * Data Agent 元数据
+ */
+export interface DataAgentMeta {
+  id: string;
+  name: string;
+  description: string;
+  capabilities: AgentCapabilities;
+  intentTypes: string[];
+  intentRules: IntentRule[];
+}
 
-  capabilities: AgentCapabilities = {
+/**
+ * Data Agent 元数据
+ */
+export const dataAgentMeta: DataAgentMeta = {
+  id: 'data-agent',
+  name: 'Data Agent',
+  description: '处理 CSV/Excel 数据的探索与问答，支持生物信息学分析',
+  capabilities: {
     inputs: ['file', 'text'],
     outputs: ['dataset', 'summary'],
     skills: ['csv-skill', 'bioinfo-skill'],
-  };
+  },
+  intentTypes: DATA_AGENT_INTENT_TYPES,
+  intentRules: DATA_AGENT_INTENT_RULES,
+};
 
+/**
+ * Data Agent 系统提示
+ */
+export const dataAgentSystemPrompt = `你是一个数据分析助手，帮助用户探索和处理数据。
+
+你可以：
+- 读取 CSV、TSV、Excel 文件
+- 探索数据概览（行数、列数、统计信息）
+- 进行数据转换（过滤、标准化、log2）
+- 合并多个数据集
+- 讨论分析需求并生成工具链
+- 执行已确认的分析方案
+
+请根据用户的需求，选择合适的工具来完成任务。`;
+
+/**
+ * 消息转换函数
+ * 过滤掉不需要发送给 LLM 的消息类型
+ */
+export function dataAgentConvertToLlm(messages: AgentMessage[]): AgentMessage[] {
+  return messages.filter((m) =>
+    ['user', 'assistant', 'system', 'tool'].includes(m.role)
+  );
+}
+
+/**
+ * 创建 Data Agent 的工具列表
+ */
+export function createDataAgentTools(
+  context: ConversationContext
+): AgentTool[] {
+  return [
+    {
+      name: 'read_file',
+      description: '读取 CSV/TSV/Excel 文件并返回基本概览',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '文件路径' },
+        },
+        required: ['path'],
+      },
+      execute: async (params: Record<string, unknown>) => {
+        const filePath = String(params.path || '');
+        await fs.access(filePath);
+        const result = (await csvSkill.execute('read_file', { path: filePath })) as ReadResult;
+        const datasetId = uuidv4();
+        const dataset: Dataset = {
+          id: datasetId,
+          name: path.basename(filePath),
+          path: filePath,
+          format: path.extname(filePath).toLowerCase(),
+          skill: 'csv-skill',
+          metadata: result,
+        };
+        context.datasets.set(datasetId, dataset);
+        context.activeDatasetId = datasetId;
+        return {
+          datasetId,
+          shape: result.shape,
+          columns: result.columns.slice(0, 10),
+          preview: result.preview,
+        };
+      },
+    },
+    {
+      name: 'explore_data',
+      description: '探索数据集，返回统计信息',
+      parameters: {
+        type: 'object',
+        properties: {
+          datasetId: { type: 'string', description: '数据集 ID' },
+        },
+        required: ['datasetId'],
+      },
+      execute: async (params: Record<string, unknown>) => {
+        const datasetId = String(params.datasetId || context.activeDatasetId || '');
+        const dataset = context.datasets.get(datasetId);
+        if (!dataset) {
+          throw new Error('数据集不存在');
+        }
+        const result = await csvSkill.execute('explore_data', { path: dataset.path });
+        dataset.metadata = { ...dataset.metadata, ...result as DatasetMetadata };
+        return result;
+      },
+    },
+    {
+      name: 'transform_data',
+      description: '执行数据转换（filter、normalize、log2）',
+      parameters: {
+        type: 'object',
+        properties: {
+          datasetId: { type: 'string', description: '数据集 ID' },
+          operation: { type: 'string', enum: ['filter', 'normalize', 'log2'] },
+          params: { type: 'object' },
+        },
+        required: ['datasetId', 'operation'],
+      },
+      execute: async (params: Record<string, unknown>) => {
+        const datasetId = String(params.datasetId || context.activeDatasetId || '');
+        const dataset = context.datasets.get(datasetId);
+        if (!dataset) {
+          throw new Error('数据集不存在');
+        }
+        return csvSkill.execute('transform_data', {
+          path: dataset.path,
+          operation: params.operation,
+          params: params.params || {},
+        });
+      },
+    },
+    {
+      name: 'merge_data',
+      description: '合并两个数据集',
+      parameters: {
+        type: 'object',
+        properties: {
+          leftDatasetId: { type: 'string' },
+          rightDatasetId: { type: 'string' },
+          on: { type: 'string', description: '合并键' },
+          how: { type: 'string', enum: ['inner', 'left', 'right', 'outer'] },
+        },
+        required: ['leftDatasetId', 'rightDatasetId', 'on'],
+      },
+      execute: async (params: Record<string, unknown>) => {
+        const leftDataset = context.datasets.get(String(params.leftDatasetId));
+        const rightDataset = context.datasets.get(String(params.rightDatasetId));
+        if (!leftDataset || !rightDataset) {
+          throw new Error('数据集不存在');
+        }
+        return csvSkill.execute('merge_data', {
+          paths: [leftDataset.path, rightDataset.path],
+          on: params.on,
+          how: params.how || 'inner',
+        });
+      },
+    },
+    {
+      name: 'transpose',
+      description: '矩阵转置',
+      parameters: {
+        type: 'object',
+        properties: {
+          datasetId: { type: 'string', description: '数据集 ID' },
+        },
+        required: ['datasetId'],
+      },
+      execute: async (params: Record<string, unknown>) => {
+        const datasetId = String(params.datasetId || context.activeDatasetId || '');
+        const dataset = context.datasets.get(datasetId);
+        if (!dataset) {
+          throw new Error('数据集不存在');
+        }
+        return csvSkill.execute('transpose', { path: dataset.path });
+      },
+    },
+    {
+      name: 'quality_control',
+      description: '单细胞数据质量控制',
+      parameters: {
+        type: 'object',
+        properties: {
+          datasetId: { type: 'string' },
+          minGenes: { type: 'number' },
+          maxGenes: { type: 'number' },
+          maxMitoPct: { type: 'number' },
+        },
+        required: ['datasetId'],
+      },
+      execute: async (params: Record<string, unknown>) => {
+        const datasetId = String(params.datasetId || context.activeDatasetId || '');
+        const dataset = context.datasets.get(datasetId);
+        if (!dataset) {
+          throw new Error('数据集不存在');
+        }
+        return bioinfoSkill.execute('quality_control', {
+          path: dataset.path,
+          min_genes: params.minGenes,
+          max_genes: params.maxGenes,
+          max_mito_pct: params.maxMitoPct,
+        });
+      },
+    },
+    {
+      name: 'normalize_counts',
+      description: '单细胞数据标准化',
+      parameters: {
+        type: 'object',
+        properties: {
+          datasetId: { type: 'string' },
+          method: { type: 'string', enum: ['cpm', 'tpm', 'log1p', 'scanpy'] },
+        },
+        required: ['datasetId', 'method'],
+      },
+      execute: async (params: Record<string, unknown>) => {
+        const datasetId = String(params.datasetId || context.activeDatasetId || '');
+        const dataset = context.datasets.get(datasetId);
+        if (!dataset) {
+          throw new Error('数据集不存在');
+        }
+        return bioinfoSkill.execute('normalize_counts', {
+          path: dataset.path,
+          method: params.method,
+        });
+      },
+    },
+    {
+      name: 'find_markers',
+      description: '寻找 marker 基因',
+      parameters: {
+        type: 'object',
+        properties: {
+          datasetId: { type: 'string' },
+          groupBy: { type: 'string' },
+        },
+        required: ['datasetId', 'groupBy'],
+      },
+      execute: async (params: Record<string, unknown>) => {
+        const datasetId = String(params.datasetId || context.activeDatasetId || '');
+        const dataset = context.datasets.get(datasetId);
+        if (!dataset) {
+          throw new Error('数据集不存在');
+        }
+        return bioinfoSkill.execute('find_markers', {
+          path: dataset.path,
+          group_by: params.groupBy,
+        });
+      },
+    },
+  ];
+}
+
+/**
+ * 创建 Data Agent 配置
+ */
+export function createDataAgentConfig(context: ConversationContext): AgentConfig {
+  return {
+    id: dataAgentMeta.id,
+    name: dataAgentMeta.name,
+    systemPrompt: dataAgentSystemPrompt,
+    tools: createDataAgentTools(context),
+    convertToLlm: dataAgentConvertToLlm,
+  };
+}
+
+/**
+ * Data Agent 处理器
+ *
+ * 保留原有的业务逻辑处理方法，用于非工具调用的场景
+ */
+export class DataAgentProcessor {
   /**
    * 获取意图类型列表
    */
@@ -105,12 +382,9 @@ export class DataAgent extends BaseAgent {
     return DATA_AGENT_INTENT_RULES;
   }
 
-  constructor() {
-    super();
-    this.registerSkill(csvSkill);
-    this.registerSkill(bioinfoSkill);
-  }
-
+  /**
+   * 处理消息
+   */
   async processMessage(message: string, context: ConversationContext): Promise<AgentResponse> {
     const intent = await this.analyzeIntent(message, context);
     context.currentIntent = intent;
@@ -133,7 +407,7 @@ export class DataAgent extends BaseAgent {
       default:
         return {
           type: 'text',
-          content: '我现在主要支持数据上传、数据概览、需求讨论，以及像”这份数据有多少行？”这样的问答。',
+          content: '我现在主要支持数据上传、数据概览、需求讨论，以及像"这份数据有多少行？"这样的问答。',
         };
     }
   }
@@ -144,47 +418,6 @@ export class DataAgent extends BaseAgent {
   private async analyzeIntent(message: string, context: ConversationContext): Promise<Intent> {
     // 1. 使用声明的规则进行启发式匹配
     const heuristicIntent = this.heuristicIntent(message, context);
-    if (heuristicIntent.confidence >= 0.85 || !this.isLLMAvailable()) {
-      return heuristicIntent;
-    }
-
-    // 2. LLM 分类
-    const datasetNames = Array.from(context.datasets.values()).map((dataset) => dataset.name);
-    const systemPrompt = `你是一个意图分类器。你只能返回 JSON，不要返回 Markdown。
-
-候选意图：${DATA_AGENT_INTENT_TYPES.join('、')}。
-
-- upload: 上传或读取文件
-- explore: 探索数据概览
-- transform: 数据转换（过滤、标准化等）
-- merge: 合并数据集
-- requirement: 需求讨论（用户想讨论分析目标、方案）
-- execute: 执行已确认的分析方案
-- question: 关于数据的具体问题
-- unknown: 无法识别
-
-当前数据集：${datasetNames.length > 0 ? datasetNames.join(', ') : '无'}
-
-返回格式：
-{“type”:”upload”,”confidence”:0.95,”datasetId”:null,”params”:{}}`;
-
-    try {
-      const response = await this.callLLM(systemPrompt + '\n\n用户消息：' + message, context);
-      // 尝试解析 JSON
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as Intent;
-        return {
-          type: parsed.type,
-          confidence: parsed.confidence,
-          datasetId: parsed.datasetId,
-          params: parsed.params,
-        };
-      }
-    } catch {
-      // 解析失败，使用启发式结果
-    }
-
     return heuristicIntent;
   }
 
@@ -221,7 +454,7 @@ export class DataAgent extends BaseAgent {
 
   async ingestFile(filePath: string, context: ConversationContext, displayName?: string): Promise<AgentResponse> {
     await fs.access(filePath);
-    const result = (await this.callSkill('csv-skill', 'read_file', { path: filePath })) as ReadResult;
+    const result = (await csvSkill.execute('read_file', { path: filePath })) as ReadResult;
     const datasetId = uuidv4();
     const dataset: Dataset = {
       id: datasetId,
@@ -267,7 +500,7 @@ export class DataAgent extends BaseAgent {
       return { type: 'text', content: '请先上传一份 CSV 或 Excel 文件。' };
     }
 
-    const result = (await this.callSkill('csv-skill', 'explore_data', { path: dataset.path })) as DatasetMetadata;
+    const result = (await csvSkill.execute('explore_data', { path: dataset.path })) as DatasetMetadata;
     dataset.metadata = { ...dataset.metadata, ...result };
     const rows = result.shape?.rows ?? '未知';
     const columns = result.shape?.columns ?? '未知';
@@ -288,7 +521,7 @@ export class DataAgent extends BaseAgent {
     }
 
     const operation = String(intent.params?.operation || 'normalize');
-    const result = await this.callSkill('csv-skill', 'transform_data', {
+    const result = await csvSkill.execute('transform_data', {
       path: dataset.path,
       operation,
       params: intent.params || {},
@@ -335,7 +568,7 @@ export class DataAgent extends BaseAgent {
       };
     }
 
-    const result = await this.callSkill('csv-skill', 'merge_data', {
+    const result = await csvSkill.execute('merge_data', {
       paths: datasets.slice(0, 2).map((dataset) => dataset.path),
       on: mergeKey,
       how: String(intent.params?.how || 'inner'),
@@ -362,14 +595,10 @@ export class DataAgent extends BaseAgent {
       return { type: 'text', content: quickAnswer };
     }
 
-    const prompt = `当前数据集名称：${dataset.name}
-行数：${dataset.metadata?.shape?.rows ?? '未知'}
-列数：${dataset.metadata?.shape?.columns ?? '未知'}
-列名：${(dataset.metadata?.columns || []).slice(0, 20).map((column) => column.name).join(', ')}
-
-请基于这些元信息回答用户问题：${message}`;
-    const reply = await this.callLLM(prompt, context);
-    return { type: 'text', content: reply };
+    return {
+      type: 'text',
+      content: '我暂时无法回答这个问题，请尝试更具体的描述。',
+    };
   }
 
   private async handleRequirementDiscuss(message: string, context: ConversationContext): Promise<AgentResponse> {
@@ -397,30 +626,10 @@ export class DataAgent extends BaseAgent {
 
     // 构建讨论提示
     const docMarkdown = documentToMarkdown(doc);
-    const prompt = `你是一个科研数据分析助手，正在与用户讨论分析需求。
-
-当前需求文档：
-${docMarkdown}
-
-用户说：${message}
-
-请根据用户输入更新需求理解，并提问以澄清不明确的部分。如果用户确认了方案，请明确说明"方案已确认，可以开始执行"。
-
-回复格式：
-1. 确认理解的内容
-2. 提出澄清问题（如有）
-3. 更新后的需求摘要`;
-
-    const reply = await this.callLLM(prompt, context);
-
-    // 检查是否确认方案
-    if (/方案已确认|可以开始执行|确认执行/i.test(reply)) {
-      await updateRequirementDocument(context.sessionId, { status: 'confirmed' });
-    }
 
     return {
       type: 'result',
-      content: reply,
+      content: `当前需求文档：\n\n${docMarkdown}\n\n请告诉我您的分析需求。`,
       result: {
         requirementDocument: doc,
         markdown: docMarkdown,
@@ -455,7 +664,8 @@ ${docMarkdown}
     for (let i = 0; i < toolChain.length; i++) {
       const step = toolChain[i];
       try {
-        const result = await this.callSkill(step.skill, step.tool, step.params);
+        const skill = step.skill === 'csv-skill' ? csvSkill : bioinfoSkill;
+        const result = await skill.execute(step.tool, step.params);
         results.push({
           step: i + 1,
           tool: `${step.skill}.${step.tool}`,
@@ -521,4 +731,21 @@ ${docMarkdown}
   }
 }
 
-export const dataAgent = new DataAgent();
+/**
+ * Data Agent 处理器实例
+ */
+export const dataAgentProcessor = new DataAgentProcessor();
+
+/**
+ * 向后兼容：导出 dataAgent
+ */
+export const dataAgent = {
+  id: dataAgentMeta.id,
+  name: dataAgentMeta.name,
+  description: dataAgentMeta.description,
+  capabilities: dataAgentMeta.capabilities,
+  getIntentTypes: () => dataAgentMeta.intentTypes,
+  getIntentRules: () => dataAgentMeta.intentRules,
+  processMessage: (message: string, context: ConversationContext) =>
+    dataAgentProcessor.processMessage(message, context),
+};

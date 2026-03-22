@@ -12,7 +12,8 @@
 - **Job Workspace**：任务隔离、持久化、执行轨迹记录、任务恢复
 
 ### 架构亮点
-- **Agent Runtime**：核心执行引擎，支持意图识别、Agent 路由、工具调用编排
+- **Agent Runtime**：核心执行引擎（agentLoop），支持事件流、工具调用编排
+- **声明式 Agent 配置**：Agent 只声明 systemPrompt、tools、convertToLlm，不继承执行引擎
 - **Agent Registry**：支持多 Agent 注册和意图路由
 - **Skill Registry**：支持多 Skill 注册和管理
 - **意图规则声明式定义**：意图识别规则由各 Agent 声明，便于扩展和维护
@@ -57,12 +58,13 @@ VerumOS/
 │   └── bioinfo-skill/
 │       └── SKILL.md         # Bioinfo Skill 描述文件
 ├── src/
-│   ├── agents/              # Agent 实现
-│   │   ├── base.ts          # Agent 基类（通用能力）
-│   │   ├── data-agent.ts    # Data Agent 实现
+│   ├── agents/              # Agent 实现（声明式配置）
+│   │   ├── base.ts          # Agent 工具类（已废弃继承模式）
+│   │   ├── data-agent.ts    # Data Agent 声明式配置
 │   │   ├── requirement-doc.ts # 需求文档管理
 │   │   └── types.ts         # 类型定义
-│   ├── runtime/             # 核心 Runtime
+│   ├── runtime/             # 核心 Runtime（纯执行引擎）
+│   │   ├── agent-loop.ts    # 核心循环：async generator
 │   │   ├── agent-runtime.ts # 执行引擎
 │   │   ├── intent-classifier.ts # 意图分类器
 │   │   ├── llm-client.ts    # LLM 调用抽象
@@ -220,6 +222,49 @@ POST /api/session/resume
 {"jobId": "job_20260322_2201_a1b2c3"}
 ```
 
+## Agent Runtime 架构
+
+### agentLoop - 核心执行引擎
+
+`agentLoop` 是一个 async generator，产出事件流：
+
+```typescript
+for await (const event of agentLoop(messages, context, config)) {
+  console.log(event.type);
+  // agent_start, turn_start, message_update, tool_execution_start, ...
+}
+```
+
+### 声明式 Agent 配置
+
+Agent 不继承 runtime，只声明能力：
+
+```typescript
+const dataAgentConfig = {
+  id: 'data-agent',
+  name: 'Data Agent',
+  systemPrompt: '你是一个数据分析助手...',
+  tools: [readFileTool, exploreDataTool, transformDataTool],
+  convertToLlm: (messages) => messages.filter(m => ['user', 'assistant', 'tool'].includes(m.role)),
+};
+```
+
+### 事件类型
+
+| 事件 | 说明 |
+|------|------|
+| `agent_start` | Agent 开始执行 |
+| `agent_end` | Agent 执行结束 |
+| `turn_start` | 单轮对话开始 |
+| `turn_end` | 单轮对话结束 |
+| `message_start` | LLM 消息开始 |
+| `message_update` | LLM 消息更新（流式） |
+| `message_end` | LLM 消息结束 |
+| `tool_execution_start` | 工具执行开始 |
+| `tool_execution_end` | 工具执行结束 |
+| `tool_result` | 工具执行结果 |
+| `error` | 错误事件 |
+
 ## 依赖说明
 
 本地 Python 环境需要：
@@ -235,3 +280,21 @@ POST /api/session/resume
 - WebSocket 当前用于会话状态同步，不做 token 级流式输出
 - 仅完整实现了 `Data Agent + csv-skill + bioinfo-skill`
 - `Model Agent` / `Analysis Agent` 仍未进入本阶段实现
+
+## 架构演进
+
+### 已完成的重构
+
+1. **Agent Runtime 与业务逻辑分离**
+   - 新增 `runtime/agent-loop.ts`，实现纯执行引擎
+   - Agent 不再继承 BaseAgent，改为声明式配置
+   - 支持事件流（agent_start, turn_start, message_update 等）
+
+2. **声明式 Agent 配置**
+   - DataAgent 改为声明 `systemPrompt`、`tools`、`convertToLlm`
+   - 意图规则由各 Agent 声明，便于扩展
+
+3. **Job Workspace 架构**
+   - 任务隔离：每个任务有独立的 inputs/outputs/checkpoints 目录
+   - 执行轨迹：trace.jsonl 记录每步操作
+   - 任务恢复：支持从 checkpoint 恢复

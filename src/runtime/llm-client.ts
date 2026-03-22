@@ -4,11 +4,17 @@
 
 import OpenAI from 'openai';
 import type { ConversationContext, Intent } from '../agents/types.js';
+import type { AgentMessage, AgentTool, ToolCall } from './agent-loop.js';
 
 export interface LLMClientConfig {
   apiKey: string;
   baseUrl: string;
   model: string;
+}
+
+export interface ChatWithToolsResult {
+  content: string;
+  toolCalls: ToolCall[];
 }
 
 export class LLMClient {
@@ -112,6 +118,68 @@ export class LLMClient {
       return response.choices[0]?.message?.content || '我暂时没有拿到模型回复。';
     } catch {
       return 'LLM API 当前不可达，我先按现有数据元信息给出回答。';
+    }
+  }
+
+  /**
+   * 带工具调用的 LLM 调用
+   */
+  async chatWithTools(
+    messages: AgentMessage[],
+    tools: AgentTool[]
+  ): Promise<ChatWithToolsResult> {
+    if (!this.openai) {
+      return {
+        content: '当前未配置 LLM API。',
+        toolCalls: [],
+      };
+    }
+
+    try {
+      const openaiMessages = messages.map((m) => ({
+        role: m.role as 'user' | 'assistant' | 'system' | 'tool',
+        content: m.content,
+        ...(m.toolCallId ? { tool_call_id: m.toolCallId } : {}),
+        ...(m.name ? { name: m.name } : {}),
+      }));
+
+      const toolDefinitions = tools.map((t) => ({
+        type: 'function' as const,
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }));
+
+      const response = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: openaiMessages,
+        tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
+        temperature: 0.2,
+        max_tokens: 1000,
+      });
+
+      const choice = response.choices[0];
+      const content = choice?.message?.content || '';
+
+      const toolCalls: ToolCall[] = [];
+      if (choice?.message?.tool_calls) {
+        for (const tc of choice.message.tool_calls) {
+          toolCalls.push({
+            id: tc.id,
+            name: tc.function.name,
+            arguments: JSON.parse(tc.function.arguments),
+          });
+        }
+      }
+
+      return { content, toolCalls };
+    } catch (error) {
+      return {
+        content: error instanceof Error ? error.message : 'LLM 调用失败',
+        toolCalls: [],
+      };
     }
   }
 }

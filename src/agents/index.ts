@@ -1,5 +1,10 @@
 import type { Agent } from './types.js';
-import { dataAgent } from './data-agent.js';
+import {
+  dataAgent,
+  dataAgentMeta,
+  dataAgentProcessor,
+  createDataAgentConfig,
+} from './data-agent.js';
 import { AgentRegistry as NewAgentRegistry } from '../registry/agent-registry.js';
 
 /**
@@ -30,11 +35,17 @@ class SimpleAgentRegistry {
 }
 
 export const agentRegistry = new SimpleAgentRegistry();
-agentRegistry.register(dataAgent);
+agentRegistry.register(dataAgent as Agent);
 
 // 导出新的 registry 供高级使用
 export { NewAgentRegistry };
 
-export { dataAgent };
+// 导出 Data Agent 相关
+export {
+  dataAgent,
+  dataAgentMeta,
+  dataAgentProcessor,
+  createDataAgentConfig,
+};
 export * from './types.js';
 export * from './base.js';

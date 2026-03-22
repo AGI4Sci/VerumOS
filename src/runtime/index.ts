@@ -3,7 +3,7 @@
  */
 
 export { AgentRuntime, type RuntimeConfig } from './agent-runtime.js';
-export { LLMClient, type LLMClientConfig } from './llm-client.js';
+export { LLMClient, type LLMClientConfig, type ChatWithToolsResult } from './llm-client.js';
 export { IntentClassifier, type IntentRule, type IntentClassifierConfig } from './intent-classifier.js';
 export {
   ConversationStateMachine,
@@ -12,3 +12,18 @@ export {
   createEmptyContext,
   appendMessage,
 } from './conversation-state.js';
+export {
+  agentLoop,
+  createAgentContext,
+  pushMessage,
+  pushSteering,
+  type AgentEventType,
+  type AgentEvent,
+  type AgentTool,
+  type ToolCall,
+  type ToolResult,
+  type AgentConfig,
+  type AgentMessage,
+  type AgentLoopConfig,
+  type AgentContext,
+} from './agent-loop.js';
