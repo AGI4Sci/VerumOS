@@ -6,8 +6,10 @@ import { config } from './config.js';
 import chatRouter from './routes/chat.js';
 import uploadRouter from './routes/upload.js';
 import requirementRouter from './routes/requirement.js';
+import jobRouter from './routes/job.js';
 import { initializeSkills } from './skills/index.js';
 import { ensureDataDir } from './utils/data.js';
+import { ensureJobDirs } from './job/index.js';
 
 const app = new Hono();
 
@@ -18,11 +20,13 @@ app.get('/health', (c) => c.json({ ok: true }));
 app.route('/api', chatRouter);
 app.route('/api', uploadRouter);
 app.route('/api', requirementRouter);
+app.route('/api', jobRouter);
 app.get('/', serveStatic({ path: './web/index.html' }));
 app.use('/*', serveStatic({ root: './web' }));
 
 export async function initializeApp(): Promise<Hono> {
   await ensureDataDir();
+  await ensureJobDirs();
   await initializeSkills();
   return app;
 }

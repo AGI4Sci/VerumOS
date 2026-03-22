@@ -9,6 +9,13 @@
 - **csv-skill**：CSV/TSV/Excel 文件处理，支持读取、探索、转换、合并、转置
 - **bioinfo-skill**：生物信息学分析，支持单细胞表达矩阵处理、QC、标准化、marker 基因分析
 - **需求文档系统**：支持 Markdown 格式的需求文档，自动生成工具链
+- **Job Workspace**：任务隔离、持久化、执行轨迹记录、任务恢复
+
+### 架构亮点
+- **Agent Runtime**：核心执行引擎，支持意图识别、Agent 路由、工具调用编排
+- **Agent Registry**：支持多 Agent 注册和意图路由
+- **Skill Registry**：支持多 Skill 注册和管理
+- **意图规则声明式定义**：意图识别规则由各 Agent 声明，便于扩展和维护
 
 ### API 端点
 - `POST /api/session` - 创建会话
@@ -18,6 +25,9 @@
 - `GET/POST /api/requirement/:sessionId` - 需求文档管理
 - `GET /api/requirement/:sessionId/toolchain` - 获取工具链
 - `GET /api/files` - 列出已上传文件
+- `GET /api/jobs` - 列出所有任务
+- `GET /api/jobs/:jobId` - 获取任务详情
+- `POST /api/session/resume` - 恢复任务
 - `GET /health` - 健康检查
 - `WS /ws` - WebSocket 会话同步
 
@@ -32,6 +42,14 @@
 ```text
 VerumOS/
 ├── data/                     # 运行时数据目录
+│   ├── jobs/                 # 任务 workspace
+│   │   └── job_YYYYMMDD_HHMM_xxx/
+│   │       ├── job.json      # 任务元数据
+│   │       ├── trace.jsonl   # 执行轨迹
+│   │       ├── inputs/       # 输入资产
+│   │       ├── outputs/      # 输出资产
+│   │       └── checkpoints/  # 中间状态
+│   ├── sessions/             # 会话持久化
 │   └── 需求文档_单细胞分析.md  # 示例需求文档
 ├── skills/
 │   ├── csv-skill/
@@ -39,16 +57,28 @@ VerumOS/
 │   └── bioinfo-skill/
 │       └── SKILL.md         # Bioinfo Skill 描述文件
 ├── src/
-│   ├── agents/              # Agent 基类、类型、Data Agent
-│   │   ├── base.ts          # Agent 基类
+│   ├── agents/              # Agent 实现
+│   │   ├── base.ts          # Agent 基类（通用能力）
 │   │   ├── data-agent.ts    # Data Agent 实现
 │   │   ├── requirement-doc.ts # 需求文档管理
 │   │   └── types.ts         # 类型定义
+│   ├── runtime/             # 核心 Runtime
+│   │   ├── agent-runtime.ts # 执行引擎
+│   │   ├── intent-classifier.ts # 意图分类器
+│   │   ├── llm-client.ts    # LLM 调用抽象
+│   │   └── conversation-state.ts # 对话状态机
+│   ├── registry/            # 注册表
+│   │   ├── agent-registry.ts # Agent 注册表
+│   │   └── skill-registry.ts # Skill 注册表
+│   ├── job/                 # 任务管理
+│   │   ├── types.ts         # Job 类型定义
+│   │   └── manager.ts       # Job 管理器
 │   ├── execution/           # 本地 Python 执行器
 │   ├── routes/              # API 路由
 │   │   ├── chat.ts          # 聊天 API
 │   │   ├── upload.ts        # 文件上传 API
-│   │   └── requirement.ts   # 需求文档 API
+│   │   ├── requirement.ts   # 需求文档 API
+│   │   └── job.ts           # 任务 API
 │   ├── skills/              # Skill 运行时
 │   │   ├── csv-skill.ts     # CSV Skill 实现
 │   │   ├── bioinfo-skill.ts # Bioinfo Skill 实现
@@ -58,7 +88,7 @@ VerumOS/
 │   ├── app.ts               # Hono app
 │   ├── config.ts            # 环境配置
 │   ├── server.ts            # 服务入口
-│   └── session-store.ts     # 内存会话存储
+│   └── session-store.ts     # 会话持久化存储
 ├── web/
 │   └── index.html           # 前端 Demo
 ├── .env.example
@@ -76,14 +106,14 @@ cp .env.example .env
 
 配置项：
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `LLM_API_KEY` | 中转站 API Key | - |
-| `LLM_BASE_URL` | 中转站 API 地址 | `http://35.220.164.252:3888/v1/` |
-| `LLM_MODEL` | 模型名称 | `glm-5` |
-| `PORT` | 服务端口 | `3000` |
-| `DATA_DIR` | 运行时数据目录 | `./data` |
-| `PYTHON_PATH` | Python 解释器路径 | `/opt/homebrew/Caskroom/miniconda/base/bin/python` |
+| 变量 | 说明 | 必填 |
+|------|------|------|
+| `LLM_API_KEY` | 中转站 API Key | ✅ |
+| `LLM_BASE_URL` | 中转站 API 地址 | ✅ |
+| `PYTHON_PATH` | Python 解释器路径 | ✅ |
+| `LLM_MODEL` | 模型名称（默认 `glm-5`） | ❌ |
+| `PORT` | 服务端口（默认 `3000`） | ❌ |
+| `DATA_DIR` | 运行时数据目录（默认 `./data`） | ❌ |
 
 ## 运行方式
 
@@ -166,6 +196,30 @@ curl -X POST http://localhost:3000/api/upload \
 | `normalize_counts` | 标准化（CPM、TPM、log1p、Scanpy） |
 | `find_markers` | 寻找 marker 基因 |
 
+## Job Workspace 架构
+
+每个任务有独立的工作空间：
+
+```
+data/jobs/job_20260322_2201_a1b2c3/
+├── job.json          # 任务元数据（状态、创建时间、意图）
+├── trace.jsonl       # 执行轨迹（每步操作记录）
+├── inputs/           # 输入资产
+├── outputs/          # 输出资产
+└── checkpoints/      # 中间状态（用于恢复）
+```
+
+### 任务恢复
+
+```bash
+# 列出所有任务
+GET /api/jobs
+
+# 恢复任务
+POST /api/session/resume
+{"jobId": "job_20260322_2201_a1b2c3"}
+```
+
 ## 依赖说明
 
 本地 Python 环境需要：
@@ -178,7 +232,6 @@ curl -X POST http://localhost:3000/api/upload \
 
 ## 当前限制
 
-- 会话存储仍为内存实现，重启后不会保留
 - WebSocket 当前用于会话状态同步，不做 token 级流式输出
 - 仅完整实现了 `Data Agent + csv-skill + bioinfo-skill`
 - `Model Agent` / `Analysis Agent` 仍未进入本阶段实现

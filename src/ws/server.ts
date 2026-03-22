@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Server } from 'node:http';
-import type { Socket } from 'node:net';
+import type { Duplex } from 'node:stream';
 
 interface WebSocketEvent {
   type: string;
@@ -9,7 +9,7 @@ interface WebSocketEvent {
   timestamp?: number;
 }
 
-const clientsBySession = new Map<string, Set<Socket>>();
+const clientsBySession = new Map<string, Set<Duplex>>();
 
 export function attachWebSocketServer(server: Server): void {
   server.on('upgrade', (request, socket) => {
@@ -45,7 +45,7 @@ export function attachWebSocketServer(server: Server): void {
     ].join('\r\n'));
 
     const sessionId = url.searchParams.get('sessionId') || 'anonymous';
-    const clients = clientsBySession.get(sessionId) || new Set<Socket>();
+    const clients = clientsBySession.get(sessionId) || new Set<Duplex>();
     clients.add(socket);
     clientsBySession.set(sessionId, clients);
 
@@ -102,7 +102,7 @@ export function emitSessionEvent(sessionId: string, event: WebSocketEvent): void
   }
 }
 
-function sendEvent(socket: Socket, event: WebSocketEvent): void {
+function sendEvent(socket: Duplex, event: WebSocketEvent): void {
   const payload = Buffer.from(JSON.stringify(event), 'utf8');
   socket.write(encodeTextFrame(payload));
 }

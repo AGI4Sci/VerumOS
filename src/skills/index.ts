@@ -3,13 +3,17 @@ import path from 'node:path';
 import { csvSkill } from './csv-skill.js';
 import { bioinfoSkill } from './bioinfo-skill.js';
 import type { Skill, SkillCategory, SkillManifest } from './types.js';
+import { SkillRegistry as NewSkillRegistry } from '../registry/skill-registry.js';
 
 const builtInSkills = new Map<string, Skill>([
   ['csv-skill', csvSkill],
   ['bioinfo-skill', bioinfoSkill],
 ]);
 
-class SkillRegistry {
+/**
+ * 简单的 Skill 注册表（向后兼容）
+ */
+class SimpleSkillRegistry {
   private readonly skills = new Map<string, Skill>();
   private readonly manifests = new Map<string, SkillManifest>();
   private readonly categories = new Map<SkillCategory, string[]>();
@@ -40,7 +44,10 @@ class SkillRegistry {
   }
 }
 
-export const skillRegistry = new SkillRegistry();
+export const skillRegistry = new SimpleSkillRegistry();
+
+// 导出新的 registry 供高级使用
+export { NewSkillRegistry };
 
 export async function initializeSkills(skillsDir = path.resolve('skills')): Promise<SkillManifest[]> {
   const manifests = await loadSkillsFromDir(skillsDir);
@@ -126,7 +133,12 @@ function parseManifest(content: string): SkillManifest | null {
     parent[key] = parseScalar(rawValue);
   }
 
-  return root as SkillManifest;
+  // 验证是否有 name 属性
+  if (!root.name || typeof root.name !== 'string') {
+    return null;
+  }
+
+  return root as unknown as SkillManifest;
 }
 
 function parseScalar(value: string): unknown {

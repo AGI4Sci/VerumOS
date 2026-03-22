@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { dataAgent } from '../agents/data-agent.js';
 import type { Message } from '../agents/types.js';
 import { config } from '../config.js';
-import { appendMessage, getOrCreateSession, serializeContext } from '../session-store.js';
+import { appendMessage, getOrCreateSession, serializeContextForResponse, updateSession } from '../session-store.js';
 import { ensureDataDir } from '../utils/data.js';
 import { emitSessionEvent } from '../ws/server.js';
 
@@ -30,13 +30,13 @@ uploadRouter.post('/upload', async (c) => {
     const savedPath = path.resolve(dataDir, safeName);
     await fs.writeFile(savedPath, Buffer.from(await file.arrayBuffer()));
 
-    const context = getOrCreateSession(sessionId);
+    const context = await getOrCreateSession(sessionId);
     const uploadMessage: Message = {
       role: 'user',
       content: `上传文件：${file.name}`,
       timestamp: Date.now(),
     };
-    appendMessage(context.sessionId, uploadMessage);
+    await appendMessage(context.sessionId, uploadMessage);
 
     const response = await dataAgent.ingestFile(savedPath, context, file.name);
     const assistantMessage: Message = {
@@ -44,7 +44,10 @@ uploadRouter.post('/upload', async (c) => {
       content: response.content,
       timestamp: Date.now(),
     };
-    appendMessage(context.sessionId, assistantMessage);
+    await appendMessage(context.sessionId, assistantMessage);
+
+    // 更新上下文（因为 ingestFile 修改了 datasets）
+    await updateSession(context);
 
     emitSessionEvent(context.sessionId, {
       type: 'dataset.registered',
@@ -66,7 +69,7 @@ uploadRouter.post('/upload', async (c) => {
         type: ext,
       },
       response,
-      context: serializeContext(context),
+      context: serializeContextForResponse(context),
     });
   } catch (error) {
     return c.json({

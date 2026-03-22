@@ -1,30 +1,30 @@
 import { Hono } from 'hono';
 import { agentRegistry } from '../agents/index.js';
 import type { Message } from '../agents/types.js';
-import { appendMessage, createSession, getOrCreateSession, getSession, serializeContext } from '../session-store.js';
+import { appendMessage, createSession, getOrCreateSession, getSession, serializeContextForResponse, updateSession } from '../session-store.js';
 import { emitSessionEvent } from '../ws/server.js';
 
 const chatRouter = new Hono();
 
-chatRouter.post('/session', (c) => {
-  const context = createSession();
+chatRouter.post('/session', async (c) => {
+  const context = await createSession();
   return c.json({
     ok: true,
     sessionId: context.sessionId,
-    context: serializeContext(context),
+    context: serializeContextForResponse(context),
   });
 });
 
-chatRouter.get('/session/:id', (c) => {
-  const context = getSession(c.req.param('id'));
+chatRouter.get('/session/:id', async (c) => {
+  const context = await getSession(c.req.param('id'));
   if (!context) {
     return c.json({ ok: false, error: 'Session not found' }, 404);
   }
-  return c.json({ ok: true, context: serializeContext(context) });
+  return c.json({ ok: true, context: serializeContextForResponse(context) });
 });
 
-chatRouter.get('/history/:sessionId', (c) => {
-  const context = getSession(c.req.param('sessionId'));
+chatRouter.get('/history/:sessionId', async (c) => {
+  const context = await getSession(c.req.param('sessionId'));
   if (!context) {
     return c.json({ ok: false, error: 'Session not found' }, 404);
   }
@@ -39,14 +39,14 @@ chatRouter.post('/chat', async (c) => {
       return c.json({ ok: false, error: 'Message is required' }, 400);
     }
 
-    const context = getOrCreateSession(typeof body.sessionId === 'string' ? body.sessionId : undefined);
+    const context = await getOrCreateSession(typeof body.sessionId === 'string' ? body.sessionId : undefined);
 
     const userMessage: Message = {
       role: 'user',
       content: message,
       timestamp: Date.now(),
     };
-    appendMessage(context.sessionId, userMessage);
+    await appendMessage(context.sessionId, userMessage);
 
     const agent = agentRegistry.getDefault();
     const response = await agent.processMessage(message, context);
@@ -56,7 +56,7 @@ chatRouter.post('/chat', async (c) => {
       content: response.content,
       timestamp: Date.now(),
     };
-    appendMessage(context.sessionId, assistantMessage);
+    await appendMessage(context.sessionId, assistantMessage);
 
     emitSessionEvent(context.sessionId, {
       type: 'chat.completed',
@@ -71,7 +71,7 @@ chatRouter.post('/chat', async (c) => {
       sessionId: context.sessionId,
       agentId: agent.id,
       response,
-      context: serializeContext(context),
+      context: serializeContextForResponse(context),
     });
   } catch (error) {
     return c.json({

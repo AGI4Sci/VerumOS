@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { BaseAgent } from './base.js';
-import type { AgentCapabilities, AgentResponse, ConversationContext, Dataset, DatasetColumn, DatasetMetadata, Intent } from './types.js';
+import type { AgentCapabilities, AgentResponse, ConversationContext, Dataset, DatasetColumn, DatasetMetadata, Intent, IntentRule, IntentType } from './types.js';
 import { csvSkill } from '../skills/csv-skill.js';
 import { bioinfoSkill } from '../skills/bioinfo-skill.js';
 import {
@@ -20,6 +20,66 @@ interface ReadResult extends DatasetMetadata {
   preview: Record<string, unknown>[];
 }
 
+/**
+ * Data Agent 的意图规则
+ * 声明式定义，便于扩展和维护
+ */
+const DATA_AGENT_INTENT_RULES: IntentRule[] = [
+  {
+    intent: 'upload' as IntentType,
+    patterns: [/上传|加载|读取|导入|file|csv|xlsx|xls|tsv/i],
+    confidence: 0.95,
+    description: '上传或读取文件',
+  },
+  {
+    intent: 'explore' as IntentType,
+    patterns: [/探索|预览|概览|统计|summary|describe/i],
+    confidence: 0.92,
+    description: '探索数据概览',
+  },
+  {
+    intent: 'merge' as IntentType,
+    patterns: [/合并|merge|join/i],
+    confidence: 0.9,
+    description: '合并数据集',
+  },
+  {
+    intent: 'transform' as IntentType,
+    patterns: [/过滤|标准化|归一化|log2|transform|normalize|filter/i],
+    confidence: 0.88,
+    description: '数据转换',
+  },
+  {
+    intent: 'requirement' as IntentType,
+    patterns: [/需求|目标|想做|分析方案|细胞类型|鉴定|单细胞|scRNA|表达矩阵/i],
+    confidence: 0.9,
+    description: '需求讨论',
+  },
+  {
+    intent: 'execute' as IntentType,
+    patterns: [/执行|开始|run|execute|确认执行/i],
+    confidence: 0.85,
+    description: '执行分析方案',
+  },
+  {
+    intent: 'question' as IntentType,
+    patterns: [/多少行|几行|多少列|几列|列名|行数|列数/i],
+    confidence: 0.98,
+    description: '关于数据的具体问题',
+  },
+];
+
+const DATA_AGENT_INTENT_TYPES = [
+  'upload',
+  'explore',
+  'transform',
+  'merge',
+  'requirement',
+  'execute',
+  'question',
+  'unknown',
+];
+
 export class DataAgent extends BaseAgent {
   id = 'data-agent';
   name = 'Data Agent';
@@ -30,6 +90,20 @@ export class DataAgent extends BaseAgent {
     outputs: ['dataset', 'summary'],
     skills: ['csv-skill', 'bioinfo-skill'],
   };
+
+  /**
+   * 获取意图类型列表
+   */
+  getIntentTypes(): string[] {
+    return DATA_AGENT_INTENT_TYPES;
+  }
+
+  /**
+   * 获取意图规则
+   */
+  getIntentRules(): IntentRule[] {
+    return DATA_AGENT_INTENT_RULES;
+  }
 
   constructor() {
     super();
@@ -62,6 +136,87 @@ export class DataAgent extends BaseAgent {
           content: '我现在主要支持数据上传、数据概览、需求讨论，以及像”这份数据有多少行？”这样的问答。',
         };
     }
+  }
+
+  /**
+   * 意图分析（使用声明的规则）
+   */
+  private async analyzeIntent(message: string, context: ConversationContext): Promise<Intent> {
+    // 1. 使用声明的规则进行启发式匹配
+    const heuristicIntent = this.heuristicIntent(message, context);
+    if (heuristicIntent.confidence >= 0.85 || !this.isLLMAvailable()) {
+      return heuristicIntent;
+    }
+
+    // 2. LLM 分类
+    const datasetNames = Array.from(context.datasets.values()).map((dataset) => dataset.name);
+    const systemPrompt = `你是一个意图分类器。你只能返回 JSON，不要返回 Markdown。
+
+候选意图：${DATA_AGENT_INTENT_TYPES.join('、')}。
+
+- upload: 上传或读取文件
+- explore: 探索数据概览
+- transform: 数据转换（过滤、标准化等）
+- merge: 合并数据集
+- requirement: 需求讨论（用户想讨论分析目标、方案）
+- execute: 执行已确认的分析方案
+- question: 关于数据的具体问题
+- unknown: 无法识别
+
+当前数据集：${datasetNames.length > 0 ? datasetNames.join(', ') : '无'}
+
+返回格式：
+{“type”:”upload”,”confidence”:0.95,”datasetId”:null,”params”:{}}`;
+
+    try {
+      const response = await this.callLLM(systemPrompt + '\n\n用户消息：' + message, context);
+      // 尝试解析 JSON
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]) as Intent;
+        return {
+          type: parsed.type,
+          confidence: parsed.confidence,
+          datasetId: parsed.datasetId,
+          params: parsed.params,
+        };
+      }
+    } catch {
+      // 解析失败，使用启发式结果
+    }
+
+    return heuristicIntent;
+  }
+
+  /**
+   * 启发式意图匹配（使用声明的规则）
+   */
+  private heuristicIntent(message: string, context: ConversationContext): Intent {
+    const hasDataset = context.datasets.size > 0;
+
+    // 使用声明的规则匹配
+    for (const rule of DATA_AGENT_INTENT_RULES) {
+      for (const pattern of rule.patterns) {
+        if (pattern.test(message)) {
+          return {
+            type: rule.intent as IntentType,
+            confidence: rule.confidence ?? 0.9,
+            datasetId: context.activeDatasetId,
+          };
+        }
+      }
+    }
+
+    // 如果有数据集但没有匹配到具体意图，默认为 question
+    if (hasDataset) {
+      return {
+        type: 'question',
+        confidence: 0.75,
+        datasetId: context.activeDatasetId,
+      };
+    }
+
+    return { type: 'unknown', confidence: 0.4 };
   }
 
   async ingestFile(filePath: string, context: ConversationContext, displayName?: string): Promise<AgentResponse> {

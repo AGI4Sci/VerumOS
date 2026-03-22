@@ -89,3 +89,21 @@ export interface QuestionOption {
   label: string;
   value: string | number | boolean;
 }
+
+/**
+ * 意图规则（用于启发式匹配）
+ */
+export interface IntentRule {
+  intent: IntentType | string;
+  patterns: RegExp[];
+  confidence?: number;
+  description?: string;
+}
+
+/**
+ * Agent 意图声明
+ */
+export interface AgentIntentDeclaration {
+  types: string[];
+  rules: IntentRule[];
+}

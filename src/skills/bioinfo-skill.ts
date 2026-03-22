@@ -87,8 +87,8 @@ export class BioinfoSkill extends BaseSkill {
           this.generateQualityControlCode(
             String(params.path || ''),
             (params.min_genes as number) ?? 200,
-            params.max_genes as number | undefined,
-            (params.max_mito_pct as number) ?? 20
+            (params.max_mito_pct as number) ?? 20,
+            params.max_genes as number | undefined
           )
         );
       case 'normalize_counts':
@@ -165,7 +165,7 @@ print(json.dumps(result, ensure_ascii=False))
 `;
   }
 
-  private generateQualityControlCode(filePath: string, minGenes: number, maxGenes?: number, maxMitoPct: number): string {
+  private generateQualityControlCode(filePath: string, minGenes: number, maxMitoPct: number, maxGenes?: number): string {
     return `${this.pythonPrelude()}
 
 file_path = ${JSON.stringify(filePath)}

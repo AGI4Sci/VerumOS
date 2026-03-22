@@ -1,7 +1,11 @@
 import type { Agent } from './types.js';
 import { dataAgent } from './data-agent.js';
+import { AgentRegistry as NewAgentRegistry } from '../registry/agent-registry.js';
 
-class AgentRegistry {
+/**
+ * 简单的 Agent 注册表（向后兼容）
+ */
+class SimpleAgentRegistry {
   private readonly agents = new Map<string, Agent>();
 
   register(agent: Agent): void {
@@ -19,10 +23,17 @@ class AgentRegistry {
     }
     return agent;
   }
+
+  getAll(): Agent[] {
+    return Array.from(this.agents.values());
+  }
 }
 
-export const agentRegistry = new AgentRegistry();
+export const agentRegistry = new SimpleAgentRegistry();
 agentRegistry.register(dataAgent);
+
+// 导出新的 registry 供高级使用
+export { NewAgentRegistry };
 
 export { dataAgent };
 export * from './types.js';
