@@ -28,12 +28,16 @@
 - `GET /api/files` - 列出已上传文件
 - `GET /api/jobs` - 列出所有任务
 - `GET /api/jobs/:jobId` - 获取任务详情
+- `POST /api/jobs/create` - 创建新任务（支持自定义名称）
+- `PATCH /api/jobs/:jobId` - 更新任务名称/状态
+- `GET /api/jobs/:jobId/files` - 获取任务文件列表
 - `POST /api/session/resume` - 恢复任务
 - `GET /health` - 健康检查
 - `WS /ws` - WebSocket 会话同步
 
 ### 前端功能
-- 双栏布局：左侧聊天区 + 右侧需求文档/工具链/数据集面板
+- 三栏布局：左侧 Job Explorer + 中间聊天区 + 右侧需求文档/工具链/数据集面板
+- Job Explorer：任务列表展示、创建新任务、切换任务、查看任务文件
 - 数据预览表格：显示前 20 行，支持横向滚动，列类型标注
 - 需求文档编辑器：Markdown 编辑 + 实时保存
 - 工具链预览：自动生成推荐工具链

@@ -41,15 +41,15 @@ body {
   line-height: 1.6;
 }
 
-/* Layout - Two column */
+/* Layout - Three column */
 .app {
   display: grid;
-  grid-template-columns: 1fr 400px;
+  grid-template-columns: 220px 1fr 400px;
   grid-template-rows: 56px 1fr;
   height: 100vh;
   grid-template-areas:
-    "header header"
-    "main sidebar";
+    "header header header"
+    "explorer main sidebar";
 }
 
 /* Header */
@@ -763,6 +763,133 @@ body {
 }
 
 .message { animation: fadeIn 0.3s ease; }
+
+/* Job Explorer */
+.job-explorer {
+  grid-area: explorer;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.explorer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.explorer-title {
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.explorer-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.icon-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.explorer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.job-item {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.job-item:hover { background: var(--surface2); }
+.job-item.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.job-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.job-item-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.job-item-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.job-item-status.idle { background: var(--text-faint); }
+.job-item-status.running { background: var(--amber); }
+.job-item-status.completed { background: var(--accent); }
+.job-item-status.error { background: var(--red); }
+
+.job-item-meta {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 4px;
+  font-family: 'DM Mono', monospace;
+}
+
+.job-files { margin-top: 6px; padding-left: 12px; }
+
+.job-file-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.job-file-item:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.explorer-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
 </style>
 </head>
 <body>
@@ -798,6 +925,22 @@ body {
       </div>
     </div>
   </header>
+
+  <!-- Job Explorer -->
+  <aside class="job-explorer" id="jobExplorer">
+    <div class="explorer-header">
+      <span class="explorer-title">工作区</span>
+      <div class="explorer-actions">
+        <button class="icon-btn" onclick="createNewJob()" title="新建任务">+</button>
+        <button class="icon-btn" onclick="loadJobs()" title="刷新">↻</button>
+      </div>
+    </div>
+    <div class="explorer-content" id="explorerContent">
+      <div class="explorer-empty">
+        加载中...
+      </div>
+    </div>
+  </aside>
 
   <!-- Main -->
   <main class="main">
@@ -931,6 +1074,10 @@ let datasets = [];
 let isBusy = false;
 let currentRequirement = null;
 let currentToolChain = [];
+
+// Job Explorer State
+let jobs = [];
+let currentJobId = null;
 
 function escapeHtml(value) {
   return String(value)
@@ -1290,6 +1437,12 @@ async function sendMessage() {
 }
 
 async function uploadFile() {
+  // 确保有当前 job
+  if (!currentJobId) {
+    await createNewJob();
+    if (!currentJobId) return;  // 用户取消
+  }
+
   const picker = document.createElement('input');
   picker.type = 'file';
   picker.accept = '.csv,.tsv,.xlsx,.xls';
@@ -1297,7 +1450,6 @@ async function uploadFile() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    await ensureSession();
     addMessage('user', `上传文件：${file.name}`);
 
     const formData = new FormData();
@@ -1308,7 +1460,9 @@ async function uploadFile() {
       const response = await fetch('/api/upload', { method: 'POST', body: formData });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.error || 'Upload failed');
+
       refreshDataPanel(payload.context?.datasets || []);
+      loadJobFiles(currentJobId);
       addMessage('data', payload.response.content, renderResultCard(payload.response.result));
     } catch (error) {
       addMessage('system', `上传失败：${error.message || error}`);
@@ -1325,6 +1479,128 @@ function showHelp() {
   addMessage('system', '你可以：\n1. 上传 CSV/Excel 文件\n2. 说"我想做细胞类型鉴定"开始需求讨论\n3. 问"这份数据有多少行？"\n4. 说"探索这份数据"');
 }
 
+// Job Explorer Functions
+async function loadJobs() {
+  try {
+    const response = await fetch('/api/jobs');
+    const payload = await response.json();
+    if (payload.ok) {
+      jobs = payload.jobs;
+      renderJobList();
+    }
+  } catch (error) {
+    console.error('Failed to load jobs:', error);
+  }
+}
+
+function renderJobList() {
+  const container = document.getElementById('explorerContent');
+
+  if (!jobs.length) {
+    container.innerHTML = `
+      <div class="explorer-empty">
+        <p>暂无任务</p>
+        <p><small>点击 + 创建新任务</small></p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = jobs.map(job => `
+    <div class="job-item ${job.id === currentJobId ? 'active' : ''}"
+         onclick="selectJob('${job.id}')"
+         data-job-id="${job.id}">
+      <div class="job-item-header">
+        <span class="job-item-name" title="${escapeHtml(job.summary || job.id)}">${escapeHtml(job.summary || job.id)}</span>
+        <span class="job-item-status ${job.status}"></span>
+      </div>
+      <div class="job-item-meta">
+        ${job.state?.datasets?.length || 0} 数据集 · ${formatTimeAgo(job.createdAt)}
+      </div>
+      <div class="job-files" id="files-${job.id}"></div>
+    </div>
+  `).join('');
+
+  if (currentJobId) loadJobFiles(currentJobId);
+}
+
+async function loadJobFiles(jobId) {
+  try {
+    const response = await fetch(`/api/jobs/${jobId}/files`);
+    const payload = await response.json();
+    if (!payload.ok) return;
+
+    const container = document.getElementById(`files-${jobId}`);
+    if (!container) return;
+
+    const files = [...(payload.inputs || []), ...(payload.outputs || [])];
+    if (!files.length) { container.innerHTML = ''; return; }
+
+    container.innerHTML = files.slice(0, 5).map(f => `
+      <div class="job-file-item" onclick="event.stopPropagation()">
+        <span>📄</span>
+        <span>${escapeHtml(f.name)}</span>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Failed to load job files:', error);
+  }
+}
+
+async function selectJob(jobId) {
+  currentJobId = jobId;
+  document.querySelectorAll('.job-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.jobId === jobId);
+  });
+
+  try {
+    const response = await fetch('/api/session/resume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId }),
+    });
+    const payload = await response.json();
+    if (payload.ok) {
+      sessionId = payload.sessionId;
+      refreshDataPanel(payload.context.datasets);
+      loadJobFiles(jobId);
+    }
+  } catch (error) {
+    console.error('Failed to resume job:', error);
+  }
+}
+
+async function createNewJob() {
+  const name = prompt('请输入任务名称（可选）');
+  if (name === null) return;
+
+  try {
+    const response = await fetch('/api/jobs/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || undefined }),
+    });
+    const payload = await response.json();
+    if (payload.ok) {
+      currentJobId = payload.job.id;
+      sessionId = payload.job.sessionId;
+      await loadJobs();
+      connectWebSocket();
+    }
+  } catch (error) {
+    console.error('Failed to create job:', error);
+  }
+}
+
+function formatTimeAgo(isoString) {
+  const date = new Date(isoString);
+  const diff = Date.now() - date;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+  return date.toLocaleDateString();
+}
+
 document.getElementById('input').addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
@@ -1339,6 +1615,7 @@ document.getElementById('input').addEventListener('input', function () {
 
 window.addEventListener('load', async () => {
   setStatus('正在初始化会话...');
+  await loadJobs();  // 加载 job 列表
   await ensureSession();
   setStatus('会话已建立');
 });

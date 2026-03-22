@@ -1,12 +1,17 @@
 import { Hono } from 'hono';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { v4 as uuidv4 } from 'uuid';
 import {
   listJobs,
   getJob,
   deleteJob,
   resumeJob,
+  createJob,
+  updateJob,
 } from '../job/index.js';
+import type { Job } from '../job/types.js';
+import { config } from '../config.js';
 
 const jobRouter = new Hono();
 
@@ -111,6 +116,99 @@ jobRouter.delete('/jobs/:jobId', async (c) => {
     }
 
     return c.json({ ok: true, jobId });
+  } catch (error) {
+    return c.json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }, 500);
+  }
+});
+
+/**
+ * 创建新 Job（支持自定义名称）
+ * POST /api/jobs/create
+ */
+jobRouter.post('/jobs/create', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { name, sessionId } = body;
+
+    const newSessionId = sessionId || uuidv4();
+    const jobId = await createJob(newSessionId);
+
+    if (name) {
+      await updateJob(jobId, { summary: name });
+    }
+
+    const job = await getJob(jobId);
+    return c.json({ ok: true, job });
+  } catch (error) {
+    return c.json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }, 500);
+  }
+});
+
+/**
+ * 更新 Job
+ * PATCH /api/jobs/:jobId
+ */
+jobRouter.patch('/jobs/:jobId', async (c) => {
+  try {
+    const jobId = c.req.param('jobId');
+    const body = await c.req.json();
+    const { name, status } = body;
+
+    const updates: Partial<Job> = {};
+    if (name) updates.summary = name;
+    if (status) updates.status = status;
+
+    await updateJob(jobId, updates);
+    const job = await getJob(jobId);
+
+    return c.json({ ok: true, job });
+  } catch (error) {
+    return c.json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }, 500);
+  }
+});
+
+/**
+ * 获取 Job 文件列表
+ * GET /api/jobs/:jobId/files
+ */
+jobRouter.get('/jobs/:jobId/files', async (c) => {
+  try {
+    const jobId = c.req.param('jobId');
+    const job = await getJob(jobId);
+    if (!job) {
+      return c.json({ ok: false, error: 'Job not found' }, 404);
+    }
+
+    const inputsDir = path.join(config.data.dir, jobId, 'inputs');
+    const outputsDir = path.join(config.data.dir, jobId, 'outputs');
+
+    const readDir = async (dir: string) => {
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        return entries
+          .filter(e => e.isFile())
+          .map(e => ({
+            name: e.name,
+            path: path.join(dir, e.name),
+          }));
+      } catch {
+        return [];
+      }
+    };
+
+    const inputs = await readDir(inputsDir);
+    const outputs = await readDir(outputsDir);
+
+    return c.json({ ok: true, jobId, inputs, outputs });
   } catch (error) {
     return c.json({
       ok: false,

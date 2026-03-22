@@ -180,6 +180,10 @@ export async function saveToInputs(
   content: Buffer
 ): Promise<string> {
   const inputsDir = path.join(getJobDir(jobId), 'inputs');
+
+  // 确保目录存在
+  await fs.mkdir(inputsDir, { recursive: true });
+
   const safeName = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
   const savedPath = path.join(inputsDir, safeName);
   await fs.writeFile(savedPath, content);
