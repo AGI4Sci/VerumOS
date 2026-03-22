@@ -2,10 +2,13 @@
 node_modules/
 
 # Build
-dist/
+/dist/
 
 # Runtime data
-data/
+/data/*
+!/data/.gitkeep
+!/data/README.md
+!/data/需求文档_单细胞分析.md
 
 # Environment
 .env

@@ -1,253 +1,184 @@
 # VerumOS · 明鉴
 
-**科研 AI 操作系统** — 让每一位科研人员都能轻松使用 AI
+科研 AI 操作系统的 Phase 1 最小可运行版本。
 
----
+## 当前实现
 
-## 项目愿景
+### 核心功能
+- **Data Agent**：数据探索、清洗、整合，支持需求文档驱动的工作流
+- **csv-skill**：CSV/TSV/Excel 文件处理，支持读取、探索、转换、合并、转置
+- **bioinfo-skill**：生物信息学分析，支持单细胞表达矩阵处理、QC、标准化、marker 基因分析
+- **需求文档系统**：支持 Markdown 格式的需求文档，自动生成工具链
 
-VerumOS 是一个面向科研人员的 AI 辅助平台，让科学家能够：
+### API 端点
+- `POST /api/session` - 创建会话
+- `GET /api/session/:id` - 获取会话状态
+- `POST /api/chat` - 发送消息
+- `POST /api/upload` - 上传文件
+- `GET/POST /api/requirement/:sessionId` - 需求文档管理
+- `GET /api/requirement/:sessionId/toolchain` - 获取工具链
+- `GET /api/files` - 列出已上传文件
+- `GET /health` - 健康检查
+- `WS /ws` - WebSocket 会话同步
 
-- 📊 **轻松处理数据**：自动识别格式、探索内容、整合多源数据
-- 🧠 **快速构建模型**：对话式设计 AI 模型，自动生成代码并训练
-- 🔬 **智能分析结果**：调用领域工具和数据库，生成可信结论
-
-**核心理念**：科研人员只需描述需求，AI 负责技术实现。
-
----
-
-## 当前状态
-
-| 模块 | 状态 |
-|------|------|
-| 架构设计 | ✅ 已完成 |
-| 前端 Demo | ✅ 已完成 |
-| 实现计划 | ✅ 已完成 |
-| 后端实现 | 🔲 待开发 |
-
----
-
-## 核心架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      VerumOS Platform                        │
-│                    科研 AI 操作系统                           │
-├─────────────────────────────────────────────────────────────┤
-│  用户入口：Web UI / 飞书 / Discord / API                      │
-├─────────────────────────────────────────────────────────────┤
-│                      Agent Orchestrator                      │
-│              (对话式任务编排 + 工作流引擎)                      │
-├──────────────┬──────────────┬──────────────┬────────────────┤
-│  Data Agent  │ Model Agent  │Analysis Agent│  ... 更多 Agent │
-│  数据处理    │  模型构建    │  结果分析     │                │
-├──────────────┴──────────────┴──────────────┴────────────────┤
-│                      Skill Registry                          │
-│                   (可插拔技能注册表)                           │
-├──────────────┬──────────────┬──────────────┬────────────────┤
-│ CSV Skill    │ PyTorch Skill│ PubMed Skill │  ... 更多 Skill │
-│ Excel Skill  │ Sklearn Skill│ STRING Skill │                │
-│ FASTA Skill  │ LLM Finetune │ BLAST Skill  │                │
-│ SQL Skill    │ ...          │ ...          │                │
-├──────────────┴──────────────┴──────────────┴────────────────┤
-│                      Execution Runtime                        │
-│         本地执行 (数据处理) / 远程集群 (模型训练)               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 三大核心 Agent
-
-#### 1. Data Agent（数据助手）
-
-**职责**：数据搜集、探索、清洗、整合
-
-- 自动识别数据格式（CSV、Excel、JSON、FASTA、VCF、HDF5...）
-- 探索数据内容（统计摘要、分布、缺失值、异常值）
-- 与用户讨论数据整合方案
-- 执行数据清洗和转换
-- 多源数据整合
-
-**可插拔 Skills**：csv-skill, sql-skill, bioinfo-skill, geo-skill, tcga-skill...
-
-#### 2. Model Agent（模型助手）
-
-**职责**：AI 模型设计、训练、评估
-
-- 与用户讨论模型设计方案
-- 自动生成模型代码
-- 训练和调参
-- 模型评估和解释
-- 模型部署建议
-
-**可插拔 Skills**：pytorch-skill, sklearn-skill, transformers-skill, llm-skill...
-
-#### 3. Analysis Agent（分析助手）
-
-**职责**：调用工具、分析结果、生成报告
-
-- 调用领域工具和数据库
-- 执行分析流程
-- 可视化结果
-- 生成分析报告
-
-**可插拔 Skills**：pubmed-skill, string-skill, blast-skill, enrichment-skill...
-
----
-
-## 部署架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      用户本地电脑                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐      │
-│  │  Web UI     │◄──►│ VerumOS     │◄──►│  数据文件   │      │
-│  │  (浏览器)   │    │  本地服务   │    │  (本地存储) │      │
-│  └─────────────┘    └──────┬──────┘    └─────────────┘      │
-│                            │                                │
-│                            │ SSH (模型训练时)                │
-│                            ▼                                │
-└────────────────────────────┼────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      远程计算集群                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐      │
-│  │  Docker     │    │   GPU       │    │  模型存储   │      │
-│  │  容器       │    │   资源      │    │             │      │
-│  └─────────────┘    └─────────────┘    └─────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**设计原则**：
-- 用户数据尽可能留在本地
-- 数据处理在本地执行
-- 深度学习模型训练在远程集群执行
-- 通过 SSH 连接远程 Docker 容器
-
----
+### 前端功能
+- 双栏布局：左侧聊天区 + 右侧需求文档/工具链/数据集面板
+- 数据预览表格：显示前 20 行，支持横向滚动，列类型标注
+- 需求文档编辑器：Markdown 编辑 + 实时保存
+- 工具链预览：自动生成推荐工具链
 
 ## 项目结构
 
 ```text
 VerumOS/
+├── data/                     # 运行时数据目录
+│   └── 需求文档_单细胞分析.md  # 示例需求文档
+├── skills/
+│   ├── csv-skill/
+│   │   └── SKILL.md         # CSV Skill 描述文件
+│   └── bioinfo-skill/
+│       └── SKILL.md         # Bioinfo Skill 描述文件
+├── src/
+│   ├── agents/              # Agent 基类、类型、Data Agent
+│   │   ├── base.ts          # Agent 基类
+│   │   ├── data-agent.ts    # Data Agent 实现
+│   │   ├── requirement-doc.ts # 需求文档管理
+│   │   └── types.ts         # 类型定义
+│   ├── execution/           # 本地 Python 执行器
+│   ├── routes/              # API 路由
+│   │   ├── chat.ts          # 聊天 API
+│   │   ├── upload.ts        # 文件上传 API
+│   │   └── requirement.ts   # 需求文档 API
+│   ├── skills/              # Skill 运行时
+│   │   ├── csv-skill.ts     # CSV Skill 实现
+│   │   ├── bioinfo-skill.ts # Bioinfo Skill 实现
+│   │   └── index.ts         # Skill 注册表
+│   ├── utils/               # 工具函数
+│   ├── ws/                  # WebSocket 服务
+│   ├── app.ts               # Hono app
+│   ├── config.ts            # 环境配置
+│   ├── server.ts            # 服务入口
+│   └── session-store.ts     # 内存会话存储
 ├── web/
-│   └── index.html              # 前端 Demo
-├── plan/
-│   ├── README.md               # 架构设计文档
-│   ├── architecture.md         # 详细架构说明
-│   ├── task-01-core-platform.md
-│   ├── task-02-data-agent.md
-│   ├── task-03-model-agent.md
-│   ├── task-04-analysis-agent.md
-│   ├── task-05-skill-system.md
-│   ├── task-06-remote-execution.md
-│   └── task-07-integrations.md
-├── src/                        # 后端代码（待实现）
-├── skills/                     # 可插拔技能（待实现）
-├── README.md                   # 本文件
-└── prompt.md                   # 开发指令
+│   └── index.html           # 前端 Demo
+├── .env.example
+├── package.json
+└── tsconfig.json
 ```
 
----
+## 环境变量
 
-## 用户工作流示例
+复制 `.env.example` 为 `.env`：
 
-```
-用户: 我有一份肝癌 RNA-seq 数据（CSV）和一份临床信息（Excel），
-     想构建一个预测患者预后的深度学习模型。
-
-VerumOS:
-  [Data Agent] 我来帮你探索这两份数据...
-  
-  📊 RNA-seq 数据 (expression.csv):
-     - 373 样本 × 20,531 基因
-     - 格式: TPM normalized
-     
-  📊 临床数据 (clinical.xlsx):
-     - 373 患者 × 15 特征
-     - 关键字段: OS_time, OS_status, Age, Stage...
-     
-  🔗 整合建议:
-     1. 用患者 ID 关联两份数据
-     2. 过滤低表达基因
-     3. 标准化临床特征
-     
-  你想按这个方案整合吗？
-
-用户: 可以，但我还想加入 TCGA-LIHC 数据
-
-VerumOS:
-  [Data Agent] 好的，我来下载 TCGA-LIHC 数据...
-  ✅ 数据整合完成: 797 样本
-  
-  [Model Agent] 现在来讨论模型设计...
-  
-  🧠 建议模型架构:
-     - Transformer 编码器处理基因表达
-     - MLP 融合临床特征
-     - Cox loss 预测生存
-     
-  你想用这个架构吗？
-
-用户: 用 Transformer，加入注意力可视化
-
-VerumOS:
-  [Model Agent] 好的，我来生成代码...
-  ✅ 模型代码已生成
-  
-  需要在远程集群训练吗？（本地数据将上传到集群）
-
-用户: 开始训练
-
-VerumOS:
-  [Model Agent] 连接远程集群...
-  ✅ 训练完成！C-index: 0.82
-  
-  [Analysis Agent] 分析结果...
-  📊 关键基因: TP53, BRCA1, CDK4
-  📝 结论: 模型识别的关键基因与肝癌预后通路一致
+```bash
+cp .env.example .env
 ```
 
----
+配置项：
 
-## 技术栈
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `LLM_API_KEY` | 中转站 API Key | - |
+| `LLM_BASE_URL` | 中转站 API 地址 | `http://35.220.164.252:3888/v1/` |
+| `LLM_MODEL` | 模型名称 | `glm-5` |
+| `PORT` | 服务端口 | `3000` |
+| `DATA_DIR` | 运行时数据目录 | `./data` |
+| `PYTHON_PATH` | Python 解释器路径 | `/opt/homebrew/Caskroom/miniconda/base/bin/python` |
 
-| 层次 | 选型 |
+## 运行方式
+
+```bash
+pnpm install
+pnpm dev
+```
+
+启动后：
+
+- 健康检查：`GET http://localhost:3000/health`
+- 前端页面：`GET http://localhost:3000/`
+- WebSocket：`ws://localhost:3000/ws?sessionId=<sessionId>`
+
+## 验收流程
+
+### 1. 上传数据
+
+前端点击"上传文件"，或直接请求：
+
+```bash
+curl -X POST http://localhost:3000/api/upload \
+  -F sessionId=<session_id> \
+  -F file=@data/count_matrix.csv
+```
+
+系统会：
+1. 将文件保存到 `data/`
+2. 调用 `Data Agent`
+3. 由 `Data Agent` 调用 `csv-skill.read_file`
+4. 返回 shape / columns / preview 概览
+
+### 2. 需求讨论
+
+用户输入："我想做细胞类型鉴定"
+
+系统会：
+1. 识别为 `requirement` 意图
+2. 加载初始需求文档（如 `data/需求文档_单细胞分析.md`）
+3. 与用户讨论需求细节
+4. 自动生成工具链
+
+### 3. 执行分析
+
+用户确认方案后，系统会：
+1. 更新需求文档状态为 `confirmed`
+2. 根据工具链依次调用 Skill
+3. 返回执行结果
+
+## Data Agent 能力
+
+当前支持：
+
+- `upload`：上传或按路径读取 `csv/tsv/xlsx/xls`
+- `explore`：返回 shape、columns、missing、quality、preview
+- `question`：回答行数、列数、列名等基础问题
+- `transform`：数据转换（`filter` / `normalize` / `log2`）
+- `merge`：支持两份表格按公共列合并
+- `requirement`：需求讨论，自动生成工具链
+- `execute`：执行已确认的分析方案
+
+## Skill 系统
+
+### csv-skill
+
+| 操作 | 说明 |
 |------|------|
-| 前端 | HTML/CSS/JS (可扩展为 React/Vue) |
-| 后端 | TypeScript + Hono |
-| Agent 编排 | LangChain / 自研 |
-| 本地执行 | Node.js + Python |
-| 远程执行 | SSH + Docker |
-| 数据存储 | 本地文件系统 |
-| 模型训练 | PyTorch + GPU 集群 |
+| `read_file` | 读取 CSV/TSV/Excel 文件 |
+| `explore_data` | 数据探索（统计、缺失值、质量） |
+| `transform_data` | 数据转换（filter、normalize、log2） |
+| `merge_data` | 按键合并多个数据集 |
+| `transpose` | 矩阵转置 |
 
----
+### bioinfo-skill
 
-## 开发计划
+| 操作 | 说明 |
+|------|------|
+| `read_expression_matrix` | 读取单细胞表达矩阵，自动检测格式 |
+| `quality_control` | QC 过滤（n_genes、pct_mito 阈值） |
+| `normalize_counts` | 标准化（CPM、TPM、log1p、Scanpy） |
+| `find_markers` | 寻找 marker 基因 |
 
-详见 `plan/` 目录，按以下顺序推进：
+## 依赖说明
 
-| 阶段 | 任务 | 说明 |
-|------|------|------|
-| Phase 1 | 核心平台 | 项目脚手架、Agent 框架、对话系统 |
-| Phase 2 | Data Agent | 数据探索、格式识别、Skills 开发 |
-| Phase 3 | Model Agent | 模型设计、代码生成、远程训练 |
-| Phase 4 | Analysis Agent | 工具调用、结果分析、报告生成 |
-| Phase 5 | 集成优化 | 飞书/Discord、性能优化、文档完善 |
+本地 Python 环境需要：
 
----
+- Python 3.x
+- pandas
+- numpy
+- openpyxl（Excel 支持）
+- scanpy（可选，用于更高级的单细胞分析）
 
-## 与 openclaw 的关系
+## 当前限制
 
-VerumOS 可作为 openclaw 的一个 skill 或独立服务运行：
-
-- 复用 openclaw 的消息渠道（飞书、Discord）
-- 复用 openclaw 的 Plugin SDK
-- 独立的 Agent 编排和执行引擎
-
----
-
-## License
-
-MIT
+- 会话存储仍为内存实现，重启后不会保留
+- WebSocket 当前用于会话状态同步，不做 token 级流式输出
+- 仅完整实现了 `Data Agent + csv-skill + bioinfo-skill`
+- `Model Agent` / `Analysis Agent` 仍未进入本阶段实现

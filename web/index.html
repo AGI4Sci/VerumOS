@@ -41,15 +41,15 @@ body {
   line-height: 1.6;
 }
 
-/* Layout */
+/* Layout - Two column */
 .app {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 1fr 400px;
   grid-template-rows: 56px 1fr;
   height: 100vh;
   grid-template-areas:
-    "sidebar header"
-    "sidebar main";
+    "header header"
+    "main sidebar";
 }
 
 /* Header */
@@ -160,143 +160,96 @@ body {
   50% { opacity: 0.4; }
 }
 
-/* Sidebar */
-.sidebar {
-  grid-area: sidebar;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.sidebar-section {
-  padding: 16px 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.sidebar-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  color: var(--text-faint);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0 8px;
-  margin-bottom: 8px;
-}
-
-.agent-card {
-  padding: 12px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all 0.15s;
-  margin-bottom: 4px;
-  border: 1px solid transparent;
-}
-
-.agent-card:hover { background: var(--surface2); }
-.agent-card.active { 
-  background: var(--surface2); 
-  border-color: var(--border-active);
-}
-
-.agent-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-.agent-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.agent-icon.data { background: var(--accent-dim); color: var(--accent); }
-.agent-icon.model { background: var(--purple-dim); color: var(--purple); }
-.agent-icon.analysis { background: var(--blue-dim); color: var(--blue); }
-
-.agent-name {
-  font-weight: 500;
-  font-size: 13px;
-}
-
-.agent-status {
-  margin-left: auto;
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.agent-status.ready { background: var(--accent-dim); color: var(--accent); }
-.agent-status.working { background: var(--amber-dim); color: var(--amber); }
-
-.agent-desc {
-  font-size: 12px;
-  color: var(--text-dim);
-  line-height: 1.5;
-}
-
-/* Data panel */
-.data-panel {
-  flex: 1;
-  padding: 12px;
-  overflow-y: auto;
-}
-
-.data-item {
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  background: var(--surface2);
-  margin-bottom: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-  border: 1px solid transparent;
-}
-
-.data-item:hover { border-color: var(--border-active); }
-.data-item.active { border-color: var(--accent); background: var(--accent-dim); }
-
-.data-item-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.data-item-name {
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.data-item-type {
-  font-family: 'DM Mono', monospace;
-  font-size: 9px;
-  color: var(--text-faint);
-  background: var(--surface3);
-  padding: 1px 6px;
-  border-radius: 3px;
-}
-
-.data-item-meta {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-}
-
-/* Main */
+/* Main area */
 .main {
   grid-area: main;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--bg);
+}
+
+/* Data preview panel */
+.data-preview-panel {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  max-height: 280px;
+  overflow: hidden;
+  display: none;
+}
+
+.data-preview-panel.visible {
+  display: block;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-title {
+  font-weight: 500;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-close {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 18px;
+}
+
+.preview-close:hover { color: var(--text); }
+
+.preview-table-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 220px;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-table th {
+  background: var(--surface2);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.preview-table th .col-type {
+  font-size: 9px;
+  color: var(--text-faint);
+  display: block;
+  font-weight: 400;
+}
+
+.col-type.numeric { color: var(--accent); }
+.col-type.categorical { color: var(--blue); }
+.col-type.boolean { color: var(--purple); }
+
+.preview-table tr:hover td {
+  background: var(--surface2);
 }
 
 /* Chat area */
@@ -480,95 +433,47 @@ body {
   color: var(--text-dim);
 }
 
-/* Question card */
-.question-card {
-  background: var(--amber-dim);
-  border: 1px solid rgba(251,191,36,0.2);
+/* Toolchain card */
+.toolchain-card {
+  background: var(--blue-dim);
+  border: 1px solid rgba(96,165,250,0.2);
   border-radius: var(--radius);
   padding: 14px;
   margin-top: 12px;
 }
 
-.question-label {
+.toolchain-label {
   font-family: 'DM Mono', monospace;
   font-size: 10px;
-  color: var(--amber);
+  color: var(--blue);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 8px;
 }
 
-.question-options {
+.toolchain-steps {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.question-option {
-  padding: 10px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all 0.15s;
-  font-size: 13px;
-}
-
-.question-option:hover {
-  border-color: var(--amber);
-  background: var(--surface2);
-}
-
-/* Progress card */
-.progress-card {
-  background: var(--surface2);
-  border-radius: var(--radius);
-  padding: 14px;
-  margin-top: 12px;
-}
-
-.progress-header {
+.toolchain-step {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.progress-title {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.progress-percent {
-  font-family: 'DM Mono', monospace;
+  gap: 8px;
   font-size: 12px;
-  color: var(--accent);
 }
 
-.progress-bar {
-  height: 4px;
-  background: var(--surface3);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.3s;
-}
-
-.progress-log {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-top: 10px;
-  padding: 8px;
+.step-number {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
   background: var(--surface);
-  border-radius: 4px;
-  max-height: 80px;
-  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 /* Input area */
@@ -642,8 +547,211 @@ body {
 .send-btn:hover { background: #5dd4a8; }
 .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Right sidebar */
+.right-sidebar {
+  grid-area: sidebar;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-tab {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-dim);
+  transition: all 0.15s;
+  border-bottom: 2px solid transparent;
+}
+
+.sidebar-tab:hover { color: var(--text); }
+.sidebar-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  display: none;
+}
+
+.sidebar-content.active {
+  display: block;
+}
+
+/* Requirement document editor */
+.requirement-editor {
+  padding: 16px;
+}
+
+.requirement-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.requirement-title {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.requirement-status {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.requirement-status.draft { background: var(--text-faint); color: var(--text); }
+.requirement-status.discussing { background: var(--amber-dim); color: var(--amber); }
+.requirement-status.confirmed { background: var(--accent-dim); color: var(--accent); }
+.requirement-status.executing { background: var(--blue-dim); color: var(--blue); }
+.requirement-status.completed { background: var(--accent-dim); color: var(--accent); }
+
+.requirement-textarea {
+  width: 100%;
+  min-height: 300px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  resize: vertical;
+  outline: none;
+}
+
+.requirement-textarea:focus { border-color: var(--border-active); }
+
+.requirement-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.requirement-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+
+.requirement-btn.primary {
+  background: var(--accent);
+  color: #0a0b0d;
+  border: none;
+}
+
+.requirement-btn.secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.requirement-btn:hover { opacity: 0.9; }
+
+/* Toolchain preview */
+.toolchain-preview {
+  padding: 16px;
+}
+
+.toolchain-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-dim);
+}
+
+.toolchain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolchain-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.toolchain-item .step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.toolchain-item .step-info {
+  flex: 1;
+}
+
+.toolchain-item .step-tool {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.toolchain-item .step-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Datasets panel in sidebar */
+.datasets-panel {
+  padding: 16px;
+}
+
+.dataset-item {
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.dataset-item:hover { border-color: var(--border-active); }
+.dataset-item.active { border-color: var(--accent); }
+
+.dataset-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.dataset-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
@@ -667,7 +775,7 @@ body {
       <span class="logo-text">VerumOS</span>
       <span class="logo-tag">ALPHA</span>
     </div>
-    
+
     <nav class="header-nav">
       <div class="nav-item active" onclick="switchAgent('data')">
         <span class="nav-dot data"></span>
@@ -682,7 +790,7 @@ body {
         分析
       </div>
     </nav>
-    
+
     <div class="header-actions">
       <div class="status-badge">
         <span class="status-dot"></span>
@@ -691,83 +799,33 @@ body {
     </div>
   </header>
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-section">
-      <div class="sidebar-label">AI 助手</div>
-      
-      <div class="agent-card active" onclick="switchAgent('data')">
-        <div class="agent-header">
-          <div class="agent-icon data">📊</div>
-          <span class="agent-name">Data Agent</span>
-          <span class="agent-status ready">就绪</span>
-        </div>
-        <div class="agent-desc">数据探索、清洗、整合</div>
-      </div>
-      
-      <div class="agent-card" onclick="switchAgent('model')">
-        <div class="agent-header">
-          <div class="agent-icon model">🧠</div>
-          <span class="agent-name">Model Agent</span>
-          <span class="agent-status ready">就绪</span>
-        </div>
-        <div class="agent-desc">模型设计、训练、评估</div>
-      </div>
-      
-      <div class="agent-card" onclick="switchAgent('analysis')">
-        <div class="agent-header">
-          <div class="agent-icon analysis">🔬</div>
-          <span class="agent-name">Analysis Agent</span>
-          <span class="agent-status ready">就绪</span>
-        </div>
-        <div class="agent-desc">工具调用、结果分析</div>
-      </div>
-    </div>
-    
-    <div class="sidebar-section" style="flex:1; display:flex; flex-direction:column;">
-      <div class="sidebar-label">数据集</div>
-      <div class="data-panel" id="dataPanel">
-        <div class="data-item active">
-          <div class="data-item-header">
-            <span class="data-item-name">expression.csv</span>
-            <span class="data-item-type">CSV</span>
-          </div>
-          <div class="data-item-meta">373 × 20,531 · RNA-seq TPM</div>
-        </div>
-        <div class="data-item">
-          <div class="data-item-header">
-            <span class="data-item-name">clinical.xlsx</span>
-            <span class="data-item-type">Excel</span>
-          </div>
-          <div class="data-item-meta">373 × 15 · 临床信息</div>
-        </div>
-        <div class="data-item" style="border-style:dashed; opacity:0.5; justify-content:center;">
-          <span class="data-item-name">+ 上传数据</span>
-        </div>
-      </div>
-    </div>
-    
-    <div class="sidebar-section">
-      <div class="sidebar-label">模型</div>
-      <div class="data-item">
-        <div class="data-item-header">
-          <span class="data-item-name">survival_transformer</span>
-          <span class="data-item-type">PyTorch</span>
-        </div>
-        <div class="data-item-meta">C-index: 0.82 · 已训练</div>
-      </div>
-    </div>
-  </aside>
-
   <!-- Main -->
   <main class="main">
+    <!-- Data Preview Panel -->
+    <div class="data-preview-panel" id="dataPreviewPanel">
+      <div class="preview-header">
+        <div class="preview-title">
+          <span>📊</span>
+          <span id="previewDatasetName">数据预览</span>
+        </div>
+        <span class="preview-close" onclick="hidePreviewPanel()">×</span>
+      </div>
+      <div class="preview-table-wrapper">
+        <table class="preview-table" id="previewTable">
+          <thead id="previewTableHead"></thead>
+          <tbody id="previewTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Chat area -->
     <div class="chat-area" id="chatArea">
       <!-- Welcome -->
       <div class="welcome" id="welcome">
         <div class="welcome-icon">🧬</div>
         <h1 class="welcome-title">欢迎使用 VerumOS</h1>
         <p class="welcome-desc">
-          我是你的科研 AI 助手。你可以上传数据、构建模型、分析结果。
+          我是你的科研 AI 助手。你可以上传数据、讨论分析需求、执行分析流程。
           只需描述你的需求，我会帮你完成技术实现。
         </p>
         <div class="quick-actions">
@@ -775,9 +833,9 @@ body {
             <span class="quick-action-icon">📁</span>
             上传数据
           </div>
-          <div class="quick-action" onclick="quickAction('model')">
-            <span class="quick-action-icon">🧠</span>
-            构建模型
+          <div class="quick-action" onclick="quickAction('requirement')">
+            <span class="quick-action-icon">📝</span>
+            讨论需求
           </div>
           <div class="quick-action" onclick="quickAction('analyze')">
             <span class="quick-action-icon">🔬</span>
@@ -785,17 +843,15 @@ body {
           </div>
         </div>
       </div>
-      
-      <!-- Messages will be added here -->
     </div>
-    
+
     <div class="input-area">
       <div class="input-row">
         <div class="input-wrapper">
           <textarea class="input" id="input" rows="1" placeholder="描述你的需求，或上传数据文件..."></textarea>
           <div class="input-actions">
             <div class="input-action" onclick="uploadFile()">📎 上传文件</div>
-            <div class="input-action" onclick="connectDB()">🗄 连接数据库</div>
+            <div class="input-action" onclick="showDatasets()">📊 数据集</div>
             <div class="input-action" onclick="showHelp()">❓ 帮助</div>
           </div>
         </div>
@@ -803,313 +859,488 @@ body {
       </div>
     </div>
   </main>
+
+  <!-- Right Sidebar -->
+  <aside class="right-sidebar">
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" onclick="switchSidebarTab('requirement')">需求文档</div>
+      <div class="sidebar-tab" onclick="switchSidebarTab('toolchain')">工具链</div>
+      <div class="sidebar-tab" onclick="switchSidebarTab('datasets')">数据集</div>
+    </div>
+
+    <!-- Requirement Document -->
+    <div class="sidebar-content active" id="requirementContent">
+      <div class="requirement-editor">
+        <div class="requirement-header">
+          <span class="requirement-title">需求文档</span>
+          <span class="requirement-status draft" id="requirementStatus">草稿</span>
+        </div>
+        <textarea class="requirement-textarea" id="requirementTextarea" placeholder="# 需求文档
+
+## 数据源
+| 文件 | 类型 | 描述 |
+|------|------|------|
+| count_matrix.csv | 表达矩阵 | gene × cell |
+
+## 目标
+细胞类型鉴定
+
+## 分析方案
+1. 加载表达矩阵
+2. QC 过滤
+3. 标准化
+"></textarea>
+        <div class="requirement-actions">
+          <button class="requirement-btn secondary" onclick="loadRequirementTemplate()">加载模板</button>
+          <button class="requirement-btn primary" onclick="saveRequirement()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolchain Preview -->
+    <div class="sidebar-content" id="toolchainContent">
+      <div class="toolchain-preview">
+        <div class="requirement-header">
+          <span class="requirement-title">推荐工具链</span>
+        </div>
+        <div class="toolchain-empty" id="toolchainEmpty">
+          暂无工具链<br>
+          <small>保存需求文档后自动生成</small>
+        </div>
+        <div class="toolchain-list" id="toolchainList"></div>
+      </div>
+    </div>
+
+    <!-- Datasets -->
+    <div class="sidebar-content" id="datasetsContent">
+      <div class="datasets-panel" id="datasetsPanel">
+        <div class="toolchain-empty">
+          暂无数据集<br>
+          <small>上传文件后显示</small>
+        </div>
+      </div>
+    </div>
+  </aside>
 </div>
 
 <script>
-// State
 let currentAgent = 'data';
-let messages = [];
+let sessionId = null;
+let socket = null;
+let datasets = [];
+let isBusy = false;
+let currentRequirement = null;
+let currentToolChain = [];
 
-// Switch agent
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatText(value) {
+  return escapeHtml(value).replace(/\n/g, '<br>');
+}
+
+function setStatus(text, connected = true) {
+  const badge = document.querySelector('.status-badge');
+  if (!badge) return;
+  badge.innerHTML = `<span class="status-dot" style="background:${connected ? 'var(--accent)' : 'var(--amber)'}"></span>${escapeHtml(text)}`;
+}
+
 function switchAgent(agent) {
   currentAgent = agent;
-  
-  // Update nav
-  document.querySelectorAll('.nav-item').forEach((el, i) => {
+  document.querySelectorAll('.nav-item').forEach((element, index) => {
     const agents = ['data', 'model', 'analysis'];
-    el.classList.toggle('active', agents[i] === agent);
-  });
-  
-  // Update agent cards
-  document.querySelectorAll('.agent-card').forEach((el, i) => {
-    const agents = ['data', 'model', 'analysis'];
-    el.classList.toggle('active', agents[i] === agent);
+    element.classList.toggle('active', agents[index] === agent);
   });
 }
 
-// Quick actions
+function switchSidebarTab(tab) {
+  document.querySelectorAll('.sidebar-tab').forEach((el, i) => {
+    const tabs = ['requirement', 'toolchain', 'datasets'];
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.sidebar-content').forEach((el, i) => {
+    const tabs = ['requirement', 'toolchain', 'datasets'];
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+}
+
 function quickAction(action) {
   const input = document.getElementById('input');
-  switch(action) {
-    case 'upload':
-      input.value = '我想上传一份数据文件进行分析';
-      break;
-    case 'model':
-      input.value = '我想用现有的数据构建一个深度学习模型';
-      break;
-    case 'analyze':
-      input.value = '帮我分析一下现有数据的特征';
-      break;
-  }
+  if (action === 'upload') input.value = '上传 data/count_matrix.csv';
+  if (action === 'requirement') input.value = '我想做细胞类型鉴定';
+  if (action === 'analyze') input.value = '探索这份数据';
   input.focus();
 }
 
-// Send message
-function sendMessage() {
-  const input = document.getElementById('input');
-  const text = input.value.trim();
-  if (!text) return;
-  
-  // Hide welcome
-  document.getElementById('welcome').style.display = 'none';
-  
-  // Add user message
-  addMessage('user', text);
-  
-  // Clear input
-  input.value = '';
-  
-  // Simulate agent response
-  setTimeout(() => {
-    simulateResponse(text);
-  }, 500);
-}
-
-// Add message to chat
-function addMessage(role, content, options = {}) {
+function addMessage(role, content, extraHtml = '') {
   const chatArea = document.getElementById('chatArea');
-  
-  const agentNames = {
-    user: '你',
-    data: 'Data Agent',
-    model: 'Model Agent',
-    analysis: 'Analysis Agent'
-  };
-  
-  const agentIcons = {
-    user: '👤',
-    data: '📊',
-    model: '🧠',
-    analysis: '🔬'
-  };
-  
-  const message = document.createElement('div');
-  message.className = 'message';
-  
-  message.innerHTML = `
-    <div class="message-avatar ${role}">${agentIcons[role]}</div>
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.style.display = 'none';
+
+  const meta = {
+    user: { icon: '👤', name: '你' },
+    data: { icon: '📊', name: 'Data Agent' },
+    system: { icon: '⚡', name: 'System' },
+  }[role] || { icon: '💬', name: 'Assistant' };
+
+  const node = document.createElement('div');
+  node.className = 'message';
+  node.innerHTML = `
+    <div class="message-avatar ${role === 'user' ? 'user' : 'data'}">${meta.icon}</div>
     <div class="message-content">
       <div class="message-header">
-        <span class="message-name">${agentNames[role]}</span>
+        <span class="message-name">${meta.name}</span>
         <span class="message-time">${new Date().toLocaleTimeString()}</span>
       </div>
-      <div class="message-text">${content}</div>
-      ${options.dataCard || ''}
-      ${options.questionCard || ''}
-      ${options.progressCard || ''}
+      <div class="message-text">${formatText(content)}</div>
+      ${extraHtml}
     </div>
   `;
-  
-  chatArea.appendChild(message);
+  chatArea.appendChild(node);
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// Simulate agent response
-function simulateResponse(userMessage) {
-  const lowerMsg = userMessage.toLowerCase();
-  
-  if (lowerMsg.includes('数据') || lowerMsg.includes('上传') || lowerMsg.includes('csv')) {
-    // Data Agent response
-    addMessage('data', '好的，让我来看看这份数据...', {
-      dataCard: `
-        <div class="data-card">
-          <div class="data-card-header">
-            <span class="data-card-title">expression.csv</span>
-            <span class="data-card-badge">已加载</span>
-          </div>
-          <div class="data-card-stats">
-            <div class="stat-item">
-              <div class="stat-value">373</div>
-              <div class="stat-label">样本数</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">20,531</div>
-              <div class="stat-label">基因数</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">0.3%</div>
-              <div class="stat-label">缺失值</div>
-            </div>
-          </div>
-        </div>
-      `
-    });
-    
-    setTimeout(() => {
-      addMessage('data', '数据已加载完成。这是一份肝癌 RNA-seq 表达数据，TPM 标准化格式。你想对这份数据做什么处理？', {
-        questionCard: `
-          <div class="question-card">
-            <div class="question-label">建议操作</div>
-            <div class="question-options">
-              <div class="question-option" onclick="selectOption('merge')">与其他数据整合</div>
-              <div class="question-option" onclick="selectOption('filter')">过滤低表达基因</div>
-              <div class="question-option" onclick="selectOption('normalize')">重新标准化</div>
-              <div class="question-option" onclick="selectOption('explore')">详细探索数据</div>
-            </div>
-          </div>
-        `
-      });
-    }, 800);
-    
-  } else if (lowerMsg.includes('模型') || lowerMsg.includes('训练') || lowerMsg.includes('预测')) {
-    // Model Agent response
-    addMessage('model', '好的，我来分析一下数据特征，建议合适的模型架构...', {
-      dataCard: `
-        <div class="data-card">
-          <div class="data-card-header">
-            <span class="data-card-title">模型建议</span>
-            <span class="data-card-badge">Transformer</span>
-          </div>
-          <div class="data-card-stats">
-            <div class="stat-item">
-              <div class="stat-value">4</div>
-              <div class="stat-label">Transformer层</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">8</div>
-              <div class="stat-label">注意力头</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">256</div>
-              <div class="stat-label">隐藏维度</div>
-            </div>
-          </div>
-        </div>
-      `
-    });
-    
-    setTimeout(() => {
-      addMessage('model', '基于你的数据特征，我建议使用 Transformer 编码器处理基因表达数据，结合临床特征预测患者预后。这个模型需要 GPU 训练，是否使用远程集群？', {
-        questionCard: `
-          <div class="question-card">
-            <div class="question-label">训练环境</div>
-            <div class="question-options">
-              <div class="question-option" onclick="startTraining()">使用远程集群训练（推荐）</div>
-              <div class="question-option">本地 CPU 训练（较慢）</div>
-            </div>
-          </div>
-        `
-      });
-    }, 800);
-    
-  } else if (lowerMsg.includes('分析') || lowerMsg.includes('富集') || lowerMsg.includes('通路')) {
-    // Analysis Agent response
-    addMessage('analysis', '好的，我来执行富集分析...', {
-      progressCard: `
-        <div class="progress-card">
-          <div class="progress-header">
-            <span class="progress-title">GO 富集分析</span>
-            <span class="progress-percent">100%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width: 100%"></div>
-          </div>
-          <div class="progress-log">
-            ✓ 加载基因列表: 247 个基因<br>
-            ✓ GO 分析完成<br>
-            ✓ KEGG 分析完成
-          </div>
-        </div>
-      `
-    });
-    
-    setTimeout(() => {
-      addMessage('analysis', '分析完成！关键基因主要富集在 DNA repair (p=2.3e-5) 和 Cell cycle (p=1.1e-4) 通路，这与肝癌预后机制一致。');
-    }, 1000);
-    
-  } else {
-    // Generic response
-    const agent = currentAgent;
-    addMessage(agent, '我理解了你的需求。让我来处理...');
-  }
-}
+function renderResultCard(result) {
+  if (!result) return '';
+  const dataset = result.dataset || null;
+  const metadata = dataset?.metadata || result;
+  const shape = metadata?.shape || null;
+  if (!shape) return '';
 
-// Select option
-function selectOption(option) {
-  const input = document.getElementById('input');
-  switch(option) {
-    case 'merge':
-      input.value = '我想把这份数据和临床数据整合';
-      break;
-    case 'filter':
-      input.value = '过滤 TPM < 1 的低表达基因';
-      break;
-    case 'normalize':
-      input.value = '对数据进行 log2 转换';
-      break;
-    case 'explore':
-      input.value = '详细探索这份数据的分布和特征';
-      break;
-  }
-  sendMessage();
-}
+  const preview = Array.isArray(result.preview) ? result.preview : Array.isArray(metadata.preview) ? metadata.preview : [];
+  const previewRows = preview.slice(0, 3).map((row) => `<div class="data-item-meta">${escapeHtml(JSON.stringify(row))}</div>`).join('');
 
-// Start training
-function startTraining() {
-  addMessage('model', '正在连接远程集群...', {
-    progressCard: `
-      <div class="progress-card">
-        <div class="progress-header">
-          <span class="progress-title">训练进度</span>
-          <span class="progress-percent">35%</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: 35%"></div>
-        </div>
-        <div class="progress-log">
-          ✓ 连接远程集群成功<br>
-          ✓ 上传数据和代码<br>
-          ⏳ Epoch 35/100 - Loss: 1.23 - C-index: 0.71<br>
-        </div>
+  return `
+    <div class="data-card">
+      <div class="data-card-header">
+        <span class="data-card-title">${escapeHtml(dataset?.name || '数据概览')}</span>
+        <span class="data-card-badge">已加载</span>
       </div>
-    `
-  });
+      <div class="data-card-stats">
+        <div class="stat-item"><div class="stat-value">${shape.rows || shape.cells || '-'}</div><div class="stat-label">行/细胞</div></div>
+        <div class="stat-item"><div class="stat-value">${shape.columns || shape.genes || '-'}</div><div class="stat-label">列/基因</div></div>
+        <div class="stat-item"><div class="stat-value">${preview.length}</div><div class="stat-label">预览行</div></div>
+      </div>
+      ${previewRows ? `<div style="margin-top:12px">${previewRows}</div>` : ''}
+    </div>
+  `;
 }
 
-// Upload file
-function uploadFile() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.csv,.xlsx,.xls,.json,.fasta,.fa';
-  input.onchange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      document.getElementById('input').value = `上传文件: ${file.name}`;
-      sendMessage();
+function renderToolChainCard(toolChain) {
+  if (!toolChain || toolChain.length === 0) return '';
+
+  const steps = toolChain.map((step, i) => `
+    <div class="toolchain-step">
+      <span class="step-number">${i + 1}</span>
+      <span>${escapeHtml(step.skill)}.${escapeHtml(step.tool)}</span>
+    </div>
+  `).join('');
+
+  return `
+    <div class="toolchain-card">
+      <div class="toolchain-label">推荐工具链</div>
+      <div class="toolchain-steps">${steps}</div>
+    </div>
+  `;
+}
+
+function showPreviewPanel(datasetId) {
+  const dataset = datasets.find(d => d.id === datasetId);
+  if (!dataset || !dataset.metadata?.preview) return;
+
+  const panel = document.getElementById('dataPreviewPanel');
+  const nameEl = document.getElementById('previewDatasetName');
+  const thead = document.getElementById('previewTableHead');
+  const tbody = document.getElementById('previewTableBody');
+
+  nameEl.textContent = dataset.name;
+
+  const columns = dataset.metadata.columns || [];
+  const preview = dataset.metadata.preview || [];
+
+  // Build header
+  thead.innerHTML = '<tr>' + columns.slice(0, 20).map(col =>
+    `<th>${escapeHtml(col.name)}<span class="col-type ${col.type}">${col.type}</span></th>`
+  ).join('') + '</tr>';
+
+  // Build body
+  tbody.innerHTML = preview.slice(0, 20).map(row =>
+    '<tr>' + columns.slice(0, 20).map(col =>
+      `<td>${escapeHtml(row[col.name] ?? '')}</td>`
+    ).join('') + '</tr>'
+  ).join('');
+
+  panel.classList.add('visible');
+}
+
+function hidePreviewPanel() {
+  document.getElementById('dataPreviewPanel').classList.remove('visible');
+}
+
+function refreshDataPanel(nextDatasets) {
+  if (Array.isArray(nextDatasets)) datasets = nextDatasets;
+  const panel = document.getElementById('datasetsPanel');
+  if (!panel) return;
+
+  if (!datasets.length) {
+    panel.innerHTML = `
+      <div class="toolchain-empty">
+        暂无数据集<br>
+        <small>上传文件后显示</small>
+      </div>
+    `;
+    return;
+  }
+
+  panel.innerHTML = datasets.map((dataset, index) => {
+    const shape = dataset.metadata?.shape;
+    return `
+      <div class="dataset-item ${index === datasets.length - 1 ? 'active' : ''}" onclick="showPreviewPanel('${dataset.id}')">
+        <div class="dataset-name">${escapeHtml(dataset.name)}</div>
+        <div class="dataset-meta">${shape ? `${shape.rows || shape.cells || '-'} × ${shape.columns || shape.genes || '-'}` : '待分析'}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateRequirementStatus(status) {
+  const statusEl = document.getElementById('requirementStatus');
+  statusEl.className = `requirement-status ${status}`;
+  const statusText = {
+    draft: '草稿',
+    discussing: '讨论中',
+    confirmed: '已确认',
+    executing: '执行中',
+    completed: '已完成'
+  };
+  statusEl.textContent = statusText[status] || status;
+}
+
+function updateToolChainList(toolChain) {
+  currentToolChain = toolChain || [];
+  const emptyEl = document.getElementById('toolchainEmpty');
+  const listEl = document.getElementById('toolchainList');
+
+  if (!currentToolChain.length) {
+    emptyEl.style.display = 'block';
+    listEl.innerHTML = '';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  listEl.innerHTML = currentToolChain.map((step, i) => `
+    <div class="toolchain-item">
+      <span class="step-num">${i + 1}</span>
+      <div class="step-info">
+        <div class="step-tool">${escapeHtml(step.skill)}.${escapeHtml(step.tool)}</div>
+        <div class="step-desc">${escapeHtml(JSON.stringify(step.params).slice(0, 50))}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function ensureSession() {
+  if (sessionId) return sessionId;
+  const response = await fetch('/api/session', { method: 'POST' });
+  const payload = await response.json();
+  sessionId = payload.sessionId;
+  refreshDataPanel(payload.context?.datasets || []);
+  loadRequirement();
+  connectWebSocket();
+  return sessionId;
+}
+
+function connectWebSocket() {
+  if (!sessionId) return;
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  socket = new WebSocket(`${protocol}//${location.host}/ws?sessionId=${encodeURIComponent(sessionId)}`);
+
+  socket.addEventListener('open', () => {
+    setStatus('WebSocket 已连接');
+    socket.send(JSON.stringify({ type: 'ping' }));
+  });
+
+  socket.addEventListener('message', (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      if (payload.type === 'connected') setStatus(`会话 ${payload.sessionId} 已连接`);
+      if (payload.type === 'dataset.registered' || payload.type === 'chat.completed') setStatus('会话已同步');
+    } catch {
+      setStatus('收到实时事件');
+    }
+  });
+
+  socket.addEventListener('close', () => setStatus('WebSocket 已断开', false));
+  socket.addEventListener('error', () => setStatus('WebSocket 连接失败', false));
+}
+
+async function loadRequirement() {
+  if (!sessionId) return;
+  try {
+    const response = await fetch(`/api/requirement/${sessionId}`);
+    const payload = await response.json();
+    if (payload.ok && payload.document) {
+      currentRequirement = payload.document;
+      document.getElementById('requirementTextarea').value = payload.markdown || '';
+      updateRequirementStatus(payload.document.status);
+      updateToolChainList(payload.toolChain);
+    }
+  } catch (error) {
+    console.error('Failed to load requirement:', error);
+  }
+}
+
+async function saveRequirement() {
+  if (!sessionId) {
+    await ensureSession();
+  }
+
+  const content = document.getElementById('requirementTextarea').value;
+
+  try {
+    const response = await fetch(`/api/requirement/${sessionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ markdown: content }),
+    });
+    const payload = await response.json();
+    if (payload.ok) {
+      currentRequirement = payload.document;
+      updateRequirementStatus(payload.document.status);
+      updateToolChainList(payload.toolChain);
+      addMessage('system', '需求文档已保存');
+    }
+  } catch (error) {
+    addMessage('system', `保存失败：${error.message}`);
+  }
+}
+
+function loadRequirementTemplate() {
+  const template = `# 需求文档_单细胞分析
+
+## 数据源
+| 文件 | 类型 | 描述 |
+|------|------|------|
+| count_matrix.csv | 表达矩阵 | gene × cell |
+| cell_metadata.csv | 元数据 | 细胞信息 |
+
+## 目标
+细胞类型鉴定
+
+## 分析方案
+1. 加载表达矩阵并转置为 cell × gene
+2. 用 cell_barcode 关联 metadata
+3. 执行 QC 过滤
+
+## 状态
+- [x] 数据已上传
+- [ ] 需求讨论中
+- [ ] 执行中
+- [ ] 完成`;
+
+  document.getElementById('requirementTextarea').value = template;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('sendBtn');
+  const text = input.value.trim();
+  if (!text || isBusy) return;
+
+  await ensureSession();
+  isBusy = true;
+  sendBtn.disabled = true;
+  addMessage('user', text);
+  input.value = '';
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message: text }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) throw new Error(payload.error || 'Chat request failed');
+    refreshDataPanel(payload.context?.datasets || []);
+
+    // Check if response has requirement document
+    if (payload.response.result?.requirementDocument) {
+      currentRequirement = payload.response.result.requirementDocument;
+      document.getElementById('requirementTextarea').value = payload.response.result.markdown || '';
+      updateRequirementStatus(currentRequirement.status);
+      updateToolChainList(payload.response.result.toolChain);
+    }
+
+    const extraHtml = renderResultCard(payload.response.result) +
+      renderToolChainCard(payload.response.result?.toolChain);
+    addMessage('data', payload.response.content, extraHtml);
+  } catch (error) {
+    addMessage('system', `请求失败：${error.message || error}`);
+  } finally {
+    isBusy = false;
+    sendBtn.disabled = false;
+  }
+}
+
+async function uploadFile() {
+  const picker = document.createElement('input');
+  picker.type = 'file';
+  picker.accept = '.csv,.tsv,.xlsx,.xls';
+  picker.onchange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    await ensureSession();
+    addMessage('user', `上传文件：${file.name}`);
+
+    const formData = new FormData();
+    formData.append('sessionId', sessionId);
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error || 'Upload failed');
+      refreshDataPanel(payload.context?.datasets || []);
+      addMessage('data', payload.response.content, renderResultCard(payload.response.result));
+    } catch (error) {
+      addMessage('system', `上传失败：${error.message || error}`);
     }
   };
-  input.click();
+  picker.click();
 }
 
-// Connect database
-function connectDB() {
-  document.getElementById('input').value = '我想连接一个数据库...';
-  sendMessage();
+function showDatasets() {
+  switchSidebarTab('datasets');
 }
 
-// Show help
 function showHelp() {
-  addMessage('analysis', `
-    <b>VerumOS 使用指南</b><br><br>
-    <b>Data Agent</b>: 上传数据文件（CSV、Excel、JSON、FASTA 等），自动识别格式并探索内容。<br><br>
-    <b>Model Agent</b>: 描述你的建模需求，我会建议模型架构并生成代码。<br><br>
-    <b>Analysis Agent</b>: 调用领域工具和数据库进行分析，生成报告。<br><br>
-    你可以随时切换不同的 Agent，或者直接描述需求，我会自动路由到合适的助手。
-  `);
+  addMessage('system', '你可以：\n1. 上传 CSV/Excel 文件\n2. 说"我想做细胞类型鉴定"开始需求讨论\n3. 问"这份数据有多少行？"\n4. 说"探索这份数据"');
 }
 
-// Handle Enter key
-document.getElementById('input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
+document.getElementById('input').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
     sendMessage();
   }
 });
 
-// Auto-resize textarea
-document.getElementById('input').addEventListener('input', function() {
+document.getElementById('input').addEventListener('input', function () {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+});
+
+window.addEventListener('load', async () => {
+  setStatus('正在初始化会话...');
+  await ensureSession();
+  setStatus('会话已建立');
 });
 </script>
 
