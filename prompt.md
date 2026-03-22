@@ -1,188 +1,158 @@
 # 架构重构：Agent Runtime 与业务逻辑分离
 
-## 当前状态：部分分离，但不够彻底
+## 参考架构：pi-mono `@mariozechner/pi-agent-core`
 
-### 现有分层
+pi-mono 的 Agent Runtime 是一个**纯执行引擎**，不含任何业务逻辑：
 
 ```
-base.ts (BaseAgent)          → 提供通用能力
-  ↓ 继承
-data-agent.ts (DataAgent)    → 具体业务实现
+┌─────────────────────────────────────────────────────────┐
+│                    agentLoop (核心循环)                  │
+│  for await (const event of agentLoop(messages, ctx)) {} │
+└─────────────────────────────────────────────────────────┘
+                           │
+           ┌───────────────┼───────────────┐
+           ▼               ▼               ▼
+      agent_start    message_start    tool_execution_start
+      turn_start     message_update   tool_execution_end
+      turn_end       message_end      tool_result
+      agent_end
 ```
 
-### BaseAgent 提供的能力（偏 Runtime）
+**核心能力**（全部业务无关）：
 
-| 方法 | 作用 | 是否业务无关 |
-|------|------|-------------|
-| `analyzeIntent()` | 意图识别 | ❌ 硬编码了意图类型 |
-| `callLLM()` | LLM 调用 | ✅ 通用 |
-| `callSkill()` | Skill 调用 | ✅ 通用 |
-| `heuristicIntent()` | 启发式规则 | ❌ 关键词写死 |
-
-### DataAgent 的职责
-
-| 方法 | 职责 |
+| 能力 | 说明 |
 |------|------|
-| `processMessage()` | 消息入口，手动 switch-case 派发 |
-| `handleUpload/Explore/...` | 各意图的业务处理逻辑 |
+| LLM 调用 | 统一的 multi-provider API |
+| 工具执行 | parallel/sequential 模式，before/after 钩子 |
+| 事件流 | 订阅式事件，支持 streaming |
+| 状态管理 | messages、tools、isStreaming |
+| 消息转换 | `convertToLlm` 过滤/转换自定义类型 |
+| 运行时注入 | steering（中断）、follow-up（追加） |
 
----
-
-## 问题分析
-
-### 1. BaseAgent 污染了业务逻辑
-
-```typescript
-// base.ts - heuristicIntent 方法
-if (/上传|加载|读取|导入|file|csv|xlsx|xls|tsv/.test(message)) {
-  return { type: 'upload', confidence: 0.95 };
-}
-```
-
-这些关键词是 Data Agent 特定的，不应该放在基类。
-
-### 2. `analyzeIntent` 的 systemPrompt 硬编码
+**业务 Agent 只定义**：
 
 ```typescript
-const systemPrompt = `你是一个意图分类器。
-候选意图：upload、explore、transform、merge、requirement、execute、question、unknown。`;
-```
-
-意图类型应该是业务 Agent 定义的，而不是基类硬编码。
-
-### 3. DataAgent.processMessage 是个大 switch-case
-
-```typescript
-switch (intent.type) {
-  case 'upload': return this.handleUpload(...);
-  case 'explore': return this.handleExplore(...);
-  // ... 7 个 case
-}
-```
-
-这不是真正的 runtime 行为 —— runtime 应该是数据驱动的，不是代码驱动的。
-
-### 4. 缺少独立的 Agent Runtime 层
-
-理想架构：
-
-```
-┌─────────────────────────────────────────┐
-│          Agent Runtime (核心)            │
-│  - 对话状态机                            │
-│  - 工具调用编排                          │
-│  - 意图识别（抽象）                      │
-│  - ReAct / Plan-and-Execute 等策略      │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│          Agent Registry                  │
-│  - 注册各 Agent 的能力声明               │
-│  - 意图 → Agent 映射                     │
-└─────────────────────────────────────────┘
-                    ↓
-┌──────────┬──────────┬──────────┐
-│DataAgent │ModelAgent│Analysis  │
-│          │          │Agent     │
-└──────────┴──────────┴──────────┘
+// DataAgent 不继承 runtime，只声明能力
+const dataAgent = {
+  id: 'data-agent',
+  tools: [csvSkill, bioinfoSkill],
+  systemPrompt: '你是一个数据分析助手...',
+  convertToLlm: (messages) => messages.filter(m => m.role !== 'notification'),
+};
 ```
 
 ---
 
-## 推荐重构方案
+## 当前问题
 
-### Step 1: 抽取 AgentRuntime
+VerumOS 的 `BaseAgent` 混合了执行引擎和业务逻辑：
 
 ```typescript
-// src/runtime/agent-runtime.ts
-export class AgentRuntime {
-  constructor(
-    private llmClient: LLMClient,
-    private skillRegistry: SkillRegistry,
-    private agentRegistry: AgentRegistry,
-  ) {}
+// base.ts - 执行引擎部分（正确）
+async callLLM(prompt, context) { ... }
+async callSkill(skillName, toolName, params) { ... }
 
-  async processMessage(
-    message: string,
-    context: ConversationContext
-  ): Promise<AgentResponse> {
-    // 1. 意图识别（委托给 Agent 定义的分类器）
-    const intent = await this.classifyIntent(message, context);
-
-    // 2. 找到对应的 Agent
-    const agent = this.agentRegistry.getAgentForIntent(intent.type);
-
-    // 3. 执行 Agent 的 handler
-    return agent.handle(intent, context);
-  }
-
-  private async classifyIntent(message: string, context: ConversationContext) {
-    // 使用注册的意图分类器，而不是硬编码
-    const classifiers = this.agentRegistry.getIntentClassifiers();
-    // ... LLM 或规则匹配
+// base.ts - 业务逻辑部分（错误，不该在基类）
+private heuristicIntent(message) {
+  if (/上传|加载|读取|file|csv/.test(message)) {  // 硬编码关键词
+    return { type: 'upload' };
   }
 }
 ```
 
-### Step 2: Agent 只声明能力 + handler
+---
 
-```typescript
-// src/agents/data-agent.ts
-export class DataAgent implements AgentHandler {
-  id = 'data-agent';
-  capabilities = {
-    intents: ['upload', 'explore', 'transform', 'merge', 'question'],
-    skills: ['csv-skill', 'bioinfo-skill'],
-  };
-
-  // 声明式意图分类规则
-  intentRules: IntentRule[] = [
-    { intent: 'upload', patterns: [/上传|加载|读取|导入|file|csv|xlsx/i] },
-    { intent: 'explore', patterns: [/探索|预览|概览|summary/i] },
-    // ...
-  ];
-
-  async handle(intent: Intent, context: ConversationContext): Promise<AgentResponse> {
-    // 纯业务逻辑
-    switch (intent.type) {
-      case 'upload': return this.handleUpload(intent, context);
-      // ...
-    }
-  }
-}
-```
-
-### Step 3: 文件结构重组
+## 推荐架构
 
 ```
 src/
-├── runtime/                    # 核心 Runtime
-│   ├── agent-runtime.ts        # 执行引擎
-│   ├── intent-classifier.ts    # 意图分类器
-│   ├── tool-executor.ts        # 工具调用编排
-│   └── conversation-state.ts   # 对话状态机
-├── agents/                     # 业务 Agent
-│   ├── data-agent.ts           # 只做数据处理
-│   ├── model-agent.ts          # (Phase 2) 模型训练
-│   └── analysis-agent.ts       # (Phase 2) 分析报告
-├── skills/                     # 技能层（保持不变）
+├── runtime/                      # 纯执行引擎（业务无关）
+│   ├── agent-loop.ts             # 核心循环：async generator
+│   ├── agent-state.ts            # 状态：messages, tools, streaming
+│   ├── tool-executor.ts          # 工具执行：parallel/sequential
+│   ├── event-emitter.ts          # 事件订阅
+│   └── types.ts                  # AgentMessage, AgentEvent, AgentTool
+│
+├── agents/                       # 业务 Agent（只声明，不继承）
+│   ├── data-agent.ts             # systemPrompt + tools + convertToLlm
+│   ├── model-agent.ts
+│   └── registry.ts               # Agent 注册表
+│
+├── skills/                       # 工具实现
 │   ├── csv-skill.ts
 │   └── bioinfo-skill.ts
-└── registry/
-    ├── agent-registry.ts       # Agent 注册表
-    └── skill-registry.ts       # Skill 注册表
+│
+└── app.ts                        # 组装 runtime + agents
 ```
 
 ---
 
-## 快速评估
+## 核心 API 设计
 
-| 维度 | 当前 | 重构后 |
-|------|------|--------|
-| Agent 切换 | 需要改 BaseAgent | 只需注册新 Agent |
-| 意图扩展 | 改 base.ts + agent.ts | 只改 agent 声明 |
-| 多 Agent 协作 | 不支持 | Runtime 自动路由 |
-| 测试性 | 需要模拟整个 Agent | 可单独测试 Runtime |
+```typescript
+// runtime/agent-loop.ts
+export async function* agentLoop(
+  messages: AgentMessage[],
+  context: AgentContext,
+  config: AgentLoopConfig
+): AsyncGenerator<AgentEvent> {
+  while (true) {
+    // 1. 调用 LLM
+    yield { type: 'turn_start' };
+    const response = await callLlm(context, config);
+
+    // 2. 流式产出
+    for await (const chunk of response.stream) {
+      yield { type: 'message_update', delta: chunk };
+    }
+
+    // 3. 检查工具调用
+    const toolCalls = response.toolCalls;
+    if (toolCalls.length === 0) {
+      yield { type: 'turn_end' };
+      break;
+    }
+
+    // 4. 执行工具（parallel 或 sequential）
+    yield { type: 'tool_execution_start', toolCalls };
+    const results = await executeTools(toolCalls, config);
+    yield { type: 'tool_execution_end', results };
+
+    // 5. 注入 toolResult，继续循环
+    context.messages.push(...results.map(toToolResultMessage));
+
+    // 6. 检查 steering/follow-up
+    if (context.steeringQueue.length > 0) {
+      context.messages.push(...context.steeringQueue);
+      context.steeringQueue = [];
+    }
+  }
+}
+
+// 业务 Agent 使用
+const dataAgent = {
+  systemPrompt: '你是一个数据分析助手...',
+  tools: [readFileTool, exploreDataTool, transformDataTool],
+  convertToLlm: (messages) => messages.filter(m => ['user', 'assistant', 'toolResult'].includes(m.role)),
+};
+
+const context = { systemPrompt: dataAgent.systemPrompt, messages: [], tools: dataAgent.tools };
+const config = { model: getModel('anthropic', 'claude-sonnet-4'), ...dataAgent };
+
+for await (const event of agentLoop([{ role: 'user', content: '分析这份数据' }], context, config)) {
+  console.log(event.type);
+}
+```
+
+---
+
+## 迁移步骤
+
+1. **新建 `runtime/` 目录**，从零实现 agentLoop（不依赖现有 BaseAgent）
+2. **抽取工具定义**，把 `csv-skill`、`bioinfo-skill` 改成 `AgentTool` 格式
+3. **改造 DataAgent**，删除继承，改为声明式配置
+4. **删除 BaseAgent**，用 runtime 替代
+5. **前端接入事件流**，通过 WebSocket 订阅 agentLoop 事件
 
 ---
 
@@ -197,10 +167,6 @@ baseUrl: process.env.LLM_BASE_URL || 'http://35.220.164.252:3888/v1/',
 model: process.env.LLM_MODEL || 'glm-5',
 pythonPath: process.env.PYTHON_PATH || '/opt/homebrew/Caskroom/miniconda/base/bin/python',
 ```
-
-这些值应该：
-1. 只在 `.env.example` 作为示例
-2. 生产环境必须显式配置，不应有静默 fallback
 
 ### 建议修复
 
@@ -221,14 +187,7 @@ export function loadConfig(): AppConfig {
     // ...
   });
 }
-
-// 或者更严格：启动时检查
-if (!process.env.LLM_API_KEY || !process.env.LLM_BASE_URL) {
-  throw new Error('Missing required env: LLM_API_KEY, LLM_BASE_URL');
-}
 ```
-
----
 
 ---
 
@@ -249,7 +208,6 @@ data/
 ├── jobs/
 │   ├── job_20260322_2201_a1b2c3/          # 任务 workspace
 │   │   ├── job.json                        # 任务元数据（状态、创建时间、意图）
-│   │   ├── memory.md                       # 任务级记忆（可选，或合并到 job.json）
 │   │   ├── trace.jsonl                     # 执行轨迹（每步操作记录）
 │   │   ├── inputs/                         # 输入资产
 │   │   │   ├── count_matrix.csv
@@ -287,37 +245,6 @@ interface TraceEntry {
 }
 ```
 
-### 执行轨迹记录点
-
-```typescript
-// 在 AgentRuntime 或 DataAgent 中埋点
-async handleTransform(intent, context) {
-  const jobDir = context.jobDir;  // 当前任务的 workspace
-
-  // 记录轨迹
-  await appendTrace(jobDir, {
-    step: context.stepCount++,
-    type: 'tool_call',
-    data: { tool: 'csv-skill.transform_data', params: intent.params }
-  });
-
-  const result = await this.callSkill('csv-skill', 'transform_data', params);
-
-  // 保存输出文件
-  const outputPath = path.join(jobDir, 'outputs', `transformed_${Date.now()}.csv`);
-  await saveResult(result, outputPath);
-
-  // 记录结果
-  await appendTrace(jobDir, {
-    step: context.stepCount++,
-    type: 'tool_result',
-    data: { output: outputPath, shape: result.shape }
-  });
-
-  return result;
-}
-```
-
 ### 任务恢复机制
 
 ```typescript
@@ -348,31 +275,24 @@ async function resumeJob(jobId: string): Promise<ConversationContext> {
 2. **加载任务** - `POST /api/session/resume` 传入 jobId，返回恢复的 session
 3. **任务详情** - `GET /api/jobs/:jobId` 返回 trace + assets 列表
 
-### Memory 设计选择
-
-**方案 A**：任务级 `memory.md`
-- 每个 job 有独立的 memory.md，记录关键决策、上下文
-- 优点：隔离清晰
-- 缺点：碎片化，跨任务知识难复用
-
-**方案 B**：全局 memory + job trace
-- `MEMORY.md` 存用户偏好、项目知识（全局）
-- `trace.jsonl` 存任务执行细节（任务级）
-- 优点：职责清晰
-- 缺点：需要两个维度管理
-
-**推荐方案 B**：
-- 全局 `MEMORY.md`：用户背景、偏好、常用配置
-- 任务 `trace.jsonl`：执行轨迹、中间状态
-- 任务 `job.json`：元数据 + summary（用于快速浏览）
-
 ---
 
 ## 建议优先级
 
-1. **P1**: 抽取 `AgentRuntime`，把 `heuristicIntent` 和 `analyzeIntent` 的硬编码移出去
+1. **P1**: 抽取 `runtime/` 目录，实现 agentLoop（参考 pi-mono 架构）
 2. **P1**: 移除配置硬编码，关键配置缺失时抛错或警告
 3. **P1**: 实现 Job Workspace 架构（任务隔离 + 持久化 + trace）
-4. **P2**: 实现 Agent Registry，支持多 Agent 注册
+4. **P2**: 改造 DataAgent 为声明式配置，删除 BaseAgent 继承
 5. **P2**: 前端历史任务浏览与恢复
-6. **P3**: 添加工具调用编排（ReAct 或 Chain-of-Tools）
+6. **P3**: 添加 steering/follow-up 机制
+
+---
+
+## 收尾工作
+
+- [ ] 修改相关代码文件
+- [ ] 更新 README.md 使项目状态与描述一致
+- [ ] 提交 git commit，message 格式：`fix: xxx` / `feat: xxx` / `refactor: xxx`
+- [ ] push 到远程仓库
+
+工作结束后必需修改相关文件和 README.md, 使得项目状态与描述一致, 最后 push 到 git"
