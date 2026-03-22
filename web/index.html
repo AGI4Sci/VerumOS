@@ -890,6 +890,264 @@ body {
   color: var(--text-faint);
   font-size: 13px;
 }
+
+/* File Tree */
+.file-tree {
+  font-size: 13px;
+}
+
+.tree-item {
+  user-select: none;
+}
+
+.tree-folder {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.tree-folder:hover { background: var(--surface2); }
+
+.tree-folder-icon {
+  font-size: 14px;
+  transition: transform 0.15s;
+}
+
+.tree-folder.expanded .tree-folder-icon {
+  transform: rotate(90deg);
+}
+
+.tree-folder-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-folder-actions {
+  display: none;
+  gap: 4px;
+}
+
+.tree-folder:hover .tree-folder-actions {
+  display: flex;
+}
+
+.tree-action {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tree-action:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.tree-children {
+  padding-left: 16px;
+  display: none;
+}
+
+.tree-folder.expanded + .tree-children {
+  display: block;
+}
+
+.tree-file {
+  padding: 5px 8px 5px 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.tree-file:hover { background: var(--surface2); }
+.tree-file.selected { background: var(--accent-dim); }
+
+.tree-file-icon {
+  font-size: 14px;
+}
+
+.tree-file-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-file-size {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-family: 'DM Mono', monospace;
+}
+
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 0;
+  min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 1000;
+}
+
+.context-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.context-menu-item:hover { background: var(--surface3); }
+.context-menu-item.danger { color: var(--red); }
+.context-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* File Preview Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  max-width: 900px;
+  max-height: 80vh;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 18px;
+}
+
+.modal-close:hover { background: var(--surface2); color: var(--text); }
+
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.file-content {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* Input Dialog */
+.input-dialog {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.input-dialog-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  min-width: 320px;
+}
+
+.input-dialog-title {
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.input-dialog-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.input-dialog-input:focus { border-color: var(--accent); }
+
+.input-dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.dialog-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dialog-btn.primary {
+  background: var(--accent);
+  color: #0a0b0d;
+  border: none;
+}
+
+.dialog-btn.secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
 </style>
 </head>
 <body>
@@ -1066,6 +1324,48 @@ body {
   </aside>
 </div>
 
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu" style="display:none">
+  <div class="context-menu-item" onclick="contextAction('open')">
+    <span>📂</span> 打开
+  </div>
+  <div class="context-menu-item" onclick="contextAction('rename')">
+    <span>✏️</span> 重命名
+  </div>
+  <div class="context-menu-item" onclick="contextAction('download')">
+    <span>⬇️</span> 下载
+  </div>
+  <div class="context-menu-divider"></div>
+  <div class="context-menu-item danger" onclick="contextAction('delete')">
+    <span>🗑️</span> 删除
+  </div>
+</div>
+
+<!-- File Preview Modal -->
+<div class="modal-overlay" id="previewModal" style="display:none" onclick="closePreviewModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="previewModalTitle">文件预览</span>
+      <button class="modal-close" onclick="closePreviewModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <pre class="file-content" id="previewContent"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Input Dialog -->
+<div class="input-dialog" id="inputDialog" style="display:none" onclick="closeInputDialog(event)">
+  <div class="input-dialog-box" onclick="event.stopPropagation()">
+    <div class="input-dialog-title" id="dialogTitle">输入名称</div>
+    <input type="text" class="input-dialog-input" id="dialogInput" onkeydown="handleDialogKey(event)">
+    <div class="input-dialog-actions">
+      <button class="dialog-btn secondary" onclick="closeInputDialog()">取消</button>
+      <button class="dialog-btn primary" onclick="confirmDialog()">确定</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let currentAgent = 'data';
 let sessionId = null;
@@ -1078,6 +1378,12 @@ let currentToolChain = [];
 // Job Explorer State
 let jobs = [];
 let currentJobId = null;
+
+// File Explorer State
+let expandedFolders = new Set(['inputs', 'outputs']);
+let selectedFile = null;
+let contextTarget = null;
+let dialogCallback = null;
 
 function escapeHtml(value) {
   return String(value)
@@ -1506,52 +1812,385 @@ function renderJobList() {
     return;
   }
 
-  container.innerHTML = jobs.map(job => `
-    <div class="job-item ${job.id === currentJobId ? 'active' : ''}"
-         onclick="selectJob('${job.id}')"
-         data-job-id="${job.id}">
-      <div class="job-item-header">
-        <span class="job-item-name" title="${escapeHtml(job.summary || job.id)}">${escapeHtml(job.summary || job.id)}</span>
-        <span class="job-item-status ${job.status}"></span>
-      </div>
-      <div class="job-item-meta">
-        ${job.state?.datasets?.length || 0} 数据集 · ${formatTimeAgo(job.createdAt)}
-      </div>
-      <div class="job-files" id="files-${job.id}"></div>
+  container.innerHTML = `
+    <div class="file-tree">
+      ${jobs.map(job => renderJobTree(job)).join('')}
     </div>
-  `).join('');
-
-  if (currentJobId) loadJobFiles(currentJobId);
+  `;
 }
 
-async function loadJobFiles(jobId) {
-  try {
-    const response = await fetch(`/api/jobs/${jobId}/files`);
-    const payload = await response.json();
-    if (!payload.ok) return;
+function renderJobTree(job) {
+  const isExpanded = expandedFolders.has(job.id);
+  return `
+    <div class="tree-item" data-job-id="${job.id}">
+      <div class="tree-folder ${isExpanded ? 'expanded' : ''}"
+           onclick="toggleJobFolder('${job.id}')"
+           oncontextmenu="showContextMenu(event, 'job', '${job.id}')">
+        <span class="tree-folder-icon">▶</span>
+        <span class="tree-folder-name">${escapeHtml(job.summary || job.id)}</span>
+        <span class="tree-folder-actions">
+          <button class="tree-action" onclick="event.stopPropagation(); createFolder('${job.id}')" title="新建文件夹">📁</button>
+          <button class="tree-action" onclick="event.stopPropagation(); uploadToJob('${job.id}')" title="上传文件">📤</button>
+        </span>
+      </div>
+      <div class="tree-children" id="tree-${job.id}">
+        ${isExpanded ? `<div style="padding:8px;color:var(--text-faint)">加载中...</div>` : ''}
+      </div>
+    </div>
+  `;
+}
 
-    const container = document.getElementById(`files-${jobId}`);
+async function toggleJobFolder(jobId) {
+  if (expandedFolders.has(jobId)) {
+    expandedFolders.delete(jobId);
+  } else {
+    expandedFolders.add(jobId);
+    await loadFileTree(jobId, '');
+  }
+  renderJobList();
+}
+
+async function loadFileTree(jobId, dirPath) {
+  try {
+    const response = await fetch(`/api/files/tree?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(dirPath)}`);
+    const payload = await response.json();
+
+    if (!payload.ok) throw new Error(payload.error);
+
+    const container = document.getElementById(`tree-${jobId}`);
     if (!container) return;
 
-    const files = [...(payload.inputs || []), ...(payload.outputs || [])];
-    if (!files.length) { container.innerHTML = ''; return; }
-
-    container.innerHTML = files.slice(0, 5).map(f => `
-      <div class="job-file-item" onclick="event.stopPropagation()">
-        <span>📄</span>
-        <span>${escapeHtml(f.name)}</span>
-      </div>
-    `).join('');
+    container.innerHTML = renderDirectoryTree(jobId, payload.entries, dirPath);
   } catch (error) {
-    console.error('Failed to load job files:', error);
+    console.error('Failed to load file tree:', error);
   }
 }
 
+function renderDirectoryTree(jobId, entries, parentPath) {
+  if (!entries.length) {
+    return `<div style="padding:8px 24px;color:var(--text-faint);font-size:12px">空文件夹</div>`;
+  }
+
+  return entries.map(entry => {
+    const fullPath = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+
+    if (entry.type === 'directory') {
+      const isExpanded = expandedFolders.has(`${jobId}/${fullPath}`);
+      return `
+        <div class="tree-item">
+          <div class="tree-folder ${isExpanded ? 'expanded' : ''}"
+               onclick="toggleFolder('${jobId}', '${fullPath}')"
+               oncontextmenu="showContextMenu(event, 'folder', '${jobId}', '${fullPath}')">
+            <span class="tree-folder-icon">▶</span>
+            <span class="tree-folder-name">${escapeHtml(entry.name)}</span>
+            <span class="tree-folder-actions">
+              <button class="tree-action" onclick="event.stopPropagation(); createSubFolder('${jobId}', '${fullPath}')" title="新建">📁</button>
+            </span>
+          </div>
+          <div class="tree-children" id="tree-${jobId}-${fullPath.replace(/\//g, '-')}">
+            ${isExpanded ? `<div style="padding:8px;color:var(--text-faint)">加载中...</div>` : ''}
+          </div>
+        </div>
+      `;
+    } else {
+      const sizeStr = formatFileSize(entry.size);
+      return `
+        <div class="tree-file ${selectedFile === `${jobId}/${fullPath}` ? 'selected' : ''}"
+             onclick="selectFile('${jobId}', '${fullPath}')"
+             ondblclick="openFile('${jobId}', '${fullPath}')"
+             oncontextmenu="showContextMenu(event, 'file', '${jobId}', '${fullPath}')">
+          <span class="tree-file-icon">${getFileIcon(entry.name)}</span>
+          <span class="tree-file-name">${escapeHtml(entry.name)}</span>
+          <span class="tree-file-size">${sizeStr}</span>
+        </div>
+      `;
+    }
+  }).join('');
+}
+
+async function toggleFolder(jobId, dirPath) {
+  const folderKey = `${jobId}/${dirPath}`;
+
+  if (expandedFolders.has(folderKey)) {
+    expandedFolders.delete(folderKey);
+  } else {
+    expandedFolders.add(folderKey);
+    await loadSubDirectory(jobId, dirPath);
+  }
+
+  // Re-render the parent tree
+  const parentPath = dirPath.split('/').slice(0, -1).join('/');
+  await loadFileTree(jobId, parentPath || '');
+}
+
+async function loadSubDirectory(jobId, dirPath) {
+  try {
+    const response = await fetch(`/api/files/tree?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(dirPath)}`);
+    const payload = await response.json();
+
+    if (!payload.ok) throw new Error(payload.error);
+
+    const containerId = `tree-${jobId}-${dirPath.replace(/\//g, '-')}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = renderDirectoryTree(jobId, payload.entries, dirPath);
+  } catch (error) {
+    console.error('Failed to load subdirectory:', error);
+  }
+}
+
+function selectFile(jobId, filePath) {
+  selectedFile = `${jobId}/${filePath}`;
+  document.querySelectorAll('.tree-file').forEach(el => {
+    el.classList.toggle('selected', false);
+  });
+  event.currentTarget.classList.add('selected');
+}
+
+async function openFile(jobId, filePath) {
+  try {
+    const response = await fetch(`/api/files/content?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(filePath)}`);
+    const payload = await response.json();
+
+    if (!payload.ok) {
+      alert(`无法打开文件: ${payload.error}`);
+      return;
+    }
+
+    if (payload.type !== 'text') {
+      alert('暂不支持预览此文件类型');
+      return;
+    }
+
+    document.getElementById('previewModalTitle').textContent = filePath.split('/').pop();
+    document.getElementById('previewContent').textContent = payload.content;
+    document.getElementById('previewModal').style.display = 'flex';
+  } catch (error) {
+    alert(`打开文件失败: ${error.message}`);
+  }
+}
+
+function closePreviewModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('previewModal').style.display = 'none';
+}
+
+// Context Menu
+function showContextMenu(event, type, jobId, path = '') {
+  event.preventDefault();
+  event.stopPropagation();
+
+  contextTarget = { type, jobId, path };
+
+  const menu = document.getElementById('contextMenu');
+  menu.style.display = 'block';
+  menu.style.left = `${event.clientX}px`;
+  menu.style.top = `${event.clientY}px`;
+}
+
+function hideContextMenu() {
+  document.getElementById('contextMenu').style.display = 'none';
+  contextTarget = null;
+}
+
+async function contextAction(action) {
+  if (!contextTarget) return;
+
+  const { type, jobId, path } = contextTarget;
+  hideContextMenu();
+
+  switch (action) {
+    case 'open':
+      if (type === 'file') {
+        await openFile(jobId, path);
+      } else if (type === 'folder') {
+        expandedFolders.add(`${jobId}/${path}`);
+        await loadFileTree(jobId, path.split('/').slice(0, -1).join('') || '');
+      }
+      break;
+
+    case 'rename':
+      showInputDialog('重命名', path.split('/').pop(), async (newName) => {
+        try {
+          const response = await fetch('/api/files/rename', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId, oldPath: path, newName }),
+          });
+          const payload = await response.json();
+          if (payload.ok) {
+            await loadFileTree(jobId, path.split('/').slice(0, -1).join('') || '');
+          } else {
+            alert(`重命名失败: ${payload.error}`);
+          }
+        } catch (error) {
+          alert(`重命名失败: ${error.message}`);
+        }
+      });
+      break;
+
+    case 'delete':
+      if (!confirm(`确定要删除 ${path.split('/').pop()} 吗？`)) return;
+      try {
+        const response = await fetch(`/api/files?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(path)}`, {
+          method: 'DELETE',
+        });
+        const payload = await response.json();
+        if (payload.ok) {
+          await loadFileTree(jobId, path.split('/').slice(0, -1).join('') || '');
+        } else {
+          alert(`删除失败: ${payload.error}`);
+        }
+      } catch (error) {
+        alert(`删除失败: ${error.message}`);
+      }
+      break;
+
+    case 'download':
+      window.open(`/api/files/content?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(path)}&download=1`);
+      break;
+  }
+}
+
+// Create Folder
+async function createFolder(jobId) {
+  showInputDialog('新建文件夹', '新建文件夹', async (name) => {
+    try {
+      const response = await fetch('/api/files/mkdir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, path: `inputs/${name}` }),
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        await loadFileTree(jobId, '');
+      } else {
+        alert(`创建失败: ${payload.error}`);
+      }
+    } catch (error) {
+      alert(`创建失败: ${error.message}`);
+    }
+  });
+}
+
+async function createSubFolder(jobId, parentPath) {
+  showInputDialog('新建文件夹', '新建文件夹', async (name) => {
+    try {
+      const response = await fetch('/api/files/mkdir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, path: `${parentPath}/${name}` }),
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        await loadSubDirectory(jobId, parentPath);
+      } else {
+        alert(`创建失败: ${payload.error}`);
+      }
+    } catch (error) {
+      alert(`创建失败: ${error.message}`);
+    }
+  });
+}
+
+// Upload to specific folder
+async function uploadToJob(jobId) {
+  const picker = document.createElement('input');
+  picker.type = 'file';
+  picker.accept = '.csv,.tsv,.xlsx,.xls,.json,.txt,.md';
+  picker.onchange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('jobId', jobId);
+    formData.append('path', 'inputs');
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        await loadFileTree(jobId, '');
+        addMessage('system', `文件 ${file.name} 上传成功`);
+      } else {
+        alert(`上传失败: ${payload.error}`);
+      }
+    } catch (error) {
+      alert(`上传失败: ${error.message}`);
+    }
+  };
+  picker.click();
+}
+
+// Input Dialog
+function showInputDialog(title, defaultValue, callback) {
+  document.getElementById('dialogTitle').textContent = title;
+  const input = document.getElementById('dialogInput');
+  input.value = defaultValue;
+  document.getElementById('inputDialog').style.display = 'flex';
+  dialogCallback = callback;
+  setTimeout(() => input.focus(), 100);
+}
+
+function closeInputDialog(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('inputDialog').style.display = 'none';
+  dialogCallback = null;
+}
+
+function handleDialogKey(event) {
+  if (event.key === 'Enter') confirmDialog();
+  if (event.key === 'Escape') closeInputDialog();
+}
+
+function confirmDialog() {
+  const value = document.getElementById('dialogInput').value.trim();
+  if (value && dialogCallback) {
+    dialogCallback(value);
+  }
+  closeInputDialog();
+}
+
+// Utilities
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const icons = {
+    csv: '📊',
+    tsv: '📊',
+    xlsx: '📗',
+    xls: '📗',
+    json: '📋',
+    md: '📝',
+    txt: '📄',
+    log: '📃',
+  };
+  return icons[ext] || '📄';
+}
+
+// Click outside to close menus
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.context-menu')) {
+    hideContextMenu();
+  }
+});
+
 async function selectJob(jobId) {
   currentJobId = jobId;
-  document.querySelectorAll('.job-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.jobId === jobId);
-  });
+
+  // Expand and load file tree
+  expandedFolders.add(jobId);
+  await loadFileTree(jobId, '');
 
   try {
     const response = await fetch('/api/session/resume', {
@@ -1563,7 +2202,6 @@ async function selectJob(jobId) {
     if (payload.ok) {
       sessionId = payload.sessionId;
       refreshDataPanel(payload.context.datasets);
-      loadJobFiles(jobId);
     }
   } catch (error) {
     console.error('Failed to resume job:', error);

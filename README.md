@@ -32,12 +32,23 @@
 - `PATCH /api/jobs/:jobId` - 更新任务名称/状态
 - `GET /api/jobs/:jobId/files` - 获取任务文件列表
 - `POST /api/session/resume` - 恢复任务
+- `GET /api/files/tree` - 获取目录树结构
+- `GET /api/files/content` - 读取文件内容
+- `POST /api/files/mkdir` - 创建文件夹
+- `POST /api/files/create` - 创建文件
+- `DELETE /api/files` - 删除文件或文件夹
+- `PATCH /api/files/rename` - 重命名文件或文件夹
+- `POST /api/files/upload` - 上传文件到指定目录
 - `GET /health` - 健康检查
 - `WS /ws` - WebSocket 会话同步
 
 ### 前端功能
 - 三栏布局：左侧 Job Explorer + 中间聊天区 + 右侧需求文档/工具链/数据集面板
-- Job Explorer：任务列表展示、创建新任务、切换任务、查看任务文件
+- Job Explorer：VSCode 风格文件浏览器
+  - 树形结构展示，支持展开/折叠
+  - 右键上下文菜单（打开、重命名、删除、下载）
+  - 新建文件夹、上传文件
+  - 文件预览（CSV、JSON、TXT、MD 等）
 - 数据预览表格：显示前 20 行，支持横向滚动，列类型标注
 - 需求文档编辑器：Markdown 编辑 + 实时保存
 - 工具链预览：自动生成推荐工具链
@@ -79,7 +90,8 @@ VerumOS/
 │   │   ├── chat.ts          # 聊天 API
 │   │   ├── upload.ts        # 文件上传 API
 │   │   ├── requirement.ts   # 需求文档 API
-│   │   └── job.ts           # 任务 API
+│   │   ├── job.ts           # 任务 API
+│   │   └── file.ts          # 文件操作 API
 │   ├── skills/              # Skill 运行时
 │   │   ├── csv-skill.ts     # CSV Skill 实现
 │   │   ├── bioinfo-skill.ts # Bioinfo Skill 实现
