@@ -35,8 +35,8 @@ export async function createJob(sessionId: string, intent?: Intent): Promise<str
   await fs.mkdir(inputsDir, { recursive: true });
   await fs.mkdir(outputsDir, { recursive: true });
 
-  // 创建 Job 对象
-  const job = createJobObject(sessionId, intent);
+  // 创建 Job 对象 - 传递 jobId 确保一致性
+  const job = createJobObject(sessionId, intent, jobId);
 
   // 写入 job.json
   await fs.writeFile(

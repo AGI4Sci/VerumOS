@@ -1984,6 +1984,49 @@ function showContextMenu(event, type, jobId, path = '') {
   contextTarget = { type, jobId, path };
 
   const menu = document.getElementById('contextMenu');
+
+  // 根据类型显示不同的菜单选项
+  if (type === 'job') {
+    menu.innerHTML = `
+      <div class="context-menu-item" onclick="contextAction('rename')">
+        <span>✏️</span> 重命名
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item danger" onclick="contextAction('delete')">
+        <span>🗑️</span> 删除
+      </div>
+    `;
+  } else if (type === 'folder') {
+    menu.innerHTML = `
+      <div class="context-menu-item" onclick="contextAction('open')">
+        <span>📂</span> 打开
+      </div>
+      <div class="context-menu-item" onclick="contextAction('rename')">
+        <span>✏️</span> 重命名
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item danger" onclick="contextAction('delete')">
+        <span>🗑️</span> 删除
+      </div>
+    `;
+  } else {
+    menu.innerHTML = `
+      <div class="context-menu-item" onclick="contextAction('open')">
+        <span>📂</span> 打开
+      </div>
+      <div class="context-menu-item" onclick="contextAction('rename')">
+        <span>✏️</span> 重命名
+      </div>
+      <div class="context-menu-item" onclick="contextAction('download')">
+        <span>⬇️</span> 下载
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item danger" onclick="contextAction('delete')">
+        <span>🗑️</span> 删除
+      </div>
+    `;
+  }
+
   menu.style.display = 'block';
   menu.style.left = `${event.clientX}px`;
   menu.style.top = `${event.clientY}px`;
@@ -2013,14 +2056,29 @@ async function contextAction(action) {
     case 'rename':
       showInputDialog('重命名', path.split('/').pop(), async (newName) => {
         try {
-          const response = await fetch('/api/files/rename', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobId, oldPath: path, newName }),
-          });
+          let response;
+          if (type === 'job') {
+            // Job 重命名调用 /api/jobs/:jobId
+            response = await fetch(`/api/jobs/${jobId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: newName }),
+            });
+          } else {
+            // 文件/文件夹重命名调用 /api/files/rename
+            response = await fetch('/api/files/rename', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jobId, oldPath: path, newName }),
+            });
+          }
           const payload = await response.json();
           if (payload.ok) {
-            await loadFileTree(jobId, path.split('/').slice(0, -1).join('') || '');
+            if (type === 'job') {
+              await loadJobs();  // 刷新 job 列表
+            } else {
+              await loadFileTree(jobId, path.split('/').slice(0, -1).join('/') || '');
+            }
           } else {
             alert(`重命名失败: ${payload.error}`);
           }
@@ -2031,14 +2089,25 @@ async function contextAction(action) {
       break;
 
     case 'delete':
-      if (!confirm(`确定要删除 ${path.split('/').pop()} 吗？`)) return;
+      const itemName = type === 'job' ? (jobs.find(j => j.id === jobId)?.summary || jobId) : path.split('/').pop();
+      if (!confirm(`确定要删除 ${itemName} 吗？`)) return;
       try {
-        const response = await fetch(`/api/files?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(path)}`, {
-          method: 'DELETE',
-        });
+        let response;
+        if (type === 'job') {
+          response = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+        } else {
+          response = await fetch(`/api/files?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(path)}`, {
+            method: 'DELETE',
+          });
+        }
         const payload = await response.json();
         if (payload.ok) {
-          await loadFileTree(jobId, path.split('/').slice(0, -1).join('') || '');
+          if (type === 'job') {
+            currentJobId = null;
+            await loadJobs();
+          } else {
+            await loadFileTree(jobId, path.split('/').slice(0, -1).join('/') || '');
+          }
         } else {
           alert(`删除失败: ${payload.error}`);
         }
@@ -2209,25 +2278,26 @@ async function selectJob(jobId) {
 }
 
 async function createNewJob() {
-  const name = prompt('请输入任务名称（可选）');
-  if (name === null) return;
-
-  try {
-    const response = await fetch('/api/jobs/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name || undefined }),
-    });
-    const payload = await response.json();
-    if (payload.ok) {
-      currentJobId = payload.job.id;
-      sessionId = payload.job.sessionId;
-      await loadJobs();
-      connectWebSocket();
+  showInputDialog('新建任务', '', async (name) => {
+    try {
+      const response = await fetch('/api/jobs/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name || undefined }),
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        currentJobId = payload.job.id;
+        sessionId = payload.job.sessionId;
+        await loadJobs();
+        connectWebSocket();
+      } else {
+        alert(`创建失败: ${payload.error}`);
+      }
+    } catch (error) {
+      alert(`创建失败: ${error.message}`);
     }
-  } catch (error) {
-    console.error('Failed to create job:', error);
-  }
+  });
 }
 
 function formatTimeAgo(isoString) {

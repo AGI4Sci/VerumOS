@@ -81,10 +81,10 @@ export function generateJobId(): string {
 /**
  * 创建初始 Job
  */
-export function createJob(sessionId: string, intent?: Intent): Job {
+export function createJob(sessionId: string, intent?: Intent, jobId?: string): Job {
   const now = new Date().toISOString();
   return {
-    id: generateJobId(),
+    id: jobId || generateJobId(),
     sessionId,
     status: 'created',
     createdAt: now,
