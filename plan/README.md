@@ -1,204 +1,508 @@
-# BioAgent 实现方案总览
+# VerumOS 架构设计文档
 
-## 背景
+## 1. 系统概述
 
-`web/biomedical_agent_demo.html` 已完成前端设计，展示了一个"可信科研副驾驶"系统（VerumOS · 明鉴）。
-前端通过三个 API 与后端通信，但后端尚未实现。
+VerumOS 是一个科研 AI 操作系统，通过对话式交互帮助科研人员完成数据处理、模型构建、结果分析等工作。
 
-目标：以兼容 [openclaw](../openclaw) 架构的方式，实现一个生物医学 Research Agent 后端。
+### 1.1 设计原则
 
----
+1. **用户数据本地优先**：数据尽可能留在用户本地电脑
+2. **可插拔架构**：Agent 和 Skill 都可以独立扩展
+3. **对话式交互**：用户只需描述需求，AI 负责技术实现
+4. **透明可控**：用户可以审查和修改 AI 生成的代码
 
-## 技术栈（与 openclaw 对齐）
-
-| 层次 | 选型 | 对应 openclaw |
-|------|------|---------------|
-| 语言 | TypeScript ESM | 一致 |
-| HTTP | Hono | 一致（openclaw 也用 Hono） |
-| 校验 | Zod | 一致 |
-| 运行时 | Node 22+ / Bun | 一致 |
-| LLM | `@anthropic-ai/sdk` Claude claude-sonnet-4-6 | 一致（内置 anthropic 扩展） |
-| 测试 | Vitest | 一致 |
-
-openclaw 的扩展结构约定（`extensions/<id>/` 含 `src/api.ts` + `src/runtime-api.ts` + `openclaw.plugin.json`）可作为后续集成路径，本阶段先以独立服务实现，确保逻辑清晰、无冗余依赖。
-
----
-
-## 前端依赖的 API 合约
+### 1.2 核心组件
 
 ```
-GET  /api/bootstrap             → BootstrapResponse
-POST /api/run-analysis          → RunAnalysisResponse
-POST /api/expert-correction     → ExpertCorrectionResponse
-GET  /                          → 静态 demo HTML
-```
-
-完整 schema 见 [task-02-schemas.md](./task-02-schemas.md)。
-
----
-
-## 项目目录结构
-
-```
-VerumOS/
-├── plan/                        # 本方案文档目录
-│   ├── README.md               （本文件）
-│   ├── bioagent_full_pluggable_architecture.html  （可插拔架构图）
-│   ├── task-01-project-scaffold.md
-│   ├── task-02-schemas.md
-│   ├── task-03-http-server.md
-│   ├── task-04-scenario-registry.md
-│   ├── task-05-asset-store.md
-│   ├── task-06-data-agent.md
-│   ├── task-07-model-agent.md
-│   ├── task-08-analysis-pipeline.md
-│   ├── task-09-expert-correction.md
-│   ├── task-10-feishu-integration.md
-│   └── task-11-discord-integration.md
-├── web/
-│   └── biomedical_agent_demo.html  （已有，不修改）
-├── src/
-│   ├── server.ts               # Hono 服务器 + 路由挂载
-│   ├── schemas.ts              # Zod schema 定义
-│   ├── scenarios.ts            # 场景注册表（静态元数据）
-│   ├── asset-store.ts          # 资产存储（内存 + 文件持久化）
-│   ├── scenario-cache.ts       # 分析结果内存缓存
-│   ├── pipeline.ts             # 分析流水线（LLM 编排）
-│   ├── agents/
-│   │   ├── data-agent.ts       # Data Agent：Tool Use 检索 PubMed / Semantic Scholar
-│   │   ├── model-agent.ts      # Model Agent：Tool Use 检索 UniProt / STRING / ClinicalTrials
-│   │   └── decision-synthesis.ts  # 决策综合（无工具，纯 LLM 综合）
-│   ├── tools/
-│   │   ├── registry.ts         # Claude Tool 定义（5 个外部数据库工具）
-│   │   ├── executor.ts         # 工具执行（实际 HTTP 调用）
-│   │   └── agentic-loop.ts     # Agentic Loop（Tool Use 循环）
-│   ├── routes/
-│   │   ├── bootstrap.ts
-│   │   ├── run-analysis.ts
-│   │   └── expert-correction.ts
-│   └── utils/
-│       └── detect-scenario.ts  # 消息 → 场景自动识别
-├── package.json
-├── tsconfig.json
-└── .env.example
+┌─────────────────────────────────────────────────────────────┐
+│                      VerumOS Platform                        │
+├─────────────────────────────────────────────────────────────┤
+│  用户入口：Web UI / 飞书 / Discord / API                      │
+├─────────────────────────────────────────────────────────────┤
+│                      Agent Orchestrator                      │
+│              (对话式任务编排 + 工作流引擎)                      │
+├──────────────┬──────────────┬──────────────┬────────────────┤
+│  Data Agent  │ Model Agent  │Analysis Agent│  Extension...   │
+├──────────────┴──────────────┴──────────────┴────────────────┤
+│                      Skill Registry                          │
+├──────────────┬──────────────┬──────────────┬────────────────┤
+│ CSV Skill    │ PyTorch Skill│ PubMed Skill │  Extension...   │
+├──────────────┴──────────────┴──────────────┴────────────────┤
+│                      Execution Runtime                        │
+│         本地执行 (数据处理) / 远程集群 (模型训练)               │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 可插拔架构图
+## 2. Agent 架构
 
-`plan/bioagent_full_pluggable_architecture.html` 是在本计划基础上新增的**全架构可视化**，展示了完整的 8 层可插拔架构。直接用浏览器打开即可查看，支持点击任意模块查看职责详情。
+### 2.1 Agent 接口定义
 
-### 架构层次 → 任务映射
+```typescript
+interface Agent {
+  // Agent 标识
+  id: string;           // "data-agent"
+  name: string;         // "数据助手"
+  description: string;  // "帮助用户处理和整合数据"
+  
+  // 能力声明
+  capabilities: {
+    inputs: string[];   // 接受的输入类型
+    outputs: string[];  // 产生的输出类型
+    skills: string[];   // 可用的 Skills
+  };
+  
+  // 对话处理
+  processMessage(
+    message: string, 
+    context: ConversationContext
+  ): Promise<AgentResponse>;
+  
+  // 任务执行
+  executeTask(
+    task: Task
+  ): Promise<TaskResult>;
+}
 
-| 架构层 | 核心模块（已计划） | 可插拔扩展槽（暂缓） |
-|--------|------------------|------------------|
-| 入口层 | VerumOS UI | 飞书(T10)、Discord(T11)、+渠道扩展 |
-| HTTP 服务层 | Hono Server(T03)、Zod Schemas(T02) | Auth Module |
-| 编排层 | Pipeline Orchestrator(T08)、Scenario Registry(T04) | HITL Controller、Audit Logger |
-| Agent 执行层 | Data Agent(T06)、Model Agent(T07)、Decision Synthesis(T08) | Validation Agent |
-| 核心算法层 | （内嵌在 Pipeline/Decision Synthesis 中） | Hypothesis Engine、Evidence Scorer、Conflict Resolver、Negative Filter |
-| 记忆/知识层 | Asset Store(T05)、Expert Correction(T09) | Long-term Memory、Knowledge Decay |
-| 数据适配层 | （通过 Tool Use 调用外部 API） | Data Connector、Data Formatter、QC Module、Normalization |
-| 外部数据库 | PubMed/NCBI、Semantic Scholar(T06)、UniProt+STRING、ClinicalTrials(T07) | — |
-
-> **说明：** 标注"暂缓"的可插拔扩展槽在架构图中以虚线边框显示，当前实现阶段按最小可行版本处理（如 Negative Filter 作为 pipeline 内联逻辑，Evidence Scorer 直接内嵌于 Decision Synthesis prompt），待核心流程稳定后再抽象为独立可替换模块。
-
----
-
-## 子任务清单
-
-| # | 任务文件 | 核心目标 | 依赖 |
-|---|----------|----------|------|
-| 01 | [task-01-project-scaffold.md](./task-01-project-scaffold.md) | 初始化 package.json / tsconfig / 入口 | 无 |
-| 02 | [task-02-schemas.md](./task-02-schemas.md) | 定义全部 Zod schema | T01 |
-| 03 | [task-03-http-server.md](./task-03-http-server.md) | Hono 服务器 + 三条路由骨架 | T01 T02 |
-| 04 | [task-04-scenario-registry.md](./task-04-scenario-registry.md) | 内置 3 个研究场景静态数据 | T02 |
-| 05 | [task-05-asset-store.md](./task-05-asset-store.md) | 资产存储（专家纠偏 / 知识节点 / 阴性结果） | T02 |
-| 06 | [task-06-data-agent.md](./task-06-data-agent.md) | Data Agent：Tool Use 检索 PubMed / Semantic Scholar | T02 |
-| 07 | [task-07-model-agent.md](./task-07-model-agent.md) | Model Agent：Tool Use 检索 UniProt / STRING / ClinicalTrials | T02 T06 |
-| **08** | [task-08-analysis-pipeline.md](./task-08-analysis-pipeline.md) | **真实数据库检索 + Agentic Loop + 综合决策输出** | T04 T05 T06 T07 |
-| 09 | [task-09-expert-correction.md](./task-09-expert-correction.md) | 专家修正写回 + 场景状态更新 | T05 T08 |
-| **10** | [task-10-feishu-integration.md](./task-10-feishu-integration.md) | **飞书聊天群 @mention → 分析 → 卡片回复** | T08 |
-| **11** | [task-11-discord-integration.md](./task-11-discord-integration.md) | **Discord `/bioagent` slash command 集成** | T08 |
-
----
-
-## 数据库检索架构（Task 08 核心）
-
-```
-科学家提问
-  │
-  ├─ Data Agent (LLM + Tools)
-  │    ├─ search_pubmed        → NCBI E-utilities（免费）
-  │    └─ search_semantic_scholar → Semantic Scholar API（免费）
-  │
-  ├─ Model Agent (LLM + Tools)
-  │    ├─ get_gene_info         → NCBI Gene（免费）
-  │    ├─ get_protein_interactions → STRING DB（免费）
-  │    └─ search_clinical_trials  → ClinicalTrials.gov v2（免费）
-  │
-  └─ Decision Synthesis (LLM，综合真实检索数据)
-       → DecisionOutput（含真实 PMID / 论文标题）
+interface AgentResponse {
+  type: "text" | "action" | "question" | "result";
+  content: string;
+  actions?: Action[];
+  questions?: Question[];
+  result?: any;
+}
 ```
 
+### 2.2 Data Agent（数据助手）
+
+**职责**：数据搜集、探索、清洗、整合
+
+```yaml
+能力:
+  - 自动识别数据格式
+  - 探索数据内容
+  - 与用户讨论数据整合方案
+  - 执行数据清洗和转换
+  - 多源数据整合
+
+默认 Skills:
+  - csv-skill: CSV/Excel 文件处理
+  - json-skill: JSON/YAML 文件处理
+  - sql-skill: 数据库连接和查询
+  - bioinfo-skill: FASTA/BAM/VCF 等生信格式
+  - geo-skill: GEO 数据集下载
+  - tcga-skill: TCGA 数据获取
+
+工作流:
+  1. 用户上传数据或描述数据源
+  2. Agent 自动识别格式并探索内容
+  3. Agent 提出整合建议，与用户讨论
+  4. 用户确认后执行整合
+  5. 输出整合后的数据集
+```
+
+### 2.3 Model Agent（模型助手）
+
+**职责**：AI 模型设计、训练、评估
+
+```yaml
+能力:
+  - 与用户讨论模型设计方案
+  - 自动生成模型代码
+  - 训练和调参
+  - 模型评估和解释
+  - 模型部署建议
+
+默认 Skills:
+  - pytorch-skill: PyTorch 深度学习
+  - sklearn-skill: 传统机器学习
+  - transformers-skill: HuggingFace 模型
+  - llm-skill: LLM 微调和部署
+
+工作流:
+  1. 用户描述建模需求
+  2. Agent 分析数据特征，提出模型建议
+  3. 与用户讨论模型架构
+  4. 生成模型代码和训练脚本
+  5. 用户确认后开始训练
+  6. 输出训练结果和模型文件
+
+执行环境:
+  - 简单模型: 本地执行
+  - 深度学习: 远程 GPU 集群
+```
+
+### 2.4 Analysis Agent（分析助手）
+
+**职责**：调用工具、分析结果、生成报告
+
+```yaml
+能力:
+  - 调用领域工具和数据库
+  - 执行分析流程
+  - 可视化结果
+  - 生成分析报告
+
+默认 Skills:
+  - pubmed-skill: 文献检索
+  - string-skill: 蛋白互作网络
+  - blast-skill: 序列比对
+  - enrichment-skill: 富集分析
+  - survival-skill: 生存分析
+  - visualization-skill: 数据可视化
+
+工作流:
+  1. 用户描述分析需求
+  2. Agent 选择合适的工具和数据库
+  3. 执行分析流程
+  4. 可视化结果
+  5. 生成分析报告
+```
+
 ---
 
-## 聊天群集成架构（Task 10/11）
+## 3. Skill 架构
+
+### 3.1 Skill 接口定义
+
+```typescript
+interface Skill {
+  // Skill 标识
+  name: string;           // "csv-skill"
+  description: string;    // "处理 CSV 和 Excel 文件"
+  version: string;        // "1.0.0"
+  author?: string;
+  
+  // 能力声明
+  capabilities: {
+    formats: string[];    // [".csv", ".xlsx", ".tsv"]
+    operations: string[]; // ["read", "explore", "transform", "merge"]
+  };
+  
+  // 依赖声明
+  dependencies: {
+    python?: string[];    // ["pandas>=2.0", "openpyxl"]
+    node?: string[];      // []
+    system?: string[];    // []
+  };
+  
+  // 工具定义（给 LLM 调用）
+  tools: Tool[];
+  
+  // 执行函数
+  execute(toolName: string, params: any): Promise<Result>;
+}
+
+interface Tool {
+  name: string;
+  description: string;
+  parameters: JSONSchema;
+  returns: JSONSchema;
+}
+```
+
+### 3.2 Skill 示例：csv-skill
+
+```typescript
+const csvSkill: Skill = {
+  name: "csv-skill",
+  description: "处理 CSV 和 Excel 文件",
+  version: "1.0.0",
+  
+  capabilities: {
+    formats: [".csv", ".xlsx", ".xls", ".tsv"],
+    operations: ["read", "explore", "transform", "merge", "export"]
+  },
+  
+  dependencies: {
+    python: ["pandas>=2.0", "openpyxl"]
+  },
+  
+  tools: [
+    {
+      name: "read_file",
+      description: "读取 CSV 或 Excel 文件",
+      parameters: {
+        type: "object",
+        properties: {
+          path: { type: "string", description: "文件路径" },
+          sheet: { type: "string", description: "Excel sheet 名称（可选）" }
+        },
+        required: ["path"]
+      }
+    },
+    {
+      name: "explore_data",
+      description: "探索数据内容，返回统计摘要",
+      parameters: {
+        type: "object",
+        properties: {
+          data_id: { type: "string", description: "数据集 ID" }
+        },
+        required: ["data_id"]
+      }
+    },
+    {
+      name: "merge_data",
+      description: "合并多个数据集",
+      parameters: {
+        type: "object",
+        properties: {
+          data_ids: { type: "array", items: { type: "string" } },
+          on: { type: "string", description: "合并键" },
+          how: { type: "string", enum: ["inner", "left", "right", "outer"] }
+        },
+        required: ["data_ids", "on"]
+      }
+    }
+  ],
+  
+  async execute(toolName: string, params: any): Promise<Result> {
+    switch (toolName) {
+      case "read_file":
+        return await this.readFile(params.path, params.sheet);
+      case "explore_data":
+        return await this.exploreData(params.data_id);
+      case "merge_data":
+        return await this.mergeData(params.data_ids, params.on, params.how);
+      default:
+        throw new Error(`Unknown tool: ${toolName}`);
+    }
+  }
+};
+```
+
+---
+
+## 4. 执行架构
+
+### 4.1 本地执行
+
+```yaml
+适用场景:
+  - 数据读取和探索
+  - 数据清洗和转换
+  - 简单模型训练
+  - 结果可视化
+
+执行方式:
+  - Node.js 子进程
+  - Python 虚拟环境
+  - 沙箱隔离（可选）
+
+数据存储:
+  - 用户指定目录
+  - 默认: ./data/{session_id}/
+```
+
+### 4.2 远程执行
+
+```yaml
+适用场景:
+  - 深度学习模型训练
+  - 大规模数据处理
+  - GPU 计算任务
+
+连接方式:
+  SSH: ssh -CAXY {user}@{host}
+  示例: ssh -CAXY aivc-gzy-debug2.gaozhangyang.ailab-beam.ws@h.pjlab.org.cn
+
+执行流程:
+  1. 用户确认使用远程集群
+  2. 上传数据和代码到集群
+  3. 在 Docker 容器中执行
+  4. 实时返回训练进度
+  5. 下载模型和结果
+
+资源管理:
+  - Docker 容器隔离
+  - GPU 资源分配
+  - 任务队列管理
+```
+
+---
+
+## 5. 对话系统
+
+### 5.1 对话流程
 
 ```
-飞书 / Discord 群
-  │  @BioAgent [研究问题]
-  ▼
-openclaw（已有渠道基础设施）
-  │  接收 @mention，调用 bio_research 工具
-  ▼
-extensions/bio-research-agent/（openclaw skill）
-  │  调用 BIOAGENT_URL/api/run-analysis
-  ▼
-BioAgent 服务器
-  │  执行分析流水线（Task 08）
-  ▼
-格式化结果
-  │  飞书 → Markdown 卡片
-  │  Discord → Discord Embed / Components v2
-  ▼
-科学家看到分析报告（含文献来源、证据链、无效路径）
+用户消息
+    │
+    ▼
+┌─────────────┐
+│ 意图识别    │ → 识别用户想做什么
+└─────┬───────┘
+      │
+      ▼
+┌─────────────┐
+│ Agent 路由  │ → 选择合适的 Agent
+└─────┬───────┘
+      │
+      ▼
+┌─────────────┐
+│ 上下文构建  │ → 加载历史对话、数据状态
+└─────┬───────┘
+      │
+      ▼
+┌─────────────┐
+│ Agent 处理  │ → Agent 生成响应
+└─────┬───────┘
+      │
+      ▼
+┌─────────────┐
+│ 工具调用    │ → 如需调用 Skill 工具
+└─────┬───────┘
+      │
+      ▼
+┌─────────────┐
+│ 响应生成    │ → 返回给用户
+└─────────────┘
+```
+
+### 5.2 上下文管理
+
+```typescript
+interface ConversationContext {
+  // 会话信息
+  sessionId: string;
+  userId: string;
+  
+  // 历史消息
+  messages: Message[];
+  
+  // 数据状态
+  datasets: Map<string, Dataset>;
+  
+  // 模型状态
+  models: Map<string, Model>;
+  
+  // 任务状态
+  tasks: Map<string, Task>;
+  
+  // 用户偏好
+  preferences: UserPreferences;
+}
 ```
 
 ---
 
-## 去冗余说明
+## 6. API 设计
 
-openclaw 是一个完整的多渠道消息网关，包含设备配对、渠道路由、TUI、插件 SDK 等大量模块。
-本方案的策略：
+### 6.1 REST API
 
-**复用 openclaw 的部分：**
-- `@openclaw/feishu`、`@openclaw/discord` 渠道扩展（消息接收/发送/格式化）
-- openclaw Plugin SDK（`definePluginEntry`、`api.registerTool`）
-- 相同技术栈（TypeScript ESM + Hono + Zod）
+```yaml
+# 会话管理
+POST /api/session              # 创建会话
+GET  /api/session/{id}         # 获取会话状态
+DELETE /api/session/{id}        # 删除会话
 
-**不引入的冗余部分：**
-- 20+ 其他消息渠道模块
-- 设备配对 / WebSocket 网关层
-- Pi 嵌入式代理运行时
-- TUI / CLI 交互框架
-- iOS / Android / macOS 客户端
+# 对话
+POST /api/chat                 # 发送消息
+GET  /api/chat/history         # 获取历史消息
+
+# 数据管理
+POST /api/data/upload          # 上传数据
+GET  /api/data/{id}            # 获取数据信息
+GET  /api/data/{id}/explore    # 探索数据
+DELETE /api/data/{id}          # 删除数据
+
+# 模型管理
+POST /api/model/create         # 创建模型
+GET  /api/model/{id}           # 获取模型信息
+POST /api/model/{id}/train     # 开始训练
+GET  /api/model/{id}/status    # 训练状态
+DELETE /api/model/{id}         # 删除模型
+
+# 任务管理
+GET  /api/task/{id}            # 获取任务状态
+POST /api/task/{id}/cancel     # 取消任务
+
+# Skill 管理
+GET  /api/skills               # 列出可用 Skills
+GET  /api/skills/{name}        # 获取 Skill 详情
+```
+
+### 6.2 WebSocket API
+
+```yaml
+# 实时通信
+ws://localhost:3000/ws
+
+消息类型:
+  - chat: 对话消息
+  - progress: 任务进度
+  - log: 执行日志
+  - error: 错误通知
+```
 
 ---
 
-## 可插拔扩展路线图（架构图中的暂缓模块）
+## 7. 安全考虑
 
-以下模块在 `bioagent_full_pluggable_architecture.html` 中有完整接口定义，当前阶段暂缓实现，优先级按科研价值排序：
+### 7.1 数据安全
 
-| 模块 | 架构层 | 优先级 | 说明 |
-|------|--------|--------|------|
-| HITL Controller | 编排层 | ★★★ | 关键节点暂停等待专家审批；当前以"自动通过"兜底 |
-| Negative Filter | 核心算法层 | ★★★ | 假设生成前拦截已证伪方向；当前内嵌于 pipeline 提示词 |
-| Evidence Scorer | 核心算法层 | ★★☆ | 置信度计算策略可替换；当前 Decision Synthesis 直接输出 |
-| Audit Logger | 编排层 | ★★☆ | 分析步骤溯源日志；当前无持久化 |
-| Long-term Memory | 记忆/知识层 | ★★☆ | Asset Store 的向量检索升级版 |
-| Validation Agent | Agent 执行层 | ★★☆ | 独立假设交叉验证；对应前端"验证"视图 |
-| Hypothesis Engine | 核心算法层 | ★☆☆ | 假设优先级排序策略可替换 |
-| Conflict Resolver | 核心算法层 | ★☆☆ | 争议证据裁决策略可替换 |
-| Data Connector | 数据适配层 | ★☆☆ | GEO / TCGA 等数据集接入 |
+- 用户数据存储在本地，不上传到云端
+- 远程训练时，数据加密传输
+- 敏感数据可配置脱敏处理
+
+### 7.2 执行安全
+
+- 本地执行使用沙箱隔离
+- 远程执行使用 Docker 容器
+- 代码执行前进行安全检查
+
+### 7.3 访问控制
+
+- 本地服务默认只监听 localhost
+- 可配置认证机制
+- 远程集群使用 SSH 密钥认证
+
+---
+
+## 8. 扩展机制
+
+### 8.1 添加新 Agent
+
+```typescript
+// 1. 实现 Agent 接口
+class MyAgent implements Agent {
+  id = "my-agent";
+  name = "我的助手";
+  // ...
+}
+
+// 2. 注册到系统
+registry.registerAgent(new MyAgent());
+```
+
+### 8.2 添加新 Skill
+
+```typescript
+// 1. 实现 Skill 接口
+class MySkill implements Skill {
+  name = "my-skill";
+  // ...
+}
+
+// 2. 注册到系统
+registry.registerSkill(new MySkill());
+
+// 3. 关联到 Agent
+registry.assignSkillToAgent("my-skill", "my-agent");
+```
+
+---
+
+## 9. 技术选型
+
+| 层次 | 选型 | 说明 |
+|------|------|------|
+| 前端 | HTML/CSS/JS | 可扩展为 React/Vue |
+| 后端 | TypeScript + Hono | 轻量级 HTTP 框架 |
+| Agent 编排 | LangChain / 自研 | LLM 调用和工具编排 |
+| 本地执行 | Node.js + Python | 子进程调用 |
+| 远程执行 | SSH2 + Docker | 远程命令执行 |
+| 数据存储 | 本地文件系统 | SQLite 元数据 |
+| 实时通信 | WebSocket | 进度和日志推送 |

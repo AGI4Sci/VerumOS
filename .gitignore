@@ -1,6 +1,32 @@
-.DS_Store
+# Dependencies
 node_modules/
+
+# Build
 dist/
+
+# Runtime data
 data/
+
+# Environment
 .env
-*.local
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary
+*.tmp
+*.temp
+.cache/
