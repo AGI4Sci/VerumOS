@@ -73,6 +73,7 @@ VerumOS/
 ├── data/                     # 运行时数据目录
 │   └── job_YYYYMMDD_HHMM_xxx/  # 任务 workspace（直接在 data/ 下）
 │       ├── job.json          # 任务元数据 + 轨迹 + 状态（一个文件搞定）
+│       ├── snapshots/        # 快照目录
 │       ├── inputs/           # 输入文件
 │       └── outputs/          # 输出文件
 ├── skills/
@@ -81,40 +82,45 @@ VerumOS/
 │   └── bioinfo-skill/
 │       └── SKILL.md         # Bioinfo Skill 描述文件
 ├── src/
+│   ├── core/                # 核心层（新架构）
+│   │   ├── types.ts         # 核心类型：AgentDef, MemoryPolicy, AgentEvent 等
+│   │   ├── index.ts         # Core 服务容器入口
+│   │   ├── router.ts        # 两级路由（规则 + LLM 语义）
+│   │   ├── event-bus.ts     # 事件发布/订阅
+│   │   ├── registry/
+│   │   │   └── tool-registry.ts  # 工具注册表
+│   │   └── memory/
+│   │       ├── index.ts           # MemoryManager 入口
+│   │       ├── working-memory.ts  # 消息历史 + token 截断
+│   │       ├── job-memory.ts      # job 上下文注入
+│   │       └── long-term-memory.ts # 长期记忆（Phase 2）
 │   ├── agents/              # Agent 实现（声明式配置）
-│   │   ├── base.ts          # Agent 工具类（已废弃继承模式）
-│   │   ├── data-agent.ts    # Data Agent 声明式配置
+│   │   ├── data-agent.ts    # Data Agent 配置 + 处理器
 │   │   ├── requirement-doc.ts # 需求文档管理
 │   │   └── types.ts         # 类型定义
 │   ├── runtime/             # 核心 Runtime（纯执行引擎）
 │   │   ├── agent-loop.ts    # 核心循环：async generator
 │   │   ├── agent-runtime.ts # 执行引擎
 │   │   ├── intent-classifier.ts # 意图分类器
-│   │   ├── llm-client.ts    # LLM 调用抽象
-│   │   └── conversation-state.ts # 对话状态机
+│   │   └── llm-client.ts    # LLM 调用抽象
 │   ├── registry/            # 注册表
 │   │   ├── agent-registry.ts # Agent 注册表
 │   │   └── skill-registry.ts # Skill 注册表
 │   ├── job/                 # 任务管理
 │   │   ├── types.ts         # Job 类型定义
-│   │   └── manager.ts       # Job 管理器
+│   │   ├── manager.ts       # Job 管理器
+│   │   └── snapshot-manager.ts # 快照管理器
 │   ├── execution/           # 本地 Python 执行器
 │   ├── routes/              # API 路由
-│   │   ├── chat.ts          # 聊天 API
-│   │   ├── upload.ts        # 文件上传 API
-│   │   ├── requirement.ts   # 需求文档 API
-│   │   ├── job.ts           # 任务 API
-│   │   └── file.ts          # 文件操作 API
 │   ├── skills/              # Skill 运行时
-│   │   ├── csv-skill.ts     # CSV Skill 实现
-│   │   ├── bioinfo-skill.ts # Bioinfo Skill 实现
-│   │   └── index.ts         # Skill 注册表
 │   ├── ws/                  # WebSocket 服务
 │   ├── app.ts               # Hono app
 │   ├── config.ts            # 环境配置
 │   └── server.ts            # 服务入口
 ├── web/
 │   └── index.html           # 前端 Demo
+├── prompt.md - prompt7.md   # 重构计划文档
+├── debug.md                 # 架构设计文档
 ├── .env.example
 ├── package.json
 └── tsconfig.json
@@ -366,60 +372,74 @@ const dataAgentConfig = {
 
 ## 架构演进
 
-### 已完成的重构
+### 已完成的重构（Phase 1-7）
 
-1. **核心类型定义（Core Types）**
-   - 新增 `src/core/types.ts`，定义核心类型：`AgentDef`、`MemoryPolicy`、`AgentContext`、`AgentEvent`、`RouteRule`、`ToolDef` 等
-   - `AgentDef` 是 Core 层和 Application 层之间的唯一合同
-   - 定义 interfaces for Router, Memory, EventBus, SkillRegistry, ToolRegistry, JobManager
+#### 1. 核心类型定义（Core Types）
+- 新增 `src/core/types.ts`，定义核心类型：`AgentDef`、`MemoryPolicy`、`AgentContext`、`AgentEvent`、`RouteRule`、`ToolDef` 等
+- `AgentDef` 是 Core 层和 Application 层之间的唯一合同
+- 定义 interfaces for Router, Memory, EventBus, SkillRegistry, ToolRegistry, JobManager
 
-2. **SkillRegistry 增强**
-   - 新增 `resolve` 方法：将 skill id 列表解析为 tools + SKILL.md 文档
-   - 支持 Skill 到 SkillDef 的自动转换
-   - SKILL.md 内容可追加到 system prompt
+#### 2. SkillRegistry 增强
+- 新增 `resolve` 方法：将 skill id 列表解析为 tools + SKILL.md 文档
+- 支持 Skill 到 SkillDef 的自动转换
+- SKILL.md 内容可追加到 system prompt
 
-3. **ToolRegistry 实现**
-   - 新增 `src/core/registry/tool-registry.ts`
-   - 管理所有 Tool 的注册和执行
-   - 支持 OpenAI function calling 格式输出
+#### 3. ToolRegistry 实现
+- 新增 `src/core/registry/tool-registry.ts`
+- 管理所有 Tool 的注册和执行
+- 支持 OpenAI function calling 格式输出
 
-4. **Memory 层抽象**
-   - 新增 `src/core/memory/` 目录
-   - WorkingMemory: 消息历史 + token 截断（优先保留 system 和最新用户消息）
-   - JobMemory: job 结构化状态注入（数据集元信息、需求文档、执行轨迹）
-   - LongTermMemory: 接口预留，Phase 2 实现
-   - MemoryManager: 组合三层 Memory，提供统一接口
+#### 4. Memory 层抽象
+- 新增 `src/core/memory/` 目录
+- WorkingMemory: 消息历史 + token 截断（优先保留 system 和最新用户消息）
+- JobMemory: job 结构化状态注入（数据集元信息、需求文档、执行轨迹）
+- LongTermMemory: 接口预留，Phase 2 实现向量检索
+- MemoryManager: 组合三层 Memory，提供统一接口
 
-5. **Router 实现**
-   - 新增 `src/core/router.ts`
-   - 两级路由：规则路由（优先）→ LLM 语义路由（fallback）
-   - AgentRegistry 增强：支持 AgentDef 注册和路由规则汇总
-   - Session 级路由锁定（待集成）
+#### 5. Router 实现
+- 新增 `src/core/router.ts`
+- 两级路由：规则路由（优先）→ LLM 语义路由（fallback）
+- AgentRegistry 增强：支持 AgentDef 注册和路由规则汇总
 
-6. **EventBus 实现**
-   - 新增 `src/core/event-bus.ts`
-   - 发布/订阅模式，解耦事件源和处理者
-   - 支持同步和异步处理器
-   - 事件日志记录
-   - 快照触发事件：requirement.saved, analysis.before_execute, analysis.after_execute, file.uploaded
+#### 6. EventBus 实现
+- 新增 `src/core/event-bus.ts`
+- 发布/订阅模式，解耦事件源和处理者
+- 支持同步和异步处理器
+- 快照自动触发：订阅 `requirement.saved`、`analysis.before_execute` 等事件
 
-7. **应用层 Agent 纯化**
-   - DataAgentDef 改为纯配置对象，符合 debug.md 架构设计
-   - 声明 `systemPrompt`、`skills`、`routes`、`memoryPolicy`、`hooks`
-   - 通过 hooks 表达个性化行为（convertToLlm、beforeTurn）
-   - 保留向后兼容的 DataAgentProcessor 和 dataAgent
+#### 7. 应用层 Agent 纯化
+- DataAgentDef 改为纯配置对象，符合 debug.md 架构设计
+- 声明 `systemPrompt`、`skills`、`routes`、`memoryPolicy`、`hooks`
+- 通过 hooks 表达个性化行为（convertToLlm、beforeTurn）
+- 保留向后兼容的 DataAgentProcessor
 
-8. **Agent Runtime 与业务逻辑分离**
-   - 新增 `runtime/agent-loop.ts`，实现纯执行引擎
-   - Agent 不再继承 BaseAgent，改为声明式配置
-   - 支持事件流（agent_start, turn_start, message_update 等）
+#### 8. Core 服务容器
+- 新增 `src/core/index.ts`，提供 `createCoreServices()` 入口
+- `initializeCoreServices()` 注册内置 Skills 和事件订阅
+- 快照自动触发：通过 EventBus 订阅实现
 
-2. **声明式 Agent 配置**
-   - DataAgent 改为声明 `systemPrompt`、`tools`、`convertToLlm`
-   - 意图规则由各 Agent 声明，便于扩展
+### 待完成（后续 Phase）
 
-3. **Job Workspace 简化**
-   - 目录扁平化：job 目录直接在 `data/` 下，去掉 `jobs/` 前缀
-   - 文件合并：`trace.jsonl` 合并到 `job.json` 的 `traces` 数组
-   - 状态内嵌：运行时状态存在 `job.json.state` 里
-   - 删除冗余：移除 `session-store.ts`、`utils/data.ts`
+- **AgentLoop 集成**：将 Core 服务注入 AgentLoop
+- **WebSocket 推送**：通过 EventBus 订阅推送到客户端
+- **LongTermMemory**：实现向量检索（Phase 2）
+
+### 架构设计原则
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      Application Layer                        │
+│   DataAgentDef     ModelAgentDef     AnalysisAgentDef  ...   │
+│            每个 agent 只是一个 AgentDef 配置对象              │
+└───────────────────────────┬──────────────────────────────────┘
+                            │ AgentDef（唯一跨层接口）
+┌───────────────────────────▼──────────────────────────────────┐
+│                         Core Layer                            │
+│  Router → AgentLoop → Memory, ToolRegistry, SkillRegistry    │
+│  JobManager, EventBus, LLMClient                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+- **Application 层**：只输出 AgentDef 配置对象，无 class，无运行时状态
+- **Core 层**：只消费 AgentDef，不 import Application 层模块
+- **EventBus**：观测旁路，不是控制流；状态变更走直接调用，EventBus 影子发布
