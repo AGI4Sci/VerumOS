@@ -127,6 +127,19 @@ chatRouter.post('/chat', async (c) => {
       timestamp: Date.now(),
     };
 
+    // 记录执行轨迹
+    if (response.result?.results) {
+      for (const stepResult of response.result.results) {
+        await appendTrace(jobId, {
+          type: 'tool_call',
+          tool: stepResult.tool,
+          success: stepResult.success,
+          message: stepResult.message,
+          timestamp: Date.now(),
+        });
+      }
+    }
+
     // 更新 Job 状态
     await updateJob(jobId, {
       status: 'running',

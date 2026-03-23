@@ -1769,6 +1769,66 @@ async function loadRequirement() {
   }
 }
 
+// 加载 Job 的历史消息
+async function loadJobHistory(jobId) {
+  try {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    // 恢复 sessionId
+    sessionId = job.sessionId;
+    
+    // 加载需求文档
+    await loadRequirement();
+    
+    // 加载历史消息
+    if (job.state?.messages?.length > 0) {
+      const welcome = document.getElementById('welcome');
+      if (welcome) welcome.style.display = 'none';
+      
+      const chatArea = document.getElementById('chatArea');
+      // 清空现有消息（保留 welcome）
+      const existingMessages = chatArea.querySelectorAll('.message');
+      existingMessages.forEach(m => m.remove());
+      
+      // 渲染历史消息
+      for (const msg of job.state.messages) {
+        const meta = {
+          user: { icon: '👤', name: '你' },
+          assistant: { icon: '📊', name: 'Data Agent' },
+          system: { icon: '⚡', name: 'System' },
+        }[msg.role] || { icon: '💬', name: 'Assistant' };
+        
+        const node = document.createElement('div');
+        node.className = 'message';
+        node.innerHTML = `
+          <div class="message-avatar ${msg.role === 'user' ? 'user' : 'data'}">${meta.icon}</div>
+          <div class="message-content">
+            <div class="message-header">
+              <span class="message-name">${meta.name}</span>
+              <span class="message-time">${msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : ''}</span>
+            </div>
+            <div class="message-text">${formatText(msg.content)}</div>
+          </div>
+        `;
+        chatArea.appendChild(node);
+      }
+      
+      // 滚动到底部
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+    
+    // 恢复数据集
+    if (job.state?.datasets?.length > 0) {
+      datasets = job.state.datasets;
+      refreshDataPanel(datasets);
+    }
+    
+  } catch (error) {
+    console.error('Failed to load job history:', error);
+  }
+}
+
 async function saveRequirement() {
   if (!sessionId) {
     await ensureSession();
@@ -1829,24 +1889,39 @@ async function executeRequirement() {
   // 先保存
   await saveRequirement();
   
-  // 更新状态为执行中
+  // 检查是否有当前 Job
+  if (!currentJobId) {
+    addMessage('system', '请先选择或创建一个任务');
+    return;
+  }
+  
+  // 更新状态为已确认，然后执行
   if (currentRequirement) {
     try {
-      const response = await fetch(`/api/requirement/${sessionId}/status`, {
+      // 先设置为 confirmed
+      const confirmResponse = await fetch(`/api/requirement/${sessionId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'executing' }),
+        body: JSON.stringify({ status: 'confirmed' }),
       });
-      const payload = await response.json();
-      if (payload.ok) {
-        currentRequirement = payload.document;
-        updateRequirementStatus('executing');
-        
-        // 发送执行命令到 chat
-        const input = document.getElementById('input');
-        input.value = '执行需求文档中的分析方案';
-        await sendMessage();
+      const confirmPayload = await confirmResponse.json();
+      
+      if (!confirmPayload.ok) {
+        addMessage('system', `执行失败：无法确认需求文档`);
+        return;
       }
+      
+      updateRequirementStatus('confirmed');
+      addMessage('system', '需求文档已确认，开始执行分析方案...');
+      
+      // 发送执行命令到 chat
+      const input = document.getElementById('input');
+      input.value = '执行需求文档中的分析方案';
+      await sendMessage();
+      
+      // 更新状态为执行中
+      updateRequirementStatus('executing');
+      
     } catch (error) {
       addMessage('system', `执行失败：${error.message}`);
     }
@@ -2094,6 +2169,11 @@ async function toggleJobFolder(jobId) {
   } else {
     expandedFolders.add(jobId);
     renderJobList();  // 先渲染创建容器
+    
+    // 设置当前 Job 并加载历史
+    currentJobId = jobId;
+    await loadJobHistory(jobId);
+    
     await loadFileTree(jobId, '');  // 再加载数据
   }
 }
