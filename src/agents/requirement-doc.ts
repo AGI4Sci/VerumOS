@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 
 export interface RequirementDocument {
   sessionId: string;
+  jobId?: string;  // 关联的 Job ID
   title: string;
   content: string;
   status: 'draft' | 'discussing' | 'confirmed' | 'executing' | 'completed';
@@ -39,28 +40,70 @@ async function ensureRequirementDir(): Promise<string> {
   }
 }
 
-export async function getRequirementDocument(sessionId: string): Promise<RequirementDocument | null> {
+// 获取 Job 目录下的需求文档路径
+async function getJobRequirementPath(jobId: string): Promise<string | null> {
+  if (!jobId) return null;
+  const jobDir = path.join(config.data.dir, jobId);
   try {
-    const reqDir = await ensureRequirementDir();
-    const filePath = path.join(reqDir, `${sessionId}.json`);
-    const content = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(content) as RequirementDocument;
+    await fs.mkdir(jobDir, { recursive: true });
+    return path.join(jobDir, 'requirement.md');
   } catch {
     return null;
   }
 }
 
-export async function saveRequirementDocument(doc: RequirementDocument): Promise<void> {
+export async function getRequirementDocument(sessionId: string): Promise<RequirementDocument | null> {
+  try {
+    const reqDir = await ensureRequirementDir();
+    const filePath = path.join(reqDir, `${sessionId}.json`);
+    const content = await fs.readFile(filePath, 'utf-8');
+    const doc = JSON.parse(content) as RequirementDocument;
+    
+    // 如果有关联的 Job，也读取 Job 目录下的 markdown 文件
+    if (doc.jobId) {
+      const jobReqPath = await getJobRequirementPath(doc.jobId);
+      if (jobReqPath) {
+        try {
+          const mdContent = await fs.readFile(jobReqPath, 'utf-8');
+          doc.content = mdContent;
+        } catch {
+          // 文件不存在，使用 JSON 中的内容
+        }
+      }
+    }
+    
+    return doc;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveRequirementDocument(doc: RequirementDocument): Promise<string | null> {
+  // 保存 JSON 元数据
   const reqDir = await ensureRequirementDir();
   const filePath = path.join(reqDir, `${doc.sessionId}.json`);
   doc.updatedAt = new Date().toISOString();
   await fs.writeFile(filePath, JSON.stringify(doc, null, 2), 'utf-8');
   logger.info(`Saved requirement document for session ${doc.sessionId}`);
+  
+  // 如果有关联的 Job，同时保存 markdown 到 Job 目录
+  let jobMdPath: string | null = null;
+  if (doc.jobId) {
+    jobMdPath = await getJobRequirementPath(doc.jobId);
+    if (jobMdPath) {
+      const markdown = documentToMarkdown(doc);
+      await fs.writeFile(jobMdPath, markdown, 'utf-8');
+      logger.info(`Saved requirement.md to job directory: ${doc.jobId}`);
+    }
+  }
+  
+  return jobMdPath;
 }
 
-export async function createRequirementDocument(sessionId: string, title?: string): Promise<RequirementDocument> {
+export async function createRequirementDocument(sessionId: string, title?: string, jobId?: string): Promise<RequirementDocument> {
   const doc: RequirementDocument = {
     sessionId,
+    jobId,
     title: title || '需求文档',
     content: '',
     status: 'draft',

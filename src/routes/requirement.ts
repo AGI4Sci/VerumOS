@@ -41,8 +41,11 @@ requirementRouter.post('/requirement/:sessionId', async (c) => {
   let doc = await getRequirementDocument(sessionId);
 
   if (!doc) {
-    doc = await createRequirementDocument(sessionId, body.title);
+    doc = await createRequirementDocument(sessionId, body.title, body.jobId);
   }
+
+  // 更新 jobId 关联
+  if (body.jobId) doc.jobId = body.jobId;
 
   // 支持直接传入 markdown 内容
   if (typeof body.markdown === 'string') {
@@ -58,13 +61,14 @@ requirementRouter.post('/requirement/:sessionId', async (c) => {
   if (Array.isArray(body.analysisPlan)) doc.analysisPlan = body.analysisPlan;
   if (body.content) doc.content = body.content;
 
-  await saveRequirementDocument(doc);
+  const savedPath = await saveRequirementDocument(doc);
 
   return c.json({
     ok: true,
     document: doc,
     markdown: documentToMarkdown(doc),
     toolChain: generateToolChain(doc),
+    savedToJob: savedPath ? true : false,
   });
 });
 
