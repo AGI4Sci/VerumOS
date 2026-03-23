@@ -1,15 +1,17 @@
 # VerumOS · 明鉴
 
-科研 AI 操作系统的 Phase 1 最小可运行版本。
+科研 AI 操作系统。
 
 ## 当前实现
 
 ### 核心功能
 - **Data Agent**：数据探索、清洗、整合，支持需求文档驱动的工作流
+- **Analysis Agent**：统计分析、可视化图表生成、SCP Hub 工具集成
 - **csv-skill**：CSV/TSV/Excel 文件处理，支持读取、探索、转换、合并、转置
 - **bioinfo-skill**：生物信息学分析，支持单细胞表达矩阵处理、QC、标准化、marker 基因分析
 - **需求文档系统**：支持 Markdown 格式的需求文档，自动生成工具链
 - **Job Workspace**：任务隔离、持久化、执行轨迹记录、任务恢复
+- **SCP 工具池**：集成 25 个 SCP Hub 服务，2302 个科研工具
 
 ### 架构亮点
 - **Agent Runtime**：核心执行引擎（agentLoop），支持事件流、工具调用编排
@@ -17,6 +19,53 @@
 - **Agent Registry**：支持多 Agent 注册和意图路由
 - **Skill Registry**：支持多 Skill 注册和管理
 - **意图规则声明式定义**：意图识别规则由各 Agent 声明，便于扩展和维护
+
+### SCP Hub 工具集成
+
+Analysis Agent 集成了 SCP Hub 的 25 个生命科学服务，总计 2302 个工具：
+
+#### 🧬 药物研发 (3 个服务)
+- **DrugSDA-Tool** (28,600 工具): 分子筛选、格式转换、相似度计算
+- **DrugSDA-Model** (1,700 工具): 分子对接、ADMET 预测、亲和力预测
+- **Origene-FDADrug** (57 工具): FDA 药品信息检索
+
+#### 🧪 蛋白质工程 (4 个服务)
+- **VenusFactory** (1,500 工具): 蛋白质突变预测、功能预测
+- **BioInfo-Tools** (55 工具): 序列分析、结构域识别、GO 注释
+- **Origene-UniProt** (121 工具): UniProt 数据库检索
+- **Origene-STRING** (6 工具): 蛋白质相互作用网络
+
+#### 🧫 基因组学 (4 个服务)
+- **Origene-Ensembl** (14 工具): 基因组注释
+- **Origene-UCSC** (12 工具): 基因组可视化
+- **Origene-NCBI** (9 工具): NCBI 数据库检索
+- **Origene-TCGA** (8 工具): 癌症基因组数据
+
+#### 🔬 疾病与靶点 (2 个服务)
+- **Origene-OpenTargets** (189 工具): 靶点发现与验证
+- **Origene-Monarch** (49 工具): 疾病-基因关联
+
+#### ⚗️ 化学与分子 (3 个服务)
+- **Origene-ChEMBL** (47 工具): 生物活性数据库
+- **Origene-PubChem** (306 工具): 化学信息数据库
+- **Origene-KEGG** (10 工具): 代谢通路数据库
+
+#### ⚗️ 化学计算 (2 个服务)
+- **SciToolAgent-Chem** (505 工具): 化学反应预测、逆合成规划
+- **化学与反应计算** (276 工具): 化学计算工具
+
+#### 🧪 湿实验操作 (1 个服务)
+- **Thoth** (1,300+ 工具): 实验流程自动生成
+
+#### 🔍 综合工具 (3 个服务)
+- **SciToolAgent-Bio** (40 工具): 生物信息学工具集
+- **SciGraph-Bio** (56 工具): 生命科学知识图谱
+- **Origene-Search** (6 工具): 文献检索
+
+#### 🌐 通用工具 (3 个服务)
+- **SciGraph** (4,800 工具): 跨学科知识图谱
+- **ToolUniverse** (236 工具): 工具集成平台
+- **数据处理与统计分析** (320 工具): 数据处理与统计
 
 ### API 端点
 - `POST /api/session` - 创建会话
@@ -49,15 +98,21 @@
 - `WS /ws` - WebSocket 会话同步
 
 ### 前端功能
-- 三栏布局：左侧 Job Explorer + 中间聊天区 + 右侧需求文档/工具链/数据集面板
-- Job Explorer：VSCode 风格文件浏览器
+- 三栏布局：左侧 Job Explorer + 中间聊天区 + 右侧面板
+- **Job Explorer**：VSCode 风格文件浏览器
   - 树形结构展示，支持展开/折叠
   - 右键上下文菜单（打开、重命名、删除、下载）
   - 新建文件夹、上传文件
   - 文件预览（CSV、JSON、TXT、MD 等）
-- 数据预览表格：显示前 20 行，支持横向滚动，列类型标注
-- 需求文档编辑器：Markdown 编辑 + 实时保存
-- 工具链预览：自动生成推荐工具链
+- **工具池**：Analysis Agent 专属面板
+  - 25 个 SCP Hub 服务展示
+  - 分类过滤（药物研发、蛋白质工程、基因组学等）
+  - 搜索功能
+  - 批量选择/取消激活
+  - 详细使用说明和示例
+- **数据预览表格**：显示前 20 行，支持横向滚动，列类型标注
+- **需求文档编辑器**：Markdown 编辑 + 实时保存
+- **工具链预览**：自动生成推荐工具链
 - **快照功能**：
   - 编辑历史消息：用户消息悬停显示编辑按钮
   - 两种编辑模式：仅修改记录 / 回退并重新执行
@@ -96,6 +151,7 @@ VerumOS/
 │   │       └── long-term-memory.ts # 长期记忆（Phase 2）
 │   ├── agents/              # Agent 实现（声明式配置）
 │   │   ├── data-agent.ts    # Data Agent 配置 + 处理器
+│   │   ├── analysis-agent.ts # Analysis Agent 配置
 │   │   ├── requirement-doc.ts # 需求文档管理
 │   │   └── types.ts         # 类型定义
 │   ├── runtime/             # 核心 Runtime（纯执行引擎）
@@ -119,7 +175,8 @@ VerumOS/
 │   └── server.ts            # 服务入口
 ├── web/
 │   └── index.html           # 前端 Demo
-├── prompt.md - prompt7.md   # 重构计划文档
+├── prompt.md                # 开发方案文档
+├── tool.md                  # SCP Hub 工具清单
 ├── debug.md                 # 架构设计文档
 ├── .env.example
 ├── package.json
@@ -193,6 +250,16 @@ curl -X POST http://localhost:3000/api/upload \
 2. 根据工具链依次调用 Skill
 3. 返回执行结果
 
+### 4. 使用 SCP 工具
+
+切换到 Analysis Agent，查看工具池：
+
+1. 点击顶部导航的"分析"标签
+2. 右侧面板显示"工具池"标签
+3. 浏览 25 个 SCP Hub 服务
+4. 点击"📋 查看详情"查看使用说明
+5. 勾选需要的工具并保存
+
 ## Data Agent 能力
 
 当前支持：
@@ -212,6 +279,14 @@ curl -X POST http://localhost:3000/api/upload \
 2. **预分析数据结构**：读取列名、形状、样本数据
 3. **生成处理代码**：根据需求和数据结构生成完整的 Python 代码
 4. **执行并验证**：运行代码并检查输出文件
+
+## Analysis Agent 能力
+
+当前支持：
+
+- **统计分析**：描述性统计、假设检验、相关性分析
+- **可视化**：折线图、柱状图、散点图、热力图、火山图等
+- **SCP Hub 工具集成**：调用 25 个服务的 2302 个工具
 
 ## Skill 系统
 
@@ -368,7 +443,8 @@ const dataAgentConfig = {
 
 - WebSocket 当前用于会话状态同步，不做 token 级流式输出
 - 仅完整实现了 `Data Agent + csv-skill + bioinfo-skill`
-- `Model Agent` / `Analysis Agent` 仍未进入本阶段实现
+- `Model Agent` 仍未进入本阶段实现
+- SCP 工具当前仅展示和选择，实际调用功能待实现
 
 ## 架构演进
 
@@ -429,9 +505,16 @@ const dataAgentConfig = {
   - 验证稳定后移除直接调用
 - 在 `app.ts` 初始化时调用 `initializeCoreServices()`
 
+#### 10. Analysis Agent 与工具池
+- 实现 Analysis Agent，支持统计分析和可视化
+- 集成 SCP Hub 的 25 个服务，共 2302 个工具
+- 前端工具池界面：分类过滤、搜索、批量选择、详情查看
+- 每个工具包含详细使用说明和示例
+
 ### 待完成（后续 Phase）
 
 - **LongTermMemory**：实现向量检索（Phase 2）
+- **SCP 工具实际调用**：实现工具调用器，连接 SCP Hub API
 
 ### 架构设计原则
 ```

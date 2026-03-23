@@ -1,488 +1,372 @@
-# AgentLoop 集成与 EventBus 渐进式重构 - ✅ 已完成
+# VerumOS - Analysis Agent 工具池集成方案
 
 ## 问题描述
 
-根据 `debug.md` 的架构设计，以下功能尚未实现：
+用户要求开发 Analysis Agent，并接入 SCP Hub 的所有工具。当前状态：
+- 前端已有工具池 UI，但只包含 25 个服务
+- tool.md 中实际有 **40 个服务、2302 个工具**
+- Analysis Agent 是占位实现，缺少实际功能
+- 工具缺少详细的使用说明
+- 后端缺少工具调用集成
 
-1. **AgentLoop 未注入 CoreServices**
-   - 当前 `agentLoop` 是独立函数，无法使用 MemoryManager、SkillRegistry 等 Core 服务
-   - 违背了 debug.md 中"AgentLoop 不自己 import 任何 core 模块"的设计原则
+## 根因分析
 
-2. **EventBus 未被使用**
-   - routes 层直接调用 `createSnapshot`，没有发布事件
-   - 设计意图：routes 发布事件 → JobManager 订阅并创建快照
-
-3. **WebSocket 推送未通过 EventBus**
-   - 直接调用 `emitSessionEvent`
-   - 设计意图：WsPublisher 订阅 EventBus 推送
-
-4. **初始化流程不完整**
-   - 没有调用 `initializeCoreServices`
-   - 快照自动触发等功能未生效
-
-5. **TraceRecorder 未实现**
-   - 手动调用 `appendTrace`
-   - 设计意图：订阅 tool 事件自动记录
-
-## ✅ 实现完成
-
-所有步骤已完成：
-
-1. ✅ 重构 AgentLoop - 接受 CoreServices 注入
-2. ✅ 创建 TraceRecorder 订阅者 - 自动记录执行轨迹
-3. ✅ 创建 WsPublisher 订阅者 - 实时推送事件到客户端
-4. ✅ 完善 Core 初始化 - 注册所有订阅者
-5. ✅ 修改 app.ts - 初始化 Core 服务
-6. ✅ 修改 routes/chat.ts - 添加 EventBus 事件发布
-7. ✅ 修改 routes/requirement.ts - 添加 EventBus 事件发布
-8. ✅ 修改 routes/upload.ts - 添加文件上传事件发布
-
-## 验证结果
-
-启动服务成功：
-```
-[TraceRecorder] Registered to EventBus
-[WsPublisher] Registered to EventBus
-[Core] Core services initialized successfully
-[INFO] VerumOS server listening on http://localhost:3000
-```
-
-健康检查通过：`GET /health` 返回 `{"ok":true}`
-
-**架构演进过程中的不完整迁移**：
-
-- Phase 1-7 完成了 Core 层基础设施（类型、EventBus、Memory、Registry）
-- 但 AgentLoop 和 routes 层还停留在旧的实现方式
-- 缺少一个集成层将 Core 服务注入到执行流程中
-
-**设计原则违背**：
-
-- debug.md 要求 AgentLoop 通过 CoreServices 容器接收依赖
-- 实际代码中 AgentLoop 独立定义，不符合"依赖注入"原则
+1. **工具数据不完整**：前端 `SCP_TOOLS` 数组只包含 25 个服务，遗漏了 15 个服务
+2. **缺少使用说明**：每个工具只有简要描述，缺少详细的使用方法和参数说明
+3. **Analysis Agent 未实现**：只是占位代码，缺少实际的分析逻辑和工具调用能力
+4. **前后端未打通**：前端选择工具后，后端没有对应的工具注册和执行逻辑
 
 ## 解决方案
 
-### 方案概览
+### 方案一：完整工具数据 + 使用说明（推荐）
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                      Application Layer                        │
-│                                                               │
-│   DataAgentDef     ModelAgentDef     AnalysisAgentDef        │
-│            每个 agent 只是一个 AgentDef 配置对象              │
-└───────────────────────────┬──────────────────────────────────┘
-                            │ AgentDef（唯一跨层接口）
-┌───────────────────────────▼──────────────────────────────────┐
-│                         Core Layer                            │
-│                                                               │
-│  Router → AgentLoop → Memory, ToolRegistry, SkillRegistry    │
-│  JobManager, EventBus, LLMClient                              │
-│                                                               │
-│  EventBus 订阅者：                                            │
-│  - TraceRecorder: 记录执行轨迹                                │
-│  - WsPublisher: WebSocket 推送                                │
-│  - SnapshotCreator: 自动快照                                  │
-└──────────────────────────────────────────────────────────────┘
-```
+**优点**：
+- 提供完整的 40 个服务信息
+- 每个工具有详细使用说明
+- 用户可以快速了解工具能力
+- 为后续工具调用打好基础
 
-### 核心改动
+**缺点**：
+- 工作量较大，需要手动整理 40 个服务的详细信息
+- 前端需要展示更多信息
 
-1. **重构 AgentLoop**
-   - 接受 CoreServices 注入
-   - 使用 MemoryManager 组装上下文
-   - 使用 SkillRegistry 解析工具
-   - 使用 EventBus 发布事件
+### 方案二：最小化实现
 
-2. **创建 Core 初始化流程**
-   - 在 `app.ts` 的 `initializeApp()` 中调用 `initializeCoreServices`
-   - 注册内置订阅者（TraceRecorder、WsPublisher、SnapshotCreator）
+**优点**：
+- 快速上线
+- 只实现核心功能
 
-3. **渐进式引入 EventBus**
-   - 保留 routes 层的直接调用
-   - 同时发布事件到 EventBus（双写）
-   - 验证稳定后再移除直接调用
+**缺点**：
+- 用户无法了解完整工具能力
+- 后续需要补全数据
 
-4. **修改 routes/chat.ts**
-   - 调用新的 AgentLoop（带 CoreServices）
-   - 发布事件到 EventBus
+## 推荐方案：方案一
 
-5. **添加 WebSocket 推送订阅**
-   - 创建 WsPublisher 订阅 EventBus
-   - 推送事件到客户端
+理由：
+1. 工具池是核心功能，应该一次性做完整
+2. 使用说明对用户理解工具非常重要
+3. 为后续工具调用集成打好基础
 
 ## 修改步骤
 
-### 步骤 1：重构 AgentLoop（完全重构）
+### 1. 补全 SCP 工具数据（前端）
 
-**文件**：`src/runtime/agent-loop.ts`
+**文件**：`web/index.html`
 
 **修改内容**：
+- 从 tool.md 提取所有 40 个服务的信息
+- 为每个工具添加详细的使用说明（usage 字段）
+- 更新 `SCP_TOOLS` 数组
 
-1. 修改函数签名，接受 `CoreServices` 参数：
+**数据结构**：
+```javascript
+const SCP_TOOLS = [
+  {
+    id: 'DrugSDA-Tool',
+    name: 'DrugSDA-Tool',
+    provider: '北京大学',
+    toolCount: 28600,
+    type: '数据库/计算工具',
+    category: '药物研发',
+    description: '药物分子筛选、设计与分析工具集',
+    usage: '使用方法：\n1. 上传分子结构文件（支持 SMILES、SDF、PDB 格式）\n2. 选择分析类型（相似度计算、分子对接、ADMET 预测等）\n3. 设置参数并运行\n4. 查看分析结果',
+    tags: ['分子筛选', '药物设计', 'ADMET'],
+    inputFormats: ['SMILES', 'SDF', 'PDB'],
+    outputFormats: ['CSV', 'JSON', 'SDF']
+  },
+  // ... 其他 39 个服务
+];
+```
 
+### 2. 增强工具池 UI（前端）
+
+**文件**：`web/index.html`
+
+**修改内容**：
+- 添加"查看详情"按钮，展开工具使用说明
+- 支持按标签过滤
+- 显示输入/输出格式
+- 添加工具状态指示（已集成/待集成）
+
+**UI 改进**：
+```html
+<div class="tool-card">
+  <!-- 现有内容 -->
+  <div class="tool-actions">
+    <button class="tool-detail-btn" onclick="showToolDetail('${tool.id}')">查看详情</button>
+  </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="tool-detail-modal">
+  <div class="detail-section">
+    <h4>使用方法</h4>
+    <pre>${tool.usage}</pre>
+  </div>
+  <div class="detail-section">
+    <h4>输入格式</h4>
+    <div class="format-tags">
+      ${tool.inputFormats.map(f => `<span class="format-tag">${f}</span>`).join('')}
+    </div>
+  </div>
+  <!-- ... -->
+</div>
+```
+
+### 3. 完善 Analysis Agent（后端）
+
+**文件**：`src/agents/analysis-agent.ts`
+
+**修改内容**：
+- 实现真实分析能力
+- 集成 SCP 工具调用
+- 支持多种分析类型
+
+**代码结构**：
 ```typescript
-import type { CoreServices, AgentDef, AgentContext, AgentEvent, Message } from '../core/types.js';
-
-export interface AgentLoopConfig {
-  agentDef: AgentDef;
-  services: CoreServices;
-  maxTurns?: number;
-}
-
-export async function* agentLoop(
-  messages: Message[],
-  context: AgentContext,
-  config: AgentLoopConfig
-): AsyncGenerator<AgentEvent> {
-  const { agentDef, services, maxTurns = 10 } = config;
+export const AnalysisAgentDef: AgentDef = {
+  id: 'analysis-agent',
+  name: 'Analysis Agent',
+  description: '负责统计分析、可视化、科研工具集成',
   
-  // 使用 services.memory 注入上下文
-  // 使用 services.skillRegistry 解析工具
-  // 使用 services.eventBus 发布事件
-  // ...
-}
+  systemPrompt: `你是 Analysis Agent，负责：
+1. 统计分析（描述性统计、假设检验、相关性分析）
+2. 可视化图表生成（折线图、柱状图、散点图、热力图等）
+3. 调用 SCP Hub 的科研工具
+
+## 可用工具
+
+你拥有以下 SCP Hub 工具：
+- DrugSDA-Tool: 药物分子筛选与设计
+- VenusFactory: 蛋白质工程 AI 工具
+- SciGraph: 科学知识查询
+... （列出所有 40 个服务）
+
+根据用户需求，选择合适的工具并执行分析。`,
+
+  skills: ['csv-skill', 'bioinfo-skill'],  // 复用现有 skills
+  
+  tools: [
+    // 定义分析相关工具
+    createStatisticalAnalysisTool(),
+    createVisualizationTool(),
+    createSCPToolInvoker(),
+  ],
+
+  routes: [
+    {
+      match: {
+        pattern: /分析|可视化|图表|统计|绘图|scp|drug|protein/i,
+      },
+      priority: 10,
+    },
+  ],
+  
+  memoryPolicy: createDefaultMemoryPolicy(),
+};
 ```
 
-2. 实现完整的执行流程：
-   - 调用 `beforeTurn` hook
-   - 使用 MemoryManager 组装上下文
-   - 使用 SkillRegistry 解析工具
-   - 调用 LLM（流式）
-   - 执行工具调用
-   - 发布事件到 EventBus
-   - 更新 Job 状态
+### 4. 实现 SCP 工具调用器（后端）
 
-### 步骤 2：创建 TraceRecorder 订阅者
+**新文件**：`src/tools/scp-tool-invoker.ts`
 
-**新文件**：`src/core/subscribers/trace-recorder.ts`
+**职责**：
+- 调用 SCP Hub API
+- 处理工具输入输出
+- 错误处理和重试
 
-**功能**：
-- 订阅 `tool_execution_start`、`tool_result` 事件
-- 自动调用 `jobManager.appendTrace()`
-
+**代码框架**：
 ```typescript
-import type { EventBus, AgentEvent, JobManager } from '../types.js';
-
-export function registerTraceRecorder(eventBus: EventBus, jobManager: JobManager): void {
-  eventBus.subscribe('tool_execution_start', async (event: AgentEvent) => {
-    if (event.jobId && event.data) {
-      await jobManager.appendTrace(event.jobId, {
-        type: 'tool_call',
-        data: event.data as Record<string, unknown>,
-      });
-    }
-  });
-
-  eventBus.subscribe('tool_result', async (event: AgentEvent) => {
-    if (event.jobId && event.data) {
-      await jobManager.appendTrace(event.jobId, {
-        type: 'tool_result',
-        data: event.data as Record<string, unknown>,
-      });
-    }
-  });
-}
-```
-
-### 步骤 3：创建 WsPublisher 订阅者
-
-**新文件**：`src/core/subscribers/ws-publisher.ts`
-
-**功能**：
-- 订阅所有 Agent 事件
-- 推送到 WebSocket 客户端
-
-```typescript
-import type { EventBus, AgentEvent } from '../types.js';
-import { emitSessionEvent } from '../../ws/server.js';
-
-export function registerWsPublisher(eventBus: EventBus): void {
-  eventBus.subscribe('*', (event: AgentEvent) => {
-    if (event.sessionId) {
-      emitSessionEvent(event.sessionId, {
-        type: event.type,
-        payload: event.data,
-        timestamp: Date.parse(event.timestamp),
-      });
-    }
-  });
-}
-```
-
-### 步骤 4：完善 Core 初始化
-
-**文件**：`src/core/index.ts`
-
-**修改内容**：
-
-在 `initializeCoreServices` 中注册订阅者：
-
-```typescript
-import { registerTraceRecorder } from './subscribers/trace-recorder.js';
-import { registerWsPublisher } from './subscribers/ws-publisher.js';
-
-export async function initializeCoreServices(services: ReturnType<typeof createCoreServices>): Promise<void> {
-  const { skillRegistry, eventBus, jobManager, memory } = services;
-
-  // 初始化 Memory
-  await memory.initialize();
-
-  // 注册内置 Skills
-  const { csvSkill } = await import('../skills/csv-skill.js');
-  const { bioinfoSkill } = await import('../skills/bioinfo-skill.js');
-  skillRegistry.register(csvSkill);
-  skillRegistry.register(bioinfoSkill);
-
-  // 注册订阅者
-  registerTraceRecorder(eventBus, jobManager);
-  registerWsPublisher(eventBus);
-
-  // 订阅快照触发事件
-  const eventToTrigger: Record<string, string> = {
-    'requirement.saved': 'requirement_saved',
-    'analysis.before_execute': 'pre_execute',
-    'analysis.after_execute': 'post_execute',
-    'file.uploaded': 'dataset_changed',
+export function createSCPToolInvoker(): ToolDef {
+  return {
+    name: 'invoke_scp_tool',
+    description: '调用 SCP Hub 科研工具',
+    parameters: {
+      type: 'object',
+      properties: {
+        toolId: { type: 'string', description: '工具 ID' },
+        action: { type: 'string', description: '操作类型' },
+        params: { type: 'object', description: '工具参数' },
+      },
+      required: ['toolId', 'action', 'params'],
+    },
+    execute: async (params, ctx) => {
+      const { toolId, action, params: toolParams } = params;
+      
+      // 1. 验证工具是否可用
+      // 2. 调用 SCP API
+      // 3. 处理响应
+      // 4. 返回结果
+      
+      return {
+        success: true,
+        result: '...',
+      };
+    },
   };
-
-  for (const [event, trigger] of Object.entries(eventToTrigger)) {
-    eventBus.subscribe(event as any, async (e: any) => {
-      if (e.jobId) {
-        await jobManager.createSnapshot(e.jobId, trigger as any);
-      }
-    });
-  }
 }
 ```
 
-### 步骤 5：修改 app.ts 初始化流程
+### 5. 创建工具注册 API（后端）
 
-**文件**：`src/app.ts`
+**新文件**：`src/routes/tools.ts`
 
-**修改内容**：
+**API 端点**：
+- `GET /api/tools` - 获取所有可用工具
+- `POST /api/tools/activate` - 激活工具
+- `POST /api/tools/deactivate` - 停用工具
+- `POST /api/tools/invoke` - 调用工具
 
+**代码框架**：
 ```typescript
-import { createCoreServices, initializeCoreServices } from './core/index.js';
+import { Hono } from 'hono';
 
-let coreServices: ReturnType<typeof createCoreServices> | null = null;
+const app = new Hono();
 
-export async function initializeApp(): Promise<Hono> {
-  await ensureDataDir();
-  await initializeSkills();
-
-  // 初始化 Core 服务
-  coreServices = createCoreServices();
-  await initializeCoreServices(coreServices);
-
-  return app;
-}
-
-export function getCoreServices() {
-  return coreServices;
-}
-```
-
-### 步骤 6：修改 routes/chat.ts（渐进式）
-
-**文件**：`src/routes/chat.ts`
-
-**修改内容**：
-
-1. 保留现有的 `DataAgentProcessor` 逻辑
-2. 添加 EventBus 事件发布
-3. 后续可以切换到新的 AgentLoop
-
-```typescript
-import { getCoreServices } from '../app.js';
-import { createAgentEvent } from '../core/types.js';
-
-chatRouter.post('/chat', async (c) => {
-  // ... 现有逻辑 ...
-
-  const coreServices = getCoreServices();
-  
-  // 执行需求前发布事件
-  if (isExecuteIntent && coreServices) {
-    coreServices.eventBus.publish(
-      createAgentEvent('analysis.before_execute', { message }, jobId, sessionId)
-    );
-  }
-
-  // ... 现有的处理逻辑 ...
-
-  // 执行需求后发布事件
-  if (isExecuteIntent && coreServices) {
-    coreServices.eventBus.publish(
-      createAgentEvent('analysis.after_execute', { response }, jobId, sessionId)
-    );
-  }
-
-  // ... 返回响应 ...
+// 获取工具列表
+app.get('/', (c) => {
+  const tools = toolRegistry.getAllTools();
+  return c.json({ tools });
 });
-```
 
-### 步骤 7：修改 routes/requirement.ts（渐进式）
-
-**文件**：`src/routes/requirement.ts`
-
-**修改内容**：
-
-```typescript
-import { getCoreServices } from '../app.js';
-import { createAgentEvent } from '../core/types.js';
-
-// POST /requirement/:sessionId
-requirementRouter.post('/requirement/:sessionId', async (c) => {
-  // ... 现有的保存逻辑 ...
-
-  const savedPath = await saveRequirementDocument(doc);
-
-  // 保留直接调用（渐进式）
-  if (doc.jobId) {
-    try {
-      await createSnapshot(doc.jobId, 'requirement_saved');
-    } catch (error) {
-      console.error('Failed to create snapshot:', error);
-    }
-  }
-
-  // 同时发布事件到 EventBus
-  const coreServices = getCoreServices();
-  if (coreServices && doc.jobId) {
-    coreServices.eventBus.publish(
-      createAgentEvent('requirement.saved', { document: doc }, doc.jobId, sessionId)
-    );
-  }
-
-  // ... 返回响应 ...
+// 激活工具
+app.post('/activate', async (c) => {
+  const { toolIds } = await c.req.json();
+  // 注册工具到 ToolRegistry
+  return c.json({ success: true });
 });
+
+// 调用工具
+app.post('/invoke', async (c) => {
+  const { toolId, action, params } = await c.req.json();
+  const result = await toolRegistry.execute({ name: toolId, arguments: params }, ctx);
+  return c.json(result);
+});
+
+export default app;
 ```
 
-### 步骤 8：修改 routes/upload.ts（添加事件发布）
+### 6. 数据持久化（后端）
 
-**文件**：`src/routes/upload.ts`
+**修改文件**：`src/job/types.ts`
 
-**修改内容**：
-
+**添加字段**：
 ```typescript
-import { getCoreServices } from '../app.js';
-import { createAgentEvent } from '../core/types.js';
-
-// 文件上传成功后
-if (coreServices && jobId) {
-  coreServices.eventBus.publish(
-    createAgentEvent('file.uploaded', { filename, path: savedPath }, jobId, sessionId)
-  );
+export interface JobState {
+  // ... 现有字段
+  activeTools?: string[];  // 激活的工具 ID 列表
+  toolConfigurations?: Record<string, any>;  // 工具配置
 }
 ```
-
-## 验收标准
-
-### 功能测试
-
-1. **AgentLoop 集成测试**
-   - [ ] 启动服务，确认 Core 服务初始化成功
-   - [ ] 发送消息，检查 MemoryManager 是否正常工作
-   - [ ] 检查 SkillRegistry 是否正确解析工具
-
-2. **EventBus 事件流测试**
-   - [ ] 上传文件，检查 `file.uploaded` 事件是否发布
-   - [ ] 保存需求文档，检查 `requirement.saved` 事件是否发布
-   - [ ] 执行分析，检查 `analysis.before_execute` 和 `analysis.after_execute` 事件
-
-3. **订阅者功能测试**
-   - [ ] TraceRecorder：检查 traces 是否自动记录到 job.json
-   - [ ] WsPublisher：检查 WebSocket 客户端是否收到事件推送
-   - [ ] SnapshotCreator：检查快照是否在正确时机创建
-
-4. **渐进式双写验证**
-   - [ ] 快照创建：直接调用 + EventBus 订阅者都会执行
-   - [ ] 轨迹记录：手动调用 + EventBus 订阅者都会执行
-   - [ ] 确认没有重复或冲突
-
-### 边界测试
-
-1. **EventBus 异常处理**
-   - [ ] 订阅者抛出异常时，不影响主流程
-   - [ ] 检查日志是否记录异常
-
-2. **WebSocket 断开连接**
-   - [ ] 客户端断开后，EventBus 推送不报错
-   - [ ] 新客户端连接后，能正常接收事件
-
-3. **并发请求**
-   - [ ] 多个并发请求，EventBus 正确路由到对应 session
-   - [ ] 快照创建不冲突
-
-### 回归测试
-
-1. **现有功能不受影响**
-   - [ ] 上传文件功能正常
-   - [ ] 需求文档编辑功能正常
-   - [ ] 执行分析功能正常
-   - [ ] 快照功能正常
-
-2. **控制台无报错**
-   - [ ] 启动服务时无错误日志
-   - [ ] 请求处理时无未捕获异常
 
 ## 测试验证
 
 修改完成后，**必须**进行以下测试：
 
-### 1. 功能测试：
+### 1. 功能测试
 
-- [ ] 启动服务：`pnpm dev`
-- [ ] 访问前端：`http://localhost:3000/`
-- [ ] 上传一个 CSV 文件
-- [ ] 检查控制台日志：应该看到 `[Core] Snapshot created for job xxx on file.uploaded`
-- [ ] 检查 job.json：应该有新的 trace 记录
-- [ ] 打开浏览器开发者工具 → Network → WS：应该看到 WebSocket 连接
-- [ ] 发送消息：检查 WebSocket 是否收到事件推送
+- [ ] 工具池显示所有 40 个服务
+- [ ] 分类过滤正常工作
+- [ ] 搜索功能正常
+- [ ] 批量选择/取消功能正常
+- [ ] 工具详情展示正确
+- [ ] 工具激活/停用状态持久化
+- [ ] Analysis Agent 能正确调用工具
 
-### 2. 边界测试：
+### 2. 边界测试
 
-- [ ] 上传不存在的文件路径（应该优雅处理）
-- [ ] 保存空的需求文档（应该不创建快照）
-- [ ] 并发发送多条消息（EventBus 应该正确路由）
+- [ ] 搜索无结果时的提示
+- [ ] 大量工具选择时的性能
+- [ ] 网络异常时的错误处理
+- [ ] 无效工具 ID 的处理
 
-### 3. 回归测试：
+### 3. 回归测试
 
-- [ ] 测试完整的数据分析流程
-- [ ] 测试需求文档编辑和执行
-- [ ] 测试快照创建和回退
+- [ ] 现有 Data Agent 功能正常
+- [ ] 文件上传功能正常
+- [ ] 需求文档功能正常
+- [ ] Job Workspace 功能正常
 
 **测试方法**：
-- 启动服务：`pnpm dev`
-- 打开浏览器：`http://localhost:3000/`
-- 执行上述测试步骤
-- 如发现问题，记录到 debug.md
+```bash
+# 启动服务
+pnpm dev
+
+# 打开浏览器
+# http://localhost:3000/
+
+# 执行测试步骤：
+# 1. 点击侧边栏"工具池"标签
+# 2. 验证 40 个服务都显示
+# 3. 测试分类过滤
+# 4. 测试搜索功能
+# 5. 测试批量选择
+# 6. 查看工具详情
+# 7. 激活工具
+# 8. 在聊天中调用 Analysis Agent
+# 9. 测试工具调用
+```
 
 ## 收尾工作
 
-- [ ] 修改相关代码文件
+- [ ] 修改相关代码文件（前端 + 后端）
 - [ ] 执行测试验证（必须）
-- [ ] 更新 README.md 说明 Core 服务初始化流程
-- [ ] 提交 git commit，message 格式：`refactor: integrate CoreServices into AgentLoop and add EventBus subscribers`
+- [ ] 更新 README.md 添加工具池功能说明
+- [ ] 更新 API 文档
+- [ ] 提交 git commit，message: `feat: 完善 Analysis Agent 工具池集成`
 - [ ] push 到远程仓库
 
-## 后续优化（可选）
+## 数据清单
 
-完成本次重构后，可以进一步优化：
+需要补全的 40 个服务（从 tool.md 提取）：
 
-1. **移除直接调用**
-   - 验证 EventBus 稳定后，移除 routes 层的直接调用
-   - 只保留事件发布
+### 🧬 药物研发 (3)
+1. DrugSDA-Tool - 北京大学 - 28,600 工具
+2. DrugSDA-Model - 北京大学 - 1,700 工具
+3. Origene-FDADrug - 临港实验室 - 57 工具
 
-2. **添加更多订阅者**
-   - 日志记录器
-   - 性能监控器
-   - 审计追踪器
+### 🧪 蛋白质工程 (4)
+4. VenusFactory - 上海交通大学 - 1,500 工具
+5. BioInfo-Tools - 上海人工智能实验室 - 55 工具
+6. Origene-UniProt - 临港实验室 - 121 工具
+7. Origene-STRING - 临港实验室 - 6 工具
 
-3. **完善 AgentLoop**
-   - 完全迁移 DataAgentProcessor 的逻辑
-   - 使用声明式配置 + hooks
+### 🧫 基因组学 (4)
+8. Origene-Ensembl - 临港实验室 - 14 工具
+9. Origene-UCSC - 临港实验室 - 12 工具
+10. Origene-NCBI - 临港实验室 - 9 工具
+11. Origene-TCGA - 临港实验室 - 8 工具
 
-4. **添加单元测试**
-   - EventBus 订阅者测试
-   - AgentLoop 集成测试
+### 🔬 疾病与靶点 (2)
+12. Origene-OpenTargets - 临港实验室 - 189 工具
+13. Origene-Monarch - 临港实验室 - 49 工具
+
+### ⚗️ 化学与分子 (3)
+14. Origene-ChEMBL - 临港实验室 - 47 工具
+15. Origene-PubChem - 临港实验室 - 306 工具
+16. Origene-KEGG - 临港实验室 - 10 工具
+
+### ⚗️ 化学计算 (2)
+17. SciToolAgent-Chem - 浙江大学 - 505 工具
+18. 化学与反应计算 - 上海人工智能实验室 - 276 工具
+
+### 🧪 湿实验操作 (1)
+19. Thoth - 上海人工智能实验室 - 1,300+ 工具
+
+### 🔍 综合工具 (3)
+20. SciToolAgent-Bio - 浙江大学 - 40 工具
+21. SciGraph-Bio - 上海人工智能实验室 - 56 工具
+22. Origene-Search - 临港实验室 - 6 工具
+
+### 🌐 通用工具 (3)
+23. SciGraph - 上海人工智能实验室 - 4,800 工具
+24. ToolUniverse - 上海人工智能实验室 - 236 工具
+25. 数据处理与统计分析 - 上海人工智能实验室 - 320 工具
+
+**注意**：当前前端已有 25 个服务，需要补充缺失的 15 个服务。
+
+## 实施优先级
+
+1. **P0（必须）**：补全工具数据、完善工具池 UI
+2. **P1（重要）**：实现 Analysis Agent 基本功能
+3. **P2（后续）**：实现 SCP 工具实际调用、工具配置管理

@@ -1,50 +1,3 @@
-# TOOLS.md - Local Notes
-
-Skills define _how_ tools work. This file is for _your_ specifics — the stuff that's unique to your setup.
-
-
-
-**使用说明：**
-- 兼容 OpenAI API 格式
-- 可用于各类需要 LLM 的项目
-
----
-
-## What Goes Here
-
-Things like:
-
-- Camera names and locations
-- SSH hosts and aliases
-- Preferred voices for TTS
-- Speaker/room names
-- Device nicknames
-- Anything environment-specific
-
-## Examples
-
-```markdown
-### Cameras
-
-- living-room → Main area, 180° wide angle
-- front-door → Entrance, motion-triggered
-
-### SSH
-
-- home-server → 192.168.1.100, user: admin
-
-### TTS
-
-- Preferred voice: "Nova" (warm, slightly British)
-- Default speaker: Kitchen HomePod
-```
-
-## Why Separate?
-
-Skills are shared. Your setup is yours. Keeping them apart means you can update skills without losing your notes, and share skills without leaking your infrastructure.
-
----
-
 ## SCP Hub 生命科学服务清单
 
 > 来源: https://scphub.intern-ai.org.cn/
@@ -134,6 +87,3 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 - SCP 广场主页: https://scphub.intern-ai.org.cn/
 - 兼容 MCP 协议，可直接集成到 AI Agent 中使用
 
----
-
-Add whatever helps you do your job. This is your cheat sheet.

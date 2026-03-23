@@ -2008,6 +2008,329 @@ body {
 .snapshot-label {
   flex: 1;
 }
+
+/* ===== Tools Pool Styles ===== */
+.tools-panel {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 12px;
+}
+
+.tools-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tools-search {
+  flex: 1;
+  min-width: 120px;
+}
+
+.tools-search-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+
+.tools-search-input:focus {
+  border-color: var(--blue);
+}
+
+.tools-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.tools-actions .agent-btn {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.tools-category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.category-chip {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  cursor: pointer;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  transition: all 0.15s;
+}
+
+.category-chip:hover {
+  color: var(--text);
+  border-color: var(--border-active);
+}
+
+.category-chip.active {
+  background: var(--blue-dim);
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+.tools-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tool-card:hover {
+  border-color: var(--border-active);
+}
+
+.tool-card.active {
+  border-color: var(--blue);
+  background: var(--blue-dim);
+}
+
+.tool-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.tool-checkbox {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: var(--blue);
+  flex-shrink: 0;
+}
+
+.tool-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-name {
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tool-type-badge {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--surface3);
+  color: var(--text-dim);
+}
+
+.tool-type-badge.database { background: var(--accent-dim); color: var(--accent); }
+.tool-type-badge.compute { background: var(--purple-dim); color: var(--purple); }
+.tool-type-badge.model { background: var(--amber-dim); color: var(--amber); }
+.tool-type-badge.wetlab { background: var(--blue-dim); color: var(--blue); }
+
+.tool-provider {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.tool-description {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 8px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tool-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text-faint);
+}
+
+.tool-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.tool-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--surface3);
+  color: var(--text-dim);
+  font-family: 'DM Mono', monospace;
+}
+
+.tool-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.tool-detail-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tool-detail-btn:hover {
+  background: var(--blue-dim);
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+/* Tool Detail Modal */
+.tool-detail-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.tool-detail-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.tool-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.tool-detail-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tool-detail-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.tool-detail-close:hover {
+  color: var(--text);
+}
+
+.tool-detail-section {
+  margin-bottom: 16px;
+}
+
+.tool-detail-section h4 {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tool-detail-usage {
+  background: var(--surface2);
+  padding: 12px;
+  border-radius: var(--radius);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+
+.tool-detail-examples {
+  list-style: none;
+  padding: 0;
+}
+
+.tool-detail-examples li {
+  padding: 6px 0;
+  padding-left: 20px;
+  position: relative;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.tool-detail-examples li:before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.tools-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+#toolsCountBadge {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.tools-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
 </style>
 </head>
 <body>
@@ -2315,9 +2638,35 @@ feature_columns: all"></textarea>
     <!-- ===== ANALYSIS AGENT SIDEBAR ===== -->
     <div class="agent-sidebar" id="analysisSidebar">
       <div class="sidebar-tabs analysis-sidebar-tabs">
-        <div class="sidebar-tab active" onclick="switchSidebarTab('analysis', 'plan')">分析计划</div>
+        <div class="sidebar-tab active" onclick="switchSidebarTab('analysis', 'tools')">工具池</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('analysis', 'plan')">分析计划</div>
         <div class="sidebar-tab" onclick="switchSidebarTab('analysis', 'pipeline')">执行管线</div>
         <div class="sidebar-tab" onclick="switchSidebarTab('analysis', 'assets')">数字资产</div>
+      </div>
+
+      <!-- Tools Pool Tab -->
+      <div class="sidebar-content active" id="analysisToolsContent">
+        <div class="tools-panel">
+          <div class="tools-toolbar">
+            <div class="tools-search">
+              <input type="text" class="tools-search-input" id="toolsSearchInput" placeholder="搜索工具..." oninput="filterTools()">
+            </div>
+            <div class="tools-actions">
+              <button class="agent-btn secondary" onclick="selectAllTools()">全选</button>
+              <button class="agent-btn secondary" onclick="deselectAllTools()">取消全选</button>
+            </div>
+          </div>
+          <div class="tools-category-filter" id="toolsCategoryFilter">
+            <div class="category-chip active" onclick="filterToolsByCategory('all', this)">全部</div>
+          </div>
+          <div class="tools-list" id="toolsList">
+            <div class="tools-empty">加载中...</div>
+          </div>
+          <div class="tools-status-bar">
+            <span id="toolsCountBadge">已选择 0 / 25 个服务</span>
+            <button class="agent-btn blue" onclick="saveToolSelection()">保存选择</button>
+          </div>
+        </div>
       </div>
 
       <!-- Analysis Plan Tab -->
@@ -2667,7 +3016,7 @@ function switchSidebarTab(agentKey, tab) {
   const tabOrders = {
     data: ['requirement', 'toolchain', 'datasets'],
     model: ['config', 'training', 'registry'],
-    analysis: ['plan', 'pipeline', 'assets'],
+    analysis: ['tools', 'plan', 'pipeline', 'assets'],
   };
   const idx = tabOrders[agentKey].indexOf(tab);
   if (idx >= 0) {
@@ -2678,7 +3027,7 @@ function switchSidebarTab(agentKey, tab) {
   const contentIds = {
     data: { requirement: 'requirementContent', toolchain: 'toolchainContent', datasets: 'datasetsContent' },
     model: { config: 'modelConfigContent', training: 'modelTrainingContent', registry: 'modelRegistryContent' },
-    analysis: { plan: 'analysisPlanContent', pipeline: 'analysisPipelineContent', assets: 'analysisAssetsContent' },
+    analysis: { tools: 'analysisToolsContent', plan: 'analysisPlanContent', pipeline: 'analysisPipelineContent', assets: 'analysisAssetsContent' },
   };
   const contentId = contentIds[agentKey]?.[tab];
   if (contentId) document.getElementById(contentId)?.classList.add('active');
@@ -2951,6 +3300,472 @@ function downloadAsset(assetId) {
   a.href = `/api/files/content?path=${encodeURIComponent(asset.path)}`;
   a.download = asset.name;
   a.click();
+}
+
+// ===== Analysis Agent: Tools Pool =====
+let allTools = [];
+let activeToolIds = new Set();
+let currentToolCategory = 'all';
+
+// SCP 工具数据
+const SCP_TOOLS = [
+  // 药物研发
+  {
+    id: 'DrugSDA-Tool',
+    name: 'DrugSDA-Tool',
+    provider: '北京大学',
+    toolCount: 28600,
+    type: '数据库/计算工具',
+    category: '药物研发',
+    description: '药物分子筛选、设计与分析工具集，支持格式转换、蛋白质结构修复、分子规范化、相似度计算等',
+    usage: '使用方法：\n1. 输入分子结构（SMILES 格式或上传 SDF 文件）\n2. 选择分析类型（格式转换、相似度计算、分子对接等）\n3. 设置参数阈值\n4. 运行并查看结果',
+    tags: ['分子筛选', '药物设计', '格式转换'],
+    examples: ['将 SMILES 转换为 3D 结构', '计算两个分子的 Tanimoto 相似度', '批量规范化分子结构']
+  },
+  {
+    id: 'DrugSDA-Model',
+    name: 'DrugSDA-Model',
+    provider: '北京大学',
+    toolCount: 1700,
+    type: '模型服务',
+    category: '药物研发',
+    description: '分子对接、结合口袋识别、亲和力预测、ADMET评估、蛋白质结构预测、疾病逆转状态预测',
+    usage: '使用方法：\n1. 准备配体分子（小分子药物）和受体蛋白（PDB 格式）\n2. 选择预测任务（对接、ADMET、亲和力等）\n3. 上传或指定分子文件\n4. 获取预测结果',
+    tags: ['分子对接', 'ADMET', '亲和力预测'],
+    examples: ['预测药物与靶蛋白的结合模式', '评估药物的 ADMET 性质', '预测蛋白质-配体亲和力']
+  },
+  {
+    id: 'Origene-FDADrug',
+    name: 'Origene-FDADrug',
+    provider: '临港实验室',
+    toolCount: 57,
+    type: '数据库',
+    category: '药物研发',
+    description: 'FDA 药品监管与上市信息数据库检索',
+    usage: '使用方法：\n1. 输入药品名称、活性成分或企业名称\n2. 选择检索类型（批准信息、标签、审批历史等）\n3. 查看药品详细信息',
+    tags: ['FDA', '药品监管', '上市信息'],
+    examples: ['查询某药品的 FDA 批准信息', '检索某企业的所有上市药品', '查看药品标签和说明书']
+  },
+  
+  // 蛋白质工程
+  {
+    id: 'VenusFactory',
+    name: 'VenusFactory',
+    provider: '上海交通大学',
+    toolCount: 1500,
+    type: '数据库/计算工具/模型服务',
+    category: '蛋白质工程',
+    description: '蛋白质工程 AI 全流程工具，支持蛋白质突变预测、功能预测、氨基酸点位预测、模型训练与部署',
+    usage: '使用方法：\n1. 输入蛋白质序列（FASTA 格式）\n2. 选择预测任务（突变效应、功能位点、稳定性等）\n3. 设置突变位点或全序列扫描\n4. 查看预测结果和可视化',
+    tags: ['蛋白质设计', '突变预测', '功能预测'],
+    examples: ['预测单点突变对蛋白质稳定性的影响', '识别蛋白质的功能关键位点', '设计优化后的蛋白质序列']
+  },
+  {
+    id: 'BioInfo-Tools',
+    name: 'BioInfo-Tools',
+    provider: '上海人工智能实验室',
+    toolCount: 55,
+    type: '数据库/计算工具/模型服务',
+    category: '蛋白质工程',
+    description: '蛋白质序列分析工具，集成 InterProScan 和 BLAST，支持结构域识别、GO 注释和序列相似性搜索',
+    usage: '使用方法：\n1. 输入蛋白质序列（FASTA 格式）\n2. 选择分析工具（InterProScan、BLAST 等）\n3. 设置 E-value 阈值和数据库\n4. 获取注释结果和结构域信息',
+    tags: ['序列分析', '结构域识别', 'GO注释'],
+    examples: ['注释蛋白质的功能结构域', '搜索相似序列', '预测蛋白质的 GO 功能术语']
+  },
+  {
+    id: 'Origene-UniProt',
+    name: 'Origene-UniProt',
+    provider: '临港实验室',
+    toolCount: 121,
+    type: '数据库',
+    category: '蛋白质工程',
+    description: '全球权威的蛋白质序列与功能数据库 UniProt 检索',
+    usage: '使用方法：\n1. 输入蛋白质名称、基因名或 UniProt ID\n2. 选择检索范围（SwissProt/TrEMBL）\n3. 查看序列、功能注释、亚细胞定位等信息',
+    tags: ['UniProt', '蛋白质数据库', '功能注释'],
+    examples: ['查询人类 TP53 蛋白的功能信息', '获取蛋白质的序列和结构域', '检索蛋白质相关的疾病变异']
+  },
+  {
+    id: 'Origene-STRING',
+    name: 'Origene-STRING',
+    provider: '临港实验室',
+    toolCount: 6,
+    type: '数据库',
+    category: '蛋白质工程',
+    description: '蛋白质相互作用与功能注释数据库 STRING 检索',
+    usage: '使用方法：\n1. 输入蛋白质名称或 ID\n2. 设置相互作用分数阈值\n3. 查看相互作用网络和功能富集结果',
+    tags: ['PPI', '相互作用网络', '功能富集'],
+    examples: ['查询某蛋白质的相互作用伙伴', '构建蛋白质相互作用网络', '分析功能富集通路']
+  },
+  
+  // 基因组学
+  {
+    id: 'Origene-Ensembl',
+    name: 'Origene-Ensembl',
+    provider: '临港实验室',
+    toolCount: 14,
+    type: '数据库',
+    category: '基因组学',
+    description: '基因组注释与比较数据库 Ensembl 检索',
+    usage: '使用方法：\n1. 输入基因名、ID 或基因组位置\n2. 选择物种和版本\n3. 查看基因注释、转录本、变异等信息',
+    tags: ['基因组注释', '比较基因组', '基因信息'],
+    examples: ['查询某基因的基因组位置和结构', '比对不同物种的同源基因', '检索基因的变异信息']
+  },
+  {
+    id: 'Origene-UCSC',
+    name: 'Origene-UCSC',
+    provider: '临港实验室',
+    toolCount: 12,
+    type: '数据库',
+    category: '基因组学',
+    description: '基因组注释与可视化数据库 UCSC 检索',
+    usage: '使用方法：\n1. 输入基因组位置或基因名\n2. 选择注释轨道（基因、调控元件、保守性等）\n3. 可视化查看基因组信息',
+    tags: ['基因组可视化', 'UCSC', '注释轨道'],
+    examples: ['可视化基因组的特定区域', '查看保守性分析结果', '检索调控元件信息']
+  },
+  {
+    id: 'Origene-NCBI',
+    name: 'Origene-NCBI',
+    provider: '临港实验室',
+    toolCount: 9,
+    type: '数据库',
+    category: '基因组学',
+    description: '全球最大开放生物信息数据库 NCBI 检索',
+    usage: '使用方法：\n1. 选择数据库（Gene、Nucleotide、Protein 等）\n2. 输入检索词或 ID\n3. 获取详细信息和相关数据链接',
+    tags: ['NCBI', '文献检索', '序列数据库'],
+    examples: ['查询基因的详细信息和文献', '检索核酸或蛋白质序列', '搜索相关发表文章']
+  },
+  {
+    id: 'Origene-TCGA',
+    name: 'Origene-TCGA',
+    provider: '临港实验室',
+    toolCount: 8,
+    type: '数据库',
+    category: '基因组学',
+    description: '国际权威癌症基因组图谱数据库 TCGA 检索',
+    usage: '使用方法：\n1. 选择癌症类型\n2. 输入基因名或样本 ID\n3. 查看表达、突变、生存分析等数据',
+    tags: ['TCGA', '癌症基因组', '表达谱'],
+    examples: ['查询某基因在不同癌症中的表达', '下载癌症样本的突变数据', '分析基因表达与生存的关系']
+  },
+  
+  // 疾病与靶点
+  {
+    id: 'Origene-OpenTargets',
+    name: 'Origene-OpenTargets',
+    provider: '临港实验室',
+    toolCount: 189,
+    type: '数据库',
+    category: '疾病与靶点',
+    description: '药品靶点发现与验证平台 OpenTargets 检索',
+    usage: '使用方法：\n1. 输入疾病名称或靶点基因\n2. 查看靶点-疾病关联证据\n3. 分析药物开发潜力和安全性',
+    tags: ['靶点发现', '疾病关联', '药物开发'],
+    examples: ['查询某疾病的潜在药物靶点', '评估靶点的可成药性', '查看靶点相关的药物信息']
+  },
+  {
+    id: 'Origene-Monarch',
+    name: 'Origene-Monarch',
+    provider: '临港实验室',
+    toolCount: 49,
+    type: '数据库',
+    category: '疾病与靶点',
+    description: '疾病-表型-基因关联知识库 Monarch Initiative 检索',
+    usage: '使用方法：\n1. 输入疾病、表型或基因名称\n2. 浏览关联网络\n3. 导出分析结果',
+    tags: ['疾病-基因关联', '表型分析', '知识图谱'],
+    examples: ['查询某疾病的关联基因', '分析基因型-表型关系', '检索疾病相关的动物模型']
+  },
+  
+  // 化学与分子
+  { id: 'Origene-ChEMBL', name: 'Origene-ChEMBL', provider: '临港实验室', toolCount: 47, type: '数据库', category: '化学与分子', description: '小分子药物与生物活性数据库 ChEMBL 检索' },
+  { id: 'Origene-PubChem', name: 'Origene-PubChem', provider: '临港实验室', toolCount: 306, type: '数据库', category: '化学与分子', description: '全球最大开放化学信息数据库 PubChem 检索' },
+  { id: 'Origene-KEGG', name: 'Origene-KEGG', provider: '临港实验室', toolCount: 10, type: '数据库', category: '化学与分子', description: '通路与功能注释数据库 KEGG 检索' },
+  
+  // 化学计算
+  { id: 'SciToolAgent-Chem', name: 'SciToolAgent-Chem', provider: '浙江大学', toolCount: 505, type: '数据库/计算工具', category: '化学计算', description: '化学实验综合性工具库，支持化学结构格式互转、分子性质计算、化学反应预测与逆合成规划等' },
+  { id: 'ChemCalc', name: '化学与反应计算', provider: '上海人工智能实验室', toolCount: 276, type: '计算工具', category: '化学计算', description: '化学反应参数计算、物质量与溶液浓度分析、反应速率与平衡常数求解等' },
+  
+  // 湿实验操作
+  {
+    id: 'Thoth',
+    name: 'Thoth',
+    provider: '上海人工智能实验室',
+    toolCount: 1300,
+    type: '湿实验操作/模型服务',
+    category: '湿实验操作',
+    description: '湿实验智能编排系统，包含 Thoth-Plan（实验流程自动生成）和 Thoth-OP（原子操作执行引擎）',
+    usage: '使用方法：\n1. 描述实验目标（如"提取 DNA"）\n2. Thoth-Plan 自动生成实验流程\n3. Thoth-OP 执行原子操作并记录结果',
+    tags: ['实验编排', '自动化', '实验记录'],
+    examples: ['自动生成 PCR 实验流程', '规划蛋白质纯化步骤', '记录实验操作轨迹']
+  },
+  
+  // 综合工具
+  { id: 'SciToolAgent-Bio', name: 'SciToolAgent-Bio', provider: '浙江大学', toolCount: 40, type: '数据库/计算工具', category: '综合工具', description: '蛋白质组学、基因组学工具库，支持蛋白质理化性质计算、DNA/RNA序列分析、结构预测、序列比对等' },
+  { id: 'SciGraph-Bio', name: 'SciGraph-Bio', provider: '上海人工智能实验室', toolCount: 56, type: '数据库', category: '综合工具', description: '生命科学知识查询服务，集成生物医学、蛋白质、药物、临床等领域知识图谱' },
+  { id: 'Origene-Search', name: 'Origene-Search', provider: '临港实验室', toolCount: 6, type: '文献检索/数据库', category: '综合工具', description: '集成 Tavily、Jina、ClinVar、GSEA、PubMed 等文献与数据库一键检索' },
+  
+  // 通用工具
+  { id: 'SciGraph', name: 'SciGraph', provider: '上海人工智能实验室', toolCount: 4800, type: '数据库', category: '通用工具', description: '科学研究统一知识查询服务，集成化学、生物等多个学科领域知识图谱' },
+  { id: 'ToolUniverse', name: 'ToolUniverse', provider: '上海人工智能实验室', toolCount: 236, type: '文献检索/数据库', category: '通用工具', description: '标准化工具生态平台，整合生物医学数据库查询、科学计算、文献检索等领域的数百个工具' },
+  { id: 'DataStats', name: '数据处理与统计分析', provider: '上海人工智能实验室', toolCount: 320, type: '计算工具', category: '通用工具', description: '数据清洗、筛选、归一化、异常值检测、数据拟合与插值、误差评估、分布分析、相关性计算等' },
+];
+
+// 初始化工具池
+function initToolPool() {
+  allTools = SCP_TOOLS.map(t => ({ ...t, active: false }));
+  renderCategoryFilter();
+  renderToolsList();
+}
+
+// 渲染分类过滤器
+function renderCategoryFilter() {
+  const categories = ['all', ...new Set(allTools.map(t => t.category))];
+  const categoryNames = {
+    'all': '全部',
+    '药物研发': '🧬 药物研发',
+    '蛋白质工程': '🧪 蛋白质工程',
+    '基因组学': '🧫 基因组学',
+    '疾病与靶点': '🔬 疾病与靶点',
+    '化学与分子': '⚗️ 化学与分子',
+    '化学计算': '⚗️ 化学计算',
+    '湿实验操作': '🧪 湿实验操作',
+    '综合工具': '🔍 综合工具',
+    '通用工具': '🌐 通用工具',
+  };
+  
+  const container = document.getElementById('toolsCategoryFilter');
+  if (!container) return;
+  
+  container.innerHTML = categories.map(cat => `
+    <div class="category-chip ${cat === 'all' ? 'active' : ''}" 
+         onclick="filterToolsByCategory('${cat}', this)">
+      ${categoryNames[cat] || cat}
+    </div>
+  `).join('');
+}
+
+// 按分类过滤
+function filterToolsByCategory(category, chipEl) {
+  currentToolCategory = category;
+  document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+  chipEl.classList.add('active');
+  renderToolsList();
+}
+
+// 搜索过滤
+function filterTools() {
+  renderToolsList();
+}
+
+// 渲染工具列表
+function renderToolsList() {
+  const container = document.getElementById('toolsList');
+  const searchInput = document.getElementById('toolsSearchInput');
+  const searchTerm = searchInput?.value.toLowerCase() || '';
+  
+  if (!container) return;
+  
+  let filtered = allTools;
+  
+  // 分类过滤
+  if (currentToolCategory !== 'all') {
+    filtered = filtered.filter(t => t.category === currentToolCategory);
+  }
+  
+  // 搜索过滤
+  if (searchTerm) {
+    filtered = filtered.filter(t => 
+      t.name.toLowerCase().includes(searchTerm) ||
+      t.description.toLowerCase().includes(searchTerm) ||
+      t.provider.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  if (!filtered.length) {
+    container.innerHTML = '<div class="tools-empty">没有找到匹配的工具</div>';
+    updateToolsCount();
+    return;
+  }
+  
+  container.innerHTML = filtered.map(tool => {
+    const isActive = activeToolIds.has(tool.id);
+    const typeClass = tool.type.includes('数据库') ? 'database' :
+                      tool.type.includes('计算') ? 'compute' :
+                      tool.type.includes('模型') ? 'model' : 'wetlab';
+    const tags = tool.tags || [];
+    return `
+      <div class="tool-card ${isActive ? 'active' : ''}" onclick="toggleTool('${tool.id}')">
+        <div class="tool-card-header">
+          <input type="checkbox" class="tool-checkbox" ${isActive ? 'checked' : ''}
+                 onclick="event.stopPropagation(); toggleTool('${tool.id}')">
+          <div class="tool-info">
+            <div class="tool-name">
+              ${escapeHtml(tool.name)}
+              <span class="tool-type-badge ${typeClass}">${escapeHtml(tool.type)}</span>
+            </div>
+            <div class="tool-provider">提供方：${escapeHtml(tool.provider)}</div>
+            <div class="tool-description">${escapeHtml(tool.description)}</div>
+            ${tags.length > 0 ? `
+              <div class="tool-tags">
+                ${tags.map(tag => `<span class="tool-tag">${escapeHtml(tag)}</span>`).join('')}
+              </div>
+            ` : ''}
+            <div class="tool-meta">
+              <span>工具数: ${tool.toolCount.toLocaleString()}</span>
+            </div>
+            <div class="tool-actions" onclick="event.stopPropagation()">
+              <button class="tool-detail-btn" onclick="showToolDetail('${tool.id}')">📋 查看详情</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  updateToolsCount();
+}
+
+// 切换工具选中状态
+function toggleTool(toolId) {
+  if (activeToolIds.has(toolId)) {
+    activeToolIds.delete(toolId);
+  } else {
+    activeToolIds.add(toolId);
+  }
+  renderToolsList();
+}
+
+// 全选
+function selectAllTools() {
+  const searchInput = document.getElementById('toolsSearchInput');
+  const searchTerm = searchInput?.value.toLowerCase() || '';
+  let filtered = allTools;
+  
+  if (currentToolCategory !== 'all') {
+    filtered = filtered.filter(t => t.category === currentToolCategory);
+  }
+  
+  if (searchTerm) {
+    filtered = filtered.filter(t => 
+      t.name.toLowerCase().includes(searchTerm) ||
+      t.description.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  filtered.forEach(t => activeToolIds.add(t.id));
+  renderToolsList();
+}
+
+// 取消全选
+function deselectAllTools() {
+  const searchInput = document.getElementById('toolsSearchInput');
+  const searchTerm = searchInput?.value.toLowerCase() || '';
+  let filtered = allTools;
+  
+  if (currentToolCategory !== 'all') {
+    filtered = filtered.filter(t => t.category === currentToolCategory);
+  }
+  
+  if (searchTerm) {
+    filtered = filtered.filter(t => 
+      t.name.toLowerCase().includes(searchTerm) ||
+      t.description.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  filtered.forEach(t => activeToolIds.delete(t.id));
+  renderToolsList();
+}
+
+// 更新计数
+function updateToolsCount() {
+  const badge = document.getElementById('toolsCountBadge');
+  if (badge) {
+    badge.textContent = `已选择 ${activeToolIds.size} / ${allTools.length} 个服务`;
+  }
+}
+
+// 保存选择
+async function saveToolSelection() {
+  const selectedTools = Array.from(activeToolIds);
+  addMessage('system', `✅ 已保存工具选择：${selectedTools.length} 个服务已激活\n激活的服务：${selectedTools.join(', ')}`);
+  // TODO: 调用 API 持久化到 job state
+}
+
+// 显示工具详情
+function showToolDetail(toolId) {
+  const tool = allTools.find(t => t.id === toolId);
+  if (!tool) return;
+
+  // 创建详情弹窗
+  const modal = document.createElement('div');
+  modal.className = 'tool-detail-modal';
+  modal.id = 'toolDetailModal';
+  modal.onclick = (e) => {
+    if (e.target === modal) closeToolDetail();
+  };
+
+  const tags = tool.tags || [];
+  const examples = tool.examples || [];
+  const usage = tool.usage || '暂无使用说明';
+
+  modal.innerHTML = `
+    <div class="tool-detail-content">
+      <div class="tool-detail-header">
+        <h3 class="tool-detail-title">${escapeHtml(tool.name)}</h3>
+        <button class="tool-detail-close" onclick="closeToolDetail()">✕</button>
+      </div>
+
+      <div class="tool-detail-section">
+        <h4>基本信息</h4>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <div><strong>提供方：</strong>${escapeHtml(tool.provider)}</div>
+          <div><strong>类型：</strong>${escapeHtml(tool.type)}</div>
+          <div><strong>分类：</strong>${escapeHtml(tool.category)}</div>
+          <div><strong>工具数：</strong>${tool.toolCount.toLocaleString()}</div>
+        </div>
+      </div>
+
+      <div class="tool-detail-section">
+        <h4>功能描述</h4>
+        <p style="color: var(--text-dim); line-height: 1.6;">${escapeHtml(tool.description)}</p>
+      </div>
+
+      ${tags.length > 0 ? `
+        <div class="tool-detail-section">
+          <h4>标签</h4>
+          <div class="tool-tags">
+            ${tags.map(tag => `<span class="tool-tag">${escapeHtml(tag)}</span>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="tool-detail-section">
+        <h4>使用方法</h4>
+        <pre class="tool-detail-usage">${escapeHtml(usage)}</pre>
+      </div>
+
+      ${examples.length > 0 ? `
+        <div class="tool-detail-section">
+          <h4>使用示例</h4>
+          <ul class="tool-detail-examples">
+            ${examples.map(ex => `<li>${escapeHtml(ex)}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+
+      <div class="tool-detail-section" style="margin-top: 24px;">
+        <button class="agent-btn" onclick="toggleTool('${tool.id}'); closeToolDetail();" style="width: 100%;">
+          ${activeToolIds.has(tool.id) ? '✓ 已激活（点击取消）' : '激活此工具'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+// 关闭工具详情
+function closeToolDetail() {
+  const modal = document.getElementById('toolDetailModal');
+  if (modal) modal.remove();
 }
 
 function quickAction(action) {
@@ -4307,6 +5122,7 @@ window.addEventListener('load', async () => {
   setStatus('正在初始化会话...');
   await loadJobs();  // 加载 job 列表
   await ensureSession();
+  initToolPool();  // 初始化工具池
   setStatus('会话已建立');
 });
 
@@ -4612,6 +5428,23 @@ async function testLLMConnection() {
     }
   } catch (error) {
     addMessage('system', '❌ 测试失败: ' + error.message);
+  }
+}
+
+function updateProviderHint() {
+  const provider = document.querySelector('input[name="apiProvider"]:checked')?.value;
+  const baseUrlInput = document.getElementById('settingsBaseUrl');
+  
+  if (provider === 'openai') {
+    baseUrlInput.placeholder = 'https://api.openai.com/v1/';
+  } else if (provider === 'anthropic') {
+    baseUrlInput.placeholder = 'https://api.anthropic.com';
+  }
+}
+</script>
+
+</body>
+</html>
   }
 }
 
