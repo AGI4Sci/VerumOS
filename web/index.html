@@ -1914,21 +1914,20 @@ async function toggleFolder(jobId, dirPath) {
   const folderKey = `${jobId}/${dirPath}`;
 
   if (expandedFolders.has(folderKey)) {
+    // 折叠：删除展开状态并重新渲染父目录
     expandedFolders.delete(folderKey);
+    const parentPath = dirPath.split('/').slice(0, -1).join('/');
+    await loadFileTree(jobId, parentPath || '');
   } else {
+    // 展开：添加展开状态并加载子目录（不再调用 loadFileTree 覆盖）
     expandedFolders.add(folderKey);
     await loadSubDirectory(jobId, dirPath);
   }
-
-  // Re-render the parent tree
-  const parentPath = dirPath.split('/').slice(0, -1).join('/');
-  await loadFileTree(jobId, parentPath || '');
 }
 
 async function loadSubDirectory(jobId, dirPath) {
   try {
-    const response = await fetch(`/api/files/tree?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(dirPath)}`);
-    const payload = await response.json();
+    const response = await fetch(`/api/files/tree?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(dirPath)}`);    const payload = await response.json();
 
     if (!payload.ok) throw new Error(payload.error);
 
@@ -1937,6 +1936,12 @@ async function loadSubDirectory(jobId, dirPath) {
     if (!container) return;
 
     container.innerHTML = renderDirectoryTree(jobId, payload.entries, dirPath);
+
+    // 添加 expanded 类到父文件夹（CSS 需要 .tree-folder.expanded + .tree-children 显示）
+    const folderElement = container.previousElementSibling;
+    if (folderElement && folderElement.classList.contains('tree-folder')) {
+      folderElement.classList.add('expanded');
+    }
   } catch (error) {
     console.error('Failed to load subdirectory:', error);
   }
