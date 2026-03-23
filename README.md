@@ -368,7 +368,12 @@ const dataAgentConfig = {
 
 ### 已完成的重构
 
-1. **Agent Runtime 与业务逻辑分离**
+1. **核心类型定义（Core Types）**
+   - 新增 `src/core/types.ts`，定义核心类型：`AgentDef`、`MemoryPolicy`、`AgentContext`、`AgentEvent`、`RouteRule`、`ToolDef` 等
+   - `AgentDef` 是 Core 层和 Application 层之间的唯一合同
+   - 为后续架构重构奠定类型基础
+
+2. **Agent Runtime 与业务逻辑分离**
    - 新增 `runtime/agent-loop.ts`，实现纯执行引擎
    - Agent 不再继承 BaseAgent，改为声明式配置
    - 支持事件流（agent_start, turn_start, message_update 等）
