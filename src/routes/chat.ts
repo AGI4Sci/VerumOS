@@ -110,6 +110,7 @@ chatRouter.post('/chat', async (c) => {
     }
 
     const sessionId = typeof body.sessionId === 'string' ? body.sessionId : undefined;
+    const requestedAgentId = typeof body.agentId === 'string' ? body.agentId : undefined;
     const { jobId, job } = await getOrCreateJobForSession(sessionId);
     const context = jobToContext(job);
 
@@ -133,7 +134,10 @@ chatRouter.post('/chat', async (c) => {
       timestamp: Date.now(),
     };
 
-    const agent = agentRegistry.getDefault();
+    // 根据请求的 agentId 获取 Agent，否则使用默认
+    const agent = requestedAgentId
+      ? agentRegistry.get(requestedAgentId) || agentRegistry.getDefault()
+      : agentRegistry.getDefault();
     const response = await agent.processMessage(message, context);
 
     const assistantMessage: Message = {

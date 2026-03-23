@@ -5,7 +5,7 @@
  */
 
 import type { MemoryPolicy } from './types.js';
-import { createMemoryManager } from './memory/index.js';
+import { createMemoryManager, type EmbeddingConfig } from './memory/index.js';
 import { ToolRegistry } from './registry/tool-registry.js';
 import { SkillRegistry } from '../registry/skill-registry.js';
 import { createEventBus } from './event-bus.js';
@@ -20,13 +20,18 @@ import * as snapshotManager from '../job/snapshot-manager.js';
 export interface CoreServicesConfig {
   memoryPolicy?: MemoryPolicy;
   dataDir?: string;
+  embedding?: EmbeddingConfig;
 }
 
 /**
  * 创建 Core 服务容器
  */
-export function createCoreServices(_coreConfig?: CoreServicesConfig) {
-  const memory = createMemoryManager();
+export function createCoreServices(coreConfig?: CoreServicesConfig) {
+  const memory = createMemoryManager({
+    policy: coreConfig?.memoryPolicy,
+    dataDir: coreConfig?.dataDir || config.data.dir,
+    embeddingConfig: coreConfig?.embedding,
+  });
   const toolRegistry = new ToolRegistry();
   const skillRegistry = new SkillRegistry();
   const llmClient = new LLMClient({
@@ -61,7 +66,10 @@ export function createCoreServices(_coreConfig?: CoreServicesConfig) {
  * 初始化 Core 服务
  */
 export async function initializeCoreServices(services: ReturnType<typeof createCoreServices>): Promise<void> {
-  const { skillRegistry, eventBus, jobManager } = services;
+  const { skillRegistry, eventBus, jobManager, memory } = services;
+
+  // 初始化 Memory（创建存储目录等）
+  await memory.initialize();
 
   // 注册内置 Skills
   const { csvSkill } = await import('../skills/csv-skill.js');

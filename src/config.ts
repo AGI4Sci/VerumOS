@@ -7,6 +7,10 @@ const schema = z.object({
     baseUrl: z.string(),
     model: z.string().default('glm-5'),
   }),
+  embedding: z.object({
+    enabled: z.boolean().default(true),
+    model: z.string().default('text-embedding-3-small'),
+  }).optional(),
   server: z.object({
     port: z.number().int().positive().default(3000),
   }),
@@ -50,6 +54,10 @@ export function loadConfig(): AppConfig {
       apiKey: apiKey || '',
       baseUrl: baseUrl || '',
       model: process.env.LLM_MODEL || 'glm-5',
+    },
+    embedding: {
+      enabled: process.env.EMBEDDING_ENABLED !== 'false',
+      model: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
     },
     server: {
       port: Number.parseInt(process.env.PORT || '3000', 10),

@@ -1669,7 +1669,7 @@ body {
 </div>
 
 <script>
-let currentAgent = 'data';
+let currentAgent = 'data-agent';  // 当前 Agent ID（data-agent, model-agent, analysis-agent）
 let sessionId = null;
 let socket = null;
 let datasets = [];
@@ -1709,11 +1709,19 @@ function setStatus(text, connected = true) {
 }
 
 function switchAgent(agent) {
-  currentAgent = agent;
+  // 映射 agent key 到 agentId
+  const agentMap = { 'data': 'data-agent', 'model': 'model-agent', 'analysis': 'analysis-agent' };
+  currentAgent = agentMap[agent] || 'data-agent';
+  
+  // 更新 UI
   document.querySelectorAll('.nav-item').forEach((element, index) => {
     const agents = ['data', 'model', 'analysis'];
     element.classList.toggle('active', agents[index] === agent);
   });
+  
+  // 显示当前 Agent 状态
+  const agentNames = { 'data-agent': 'Data Agent', 'model-agent': 'Model Agent', 'analysis-agent': 'Analysis Agent' };
+  setStatus(`${agentNames[currentAgent]} 已激活`);
 }
 
 function switchSidebarTab(tab) {
@@ -2186,7 +2194,7 @@ async function sendMessage() {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, message: text }),
+      body: JSON.stringify({ sessionId, message: text, agentId: currentAgent }),
     });
     const payload = await response.json();
     if (!response.ok || !payload.ok) throw new Error(payload.error || 'Chat request failed');
@@ -2208,6 +2216,16 @@ async function sendMessage() {
 
     const extraHtml = renderResultCard(payload.response.result) +
       renderToolChainCard(payload.response.result?.toolChain);
+    
+    // 根据响应的 agentId 决定显示名称
+    const responseAgentId = payload.agentId || currentAgent;
+    const agentDisplayNames = {
+      'data-agent': { icon: '📊', name: 'Data Agent' },
+      'model-agent': { icon: '🔮', name: 'Model Agent' },
+      'analysis-agent': { icon: '📈', name: 'Analysis Agent' }
+    };
+    const agentMeta = agentDisplayNames[responseAgentId] || { icon: '📊', name: 'Assistant' };
+    
     addMessage('data', payload.response.content, extraHtml);
   } catch (error) {
     addMessage('system', `请求失败：${error.message || error}`);
