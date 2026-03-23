@@ -61,7 +61,7 @@ const DATA_AGENT_INTENT_RULES: IntentRule[] = [
   },
   {
     intent: 'requirement' as IntentType,
-    patterns: [/需求|目标|想做|分析方案|细胞类型|鉴定|单细胞|scRNA|表达矩阵/i],
+    patterns: [/需求|目标|想做|分析方案/i],
     confidence: 0.9,
     description: '需求讨论',
   },
@@ -276,7 +276,7 @@ export function createDataAgentTools(
     },
     {
       name: 'quality_control',
-      description: '单细胞数据质量控制',
+      description: '数据质量控制，过滤低质量数据',
       parameters: {
         type: 'object',
         properties: {
@@ -303,7 +303,7 @@ export function createDataAgentTools(
     },
     {
       name: 'normalize_counts',
-      description: '单细胞数据标准化',
+      description: '数据标准化，支持多种方法',
       parameters: {
         type: 'object',
         properties: {
@@ -606,18 +606,7 @@ export class DataAgentProcessor {
     let doc = await getRequirementDocument(context.sessionId);
 
     if (!doc) {
-      // 检查是否有初始需求文档
-      try {
-        const initialDocPath = path.resolve(config.data.dir, '需求文档_单细胞分析.md');
-        const initialContent = await fs.readFile(initialDocPath, 'utf-8');
-        doc = await createRequirementDocument(context.sessionId, '单细胞分析需求');
-        const { parseMarkdownToDocument } = await import('./requirement-doc.js');
-        const parsed = parseMarkdownToDocument(initialContent);
-        Object.assign(doc, parsed);
-        await updateRequirementDocument(context.sessionId, doc);
-      } catch {
-        doc = await createRequirementDocument(context.sessionId, '需求文档');
-      }
+      doc = await createRequirementDocument(context.sessionId, '需求文档');
     }
 
     // 更新需求文档状态
@@ -645,7 +634,7 @@ export class DataAgentProcessor {
     if (!doc) {
       return {
         type: 'text',
-        content: '请先创建需求文档。你可以说"我想做细胞类型鉴定"来开始需求讨论。',
+        content: '请先创建需求文档。您可以描述您的分析需求来开始。',
       };
     }
 
@@ -659,7 +648,7 @@ export class DataAgentProcessor {
     if (toolChain.length === 0) {
       return {
         type: 'text',
-        content: '未找到可执行的工具链。请在需求文档中配置数据源（如 count_matrix.csv）。',
+        content: '未找到可执行的工具链。请在需求文档中配置数据源。',
       };
     }
 

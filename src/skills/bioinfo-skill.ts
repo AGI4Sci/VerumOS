@@ -6,7 +6,7 @@ import type { SkillCapabilities, SkillDependencies, ToolDefinition } from './typ
 export class BioinfoSkill extends BaseSkill {
   name = 'bioinfo-skill';
   displayName = '生物信息学分析';
-  description = '单细胞表达矩阵处理、QC、标准化、marker 基因分析';
+  description = '表达矩阵处理、QC、标准化、marker 分析等生物信息学分析';
   version = '1.0.0';
   category = 'bioinfo' as const;
 
@@ -16,18 +16,18 @@ export class BioinfoSkill extends BaseSkill {
   };
 
   dependencies: SkillDependencies = {
-    python: ['pandas', 'numpy', 'scanpy'],
+    python: ['pandas', 'numpy'],
   };
 
   tools: ToolDefinition[] = [
     {
       name: 'read_expression_matrix',
-      description: '读取单细胞表达矩阵，自动处理 gene × cell 或 cell × gene 格式',
+      description: '读取表达矩阵，自动处理行列格式',
       parameters: {
         type: 'object',
         properties: {
           path: { type: 'string', description: '表达矩阵文件路径' },
-          format: { type: 'string', description: '矩阵格式: gene_cell 或 cell_gene' },
+          format: { type: 'string', description: '矩阵格式: gene_cell 或 cell_gene（可选，自动检测）' },
         },
         required: ['path'],
       },
