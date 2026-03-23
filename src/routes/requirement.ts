@@ -29,7 +29,7 @@ requirementRouter.get('/requirement/:sessionId', async (c) => {
     ok: true,
     document: doc,
     markdown: documentToMarkdown(doc),
-    toolChain: generateToolChain(doc),
+    toolChain: await generateToolChain(doc),
   });
 });
 
@@ -67,7 +67,7 @@ requirementRouter.post('/requirement/:sessionId', async (c) => {
     ok: true,
     document: doc,
     markdown: documentToMarkdown(doc),
-    toolChain: generateToolChain(doc),
+    toolChain: await generateToolChain(doc),
     savedToJob: savedPath ? true : false,
   });
 });
@@ -103,7 +103,7 @@ requirementRouter.get('/requirement/:sessionId/toolchain', async (c) => {
 
   return c.json({
     ok: true,
-    toolChain: generateToolChain(doc),
+    toolChain: await generateToolChain(doc),
   });
 });
 

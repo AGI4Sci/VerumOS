@@ -641,6 +641,7 @@ export class DataAgentProcessor {
 
     // 构建讨论提示
     const docMarkdown = documentToMarkdown(doc);
+    const toolChain = await generateToolChain(doc);
 
     return {
       type: 'result',
@@ -648,7 +649,7 @@ export class DataAgentProcessor {
       result: {
         requirementDocument: doc,
         markdown: docMarkdown,
-        toolChain: generateToolChain(doc),
+        toolChain,
       },
     };
   }
@@ -672,7 +673,7 @@ export class DataAgentProcessor {
       doc.status = 'confirmed';
     }
 
-    const toolChain = generateToolChain(doc);
+    const toolChain = await generateToolChain(doc);
     logger.info(`[handleExecute] Generated toolchain with ${toolChain.length} steps: ${JSON.stringify(toolChain.map(t => `${t.skill}.${t.tool}`))}`);
     
     if (toolChain.length === 0) {
@@ -697,7 +698,7 @@ export class DataAgentProcessor {
     // 生成 Python 脚本
     let pythonScript: string | undefined;
     if (outputsDir && doc.datasets.length > 0) {
-      pythonScript = generatePythonScript(doc, outputsDir);
+      pythonScript = await generatePythonScript(doc, outputsDir);
       const scriptPath = path.join(jobDir!, 'analysis.py');
       await fs.writeFile(scriptPath, pythonScript, 'utf-8');
       results.push({

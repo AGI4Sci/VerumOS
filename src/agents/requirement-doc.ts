@@ -327,21 +327,69 @@ const ANALYSIS_PATTERNS: Array<{
 ];
 
 /**
+ * 解析实际文件路径
+ * 根据原始文件名在 inputs 目录中查找带时间戳前缀的实际文件
+ */
+async function resolveActualFilePath(
+  originalFileName: string,
+  jobId?: string
+): Promise<string | null> {
+  if (!jobId) {
+    // 没有 jobId，返回原始文件名（可能存在于 data/ 根目录）
+    return path.resolve(config.data.dir, originalFileName);
+  }
+
+  const inputsDir = path.join(config.data.dir, jobId, 'inputs');
+  
+  try {
+    const entries = await fs.readdir(inputsDir);
+    // 查找以原始文件名结尾的文件（带时间戳前缀）
+    const matchedFile = entries.find(entry => entry.endsWith(`-${originalFileName}`));
+    if (matchedFile) {
+      return path.join(inputsDir, matchedFile);
+    }
+    // 也尝试精确匹配（无时间戳前缀的情况）
+    const exactMatch = entries.find(entry => entry === originalFileName);
+    if (exactMatch) {
+      return path.join(inputsDir, exactMatch);
+    }
+  } catch {
+    // 目录不存在
+  }
+
+  return null;
+}
+
+/**
  * 生成工具链（通用版本）
  * 根据数据源和分析目标动态生成执行步骤
  */
-export function generateToolChain(doc: RequirementDocument): Array<{ skill: string; tool: string; params: Record<string, unknown> }> {
+export async function generateToolChain(doc: RequirementDocument): Promise<Array<{ skill: string; tool: string; params: Record<string, unknown> }>> {
   const chain: Array<{ skill: string; tool: string; params: Record<string, unknown> }> = [];
+
+  // 存储解析后的文件路径，用于后续分析步骤
+  const resolvedPaths: Map<string, string> = new Map();
 
   // 步骤1: 加载所有数据文件
   for (const ds of doc.datasets) {
     const ext = path.extname(ds.file).toLowerCase();
     
     if (['.csv', '.tsv', '.xlsx', '.xls'].includes(ext)) {
+      // 解析实际文件路径（带时间戳前缀）
+      const actualPath = await resolveActualFilePath(ds.file, doc.jobId);
+      const resolvedPath = actualPath || ds.file;
+      
+      // 存储解析结果
+      resolvedPaths.set(ds.file, resolvedPath);
+      
       chain.push({
         skill: 'csv-skill',
         tool: 'read_file',
-        params: { path: ds.file, description: ds.description || ds.type },
+        params: { 
+          path: resolvedPath,
+          displayName: ds.file, // 保留原始文件名用于显示
+          description: ds.description || ds.type 
+        },
       });
     }
   }
@@ -355,11 +403,14 @@ export function generateToolChain(doc: RequirementDocument): Array<{ skill: stri
   for (const pattern of ANALYSIS_PATTERNS) {
     const matched = pattern.patterns.some(p => p.test(searchText));
     if (matched && doc.datasets.length > 0) {
-      const firstData = doc.datasets[0]?.file;
+      const firstDataOriginal = doc.datasets[0]?.file;
+      // 使用解析后的实际路径
+      const firstDataResolved = resolvedPaths.get(firstDataOriginal) || firstDataOriginal;
+      
       for (const step of pattern.steps) {
         chain.push({
           ...step,
-          params: { ...step.params, path: firstData },
+          params: { ...step.params, path: firstDataResolved },
         });
       }
       break; // 只匹配第一个
@@ -373,7 +424,7 @@ export function generateToolChain(doc: RequirementDocument): Array<{ skill: stri
  * 生成 Python 脚本（通用版本）
  * 根据需求文档动态生成分析代码模板
  */
-export function generatePythonScript(doc: RequirementDocument, outputPath: string): string {
+export async function generatePythonScript(doc: RequirementDocument, outputPath: string): Promise<string> {
   const lines: string[] = [
     '#!/usr/bin/env python3',
     `# ${doc.title}`,
@@ -394,8 +445,10 @@ export function generatePythonScript(doc: RequirementDocument, outputPath: strin
     lines.push('# Load data');
     for (const [i, ds] of doc.datasets.entries()) {
       const varName = `data_${i}`;
+      // 解析实际文件路径
+      const resolvedPath = await resolveActualFilePath(ds.file, doc.jobId);
+      const safePath = (resolvedPath || ds.file).replace(/\\/g, '/');
       const ext = path.extname(ds.file).toLowerCase();
-      const safePath = ds.file.replace(/\\/g, '/');
       
       if (ext === '.tsv') {
         lines.push(`${varName} = pd.read_csv("${safePath}", sep="\\t")`);
