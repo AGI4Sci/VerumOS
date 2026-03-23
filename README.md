@@ -390,7 +390,13 @@ const dataAgentConfig = {
    - LongTermMemory: 接口预留，Phase 2 实现
    - MemoryManager: 组合三层 Memory，提供统一接口
 
-5. **Agent Runtime 与业务逻辑分离**
+5. **Router 实现**
+   - 新增 `src/core/router.ts`
+   - 两级路由：规则路由（优先）→ LLM 语义路由（fallback）
+   - AgentRegistry 增强：支持 AgentDef 注册和路由规则汇总
+   - Session 级路由锁定（待集成）
+
+6. **Agent Runtime 与业务逻辑分离**
    - 新增 `runtime/agent-loop.ts`，实现纯执行引擎
    - Agent 不再继承 BaseAgent，改为声明式配置
    - 支持事件流（agent_start, turn_start, message_update 等）
