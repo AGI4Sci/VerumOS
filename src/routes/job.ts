@@ -125,6 +125,44 @@ jobRouter.delete('/jobs/:jobId', async (c) => {
 });
 
 /**
+ * 批量删除 Jobs
+ * POST /api/jobs/batch-delete
+ */
+jobRouter.post('/jobs/batch-delete', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { jobIds } = body;
+
+    if (!Array.isArray(jobIds) || jobIds.length === 0) {
+      return c.json({ ok: false, error: 'jobIds must be a non-empty array' }, 400);
+    }
+
+    const results = await Promise.allSettled(
+      jobIds.map(async (jobId) => {
+        const success = await deleteJob(jobId);
+        return { jobId, success };
+      })
+    );
+
+    const deleted = results
+      .filter((r): r is PromiseFulfilledResult<{ jobId: string; success: boolean }> => r.status === 'fulfilled' && r.value.success)
+      .map(r => r.value.jobId);
+
+    const failed = results
+      .filter((r): r is PromiseRejectedResult | PromiseFulfilledResult<{ jobId: string; success: boolean }> => 
+        r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success))
+      .map((r, i) => ({ jobId: jobIds[i], error: r.status === 'rejected' ? r.reason : 'Failed to delete' }));
+
+    return c.json({ ok: true, deleted, failed });
+  } catch (error) {
+    return c.json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }, 500);
+  }
+});
+
+/**
  * 创建新 Job（支持自定义名称）
  * POST /api/jobs/create
  */

@@ -811,6 +811,27 @@ body {
   color: var(--text);
 }
 
+.icon-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.icon-btn.danger {
+  color: var(--red);
+}
+
+.icon-btn.danger:hover {
+  background: var(--red-dim);
+}
+
+.job-checkbox {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
 .explorer-content {
   flex: 1;
   overflow-y: auto;
@@ -911,6 +932,7 @@ body {
 }
 
 .tree-folder:hover { background: var(--surface2); }
+.tree-folder.selected { background: var(--accent-dim); border: 1px solid var(--accent); }
 
 .tree-folder-icon {
   font-size: 14px;
@@ -1188,7 +1210,7 @@ body {
   <aside class="job-explorer" id="jobExplorer">
     <div class="explorer-header">
       <span class="explorer-title">工作区</span>
-      <div class="explorer-actions">
+      <div class="explorer-actions" id="explorerActions">
         <button class="icon-btn" onclick="createNewJob()" title="新建任务">+</button>
         <button class="icon-btn" onclick="loadJobs()" title="刷新">↻</button>
       </div>
@@ -1378,6 +1400,8 @@ let currentToolChain = [];
 // Job Explorer State
 let jobs = [];
 let currentJobId = null;
+let selectedJobs = new Set();  // 批量选择的 Jobs
+let batchMode = false;  // 批量操作模式
 
 // File Explorer State
 let expandedFolders = new Set(['inputs', 'outputs']);
@@ -1793,9 +1817,68 @@ async function loadJobs() {
     if (payload.ok) {
       jobs = payload.jobs;
       renderJobList();
+      updateExplorerHeader();
     }
   } catch (error) {
     console.error('Failed to load jobs:', error);
+  }
+}
+
+function updateExplorerHeader() {
+  const container = document.getElementById('explorerActions');
+  if (!container) return;
+  
+  container.innerHTML = `
+    <button class="icon-btn ${batchMode ? 'active' : ''}" onclick="toggleBatchMode()" title="${batchMode ? '退出选择' : '批量选择'}">${batchMode ? '✓' : '○'}</button>
+    <button class="icon-btn" onclick="createNewJob()" title="新建任务">+</button>
+    <button class="icon-btn" onclick="loadJobs()" title="刷新">↻</button>
+    ${batchMode && selectedJobs.size > 0 ? `<button class="icon-btn danger" onclick="batchDeleteJobs()" title="删除选中 (${selectedJobs.size})">🗑️</button>` : ''}
+  `;
+}
+
+function toggleBatchMode() {
+  batchMode = !batchMode;
+  if (!batchMode) {
+    selectedJobs.clear();  // 退出批量模式时清空选择
+  }
+  renderJobList();
+  updateExplorerHeader();
+}
+
+function toggleJobSelection(jobId) {
+  if (selectedJobs.has(jobId)) {
+    selectedJobs.delete(jobId);
+  } else {
+    selectedJobs.add(jobId);
+  }
+  renderJobList();
+  updateExplorerHeader();
+}
+
+async function batchDeleteJobs() {
+  if (selectedJobs.size === 0) return;
+  
+  const count = selectedJobs.size;
+  if (!confirm(`确定要删除选中的 ${count} 个任务吗？`)) return;
+  
+  try {
+    const response = await fetch('/api/jobs/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobIds: Array.from(selectedJobs) }),
+    });
+    const payload = await response.json();
+    
+    if (payload.ok) {
+      const deleted = payload.deleted.length;
+      selectedJobs.clear();
+      await loadJobs();
+      addMessage('system', `已删除 ${deleted} 个任务`);
+    } else {
+      alert(`批量删除失败: ${payload.error}`);
+    }
+  } catch (error) {
+    alert(`批量删除失败: ${error.message}`);
   }
 }
 
@@ -1821,20 +1904,23 @@ function renderJobList() {
 
 function renderJobTree(job) {
   const isExpanded = expandedFolders.has(job.id);
+  const isSelected = selectedJobs.has(job.id);
+  
   return `
     <div class="tree-item" data-job-id="${job.id}">
-      <div class="tree-folder ${isExpanded ? 'expanded' : ''}"
-           onclick="toggleJobFolder('${job.id}')"
+      <div class="tree-folder ${isExpanded ? 'expanded' : ''} ${isSelected ? 'selected' : ''}"
+           onclick="${batchMode ? `toggleJobSelection('${job.id}')` : `toggleJobFolder('${job.id}')`}"
            oncontextmenu="showContextMenu(event, 'job', '${job.id}')">
+        ${batchMode ? `<input type="checkbox" class="job-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleJobSelection('${job.id}')">` : ''}
         <span class="tree-folder-icon">▶</span>
         <span class="tree-folder-name">${escapeHtml(job.summary || job.id)}</span>
-        <span class="tree-folder-actions">
+        ${!batchMode ? `<span class="tree-folder-actions">
           <button class="tree-action" onclick="event.stopPropagation(); createFolder('${job.id}')" title="新建文件夹">📁</button>
           <button class="tree-action" onclick="event.stopPropagation(); uploadToJob('${job.id}')" title="上传文件">📤</button>
-        </span>
+        </span>` : ''}
       </div>
       <div class="tree-children" id="tree-${job.id}">
-        ${isExpanded ? `<div style="padding:8px;color:var(--text-faint)">加载中...</div>` : ''}
+        ${isExpanded && !batchMode ? `<div style="padding:8px;color:var(--text-faint)">加载中...</div>` : ''}
       </div>
     </div>
   `;
@@ -2121,9 +2207,20 @@ async function contextAction(action) {
         if (payload.ok) {
           if (type === 'job') {
             currentJobId = null;
+            expandedFolders.delete(jobId);  // 清除展开状态
             await loadJobs();
+            addMessage('system', `任务 ${itemName} 已删除`);
           } else {
-            await loadFileTree(jobId, path.split('/').slice(0, -1).join('/') || '');
+            // 清除子文件夹的展开状态
+            for (const key of expandedFolders) {
+              if (key.startsWith(`${jobId}/${path}`) || key === `${jobId}/${path}`) {
+                expandedFolders.delete(key);
+              }
+            }
+            // 重新加载父目录
+            const parentPath = path.split('/').slice(0, -1).join('/');
+            await loadFileTree(jobId, parentPath || '');
+            addMessage('system', `${itemName} 已删除`);
           }
         } else {
           alert(`删除失败: ${payload.error}`);
