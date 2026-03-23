@@ -434,21 +434,33 @@ const dataAgentConfig = {
 - **LongTermMemory**：实现向量检索（Phase 2）
 
 ### 架构设计原则
-
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                      Application Layer                        │
+│                                                               │
 │   DataAgentDef     ModelAgentDef     AnalysisAgentDef  ...   │
+│                                                               │
 │            每个 agent 只是一个 AgentDef 配置对象              │
 └───────────────────────────┬──────────────────────────────────┘
                             │ AgentDef（唯一跨层接口）
 ┌───────────────────────────▼──────────────────────────────────┐
 │                         Core Layer                            │
-│  Router → AgentLoop → Memory, ToolRegistry, SkillRegistry    │
-│  JobManager, EventBus, LLMClient                              │
+│                                                               │
+│  ┌──────────────────────────────────────────────────────┐    │
+│  │                      Router                           │    │
+│  │      规则路由（优先）→ LLM 语义路由（fallback）        │    │
+│  └─────────────────────────┬────────────────────────────┘    │
+│                            │                                  │
+│  ┌─────────────────────────▼────────────────────────────┐    │
+│  │                    AgentLoop                          │    │
+│  │             核心执行引擎（async generator）            │    │
+│  └──┬──────────┬─────────────┬──────────┬───────────────┘    │
+│     │          │             │          │                     │
+│  Memory  ToolRegistry  SkillRegistry  JobManager              │
+│                                                               │
+│  LLMClient                EventBus                           │
 └──────────────────────────────────────────────────────────────┘
 ```
-
 - **Application 层**：只输出 AgentDef 配置对象，无 class，无运行时状态
 - **Core 层**：只消费 AgentDef，不 import Application 层模块
 - **EventBus**：观测旁路，不是控制流；状态变更走直接调用，EventBus 影子发布

@@ -7,6 +7,7 @@ import {
   parseMarkdownToDocument,
   documentToMarkdown,
   generateToolChain,
+  type RequirementDocument,
 } from '../agents/requirement-doc.js';
 import { createSnapshot } from '../job/snapshot-manager.js';
 import { getCoreServices } from '../app.js';
@@ -35,6 +36,13 @@ requirementRouter.get('/requirement/:sessionId', async (c) => {
     toolChain: await generateToolChain(doc),
   });
 });
+
+// 工具链缓存（简单内存缓存）
+const toolChainCache = new Map<string, { toolChain: unknown[]; hash: string }>();
+
+function getContentHash(doc: RequirementDocument): string {
+  return `${doc.content?.length || 0}-${doc.datasets?.length || 0}-${doc.goals?.length || 0}`;
+}
 
 // 创建或更新需求文档
 requirementRouter.post('/requirement/:sessionId', async (c) => {
@@ -84,11 +92,28 @@ requirementRouter.post('/requirement/:sessionId', async (c) => {
     }
   }
 
+  // 检查缓存，只有内容变化时才重新生成工具链
+  const contentHash = getContentHash(doc);
+  const cached = toolChainCache.get(sessionId);
+  
+  let toolChain: unknown[];
+  if (cached && cached.hash === contentHash) {
+    toolChain = cached.toolChain;
+  } else {
+    // 异步生成工具链（不阻塞响应）
+    toolChain = [];
+    generateToolChain(doc).then(tc => {
+      toolChainCache.set(sessionId, { toolChain: tc, hash: contentHash });
+    }).catch(err => {
+      console.error('Failed to generate toolchain:', err);
+    });
+  }
+
   return c.json({
     ok: true,
     document: doc,
     markdown: documentToMarkdown(doc),
-    toolChain: await generateToolChain(doc),
+    toolChain,
     savedToJob: savedPath ? true : false,
   });
 });

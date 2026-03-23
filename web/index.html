@@ -1354,7 +1354,636 @@ body {
   justify-content: flex-end;
 }
 
-/* Snapshot styles */
+/* ===== Agent Sidebar Panels ===== */
+
+/* Agent sidebar container switch */
+.agent-sidebar {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+.agent-sidebar.active {
+  display: flex;
+}
+
+/* Model Agent sidebar */
+.model-sidebar-tabs .sidebar-tab.active {
+  border-bottom-color: var(--purple);
+}
+
+/* Analysis Agent sidebar */
+.analysis-sidebar-tabs .sidebar-tab.active {
+  border-bottom-color: var(--blue);
+}
+
+/* Section header reused across sidebars */
+.panel-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.panel-section-title {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.panel-section-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.panel-section-badge.purple { background: var(--purple-dim); color: var(--purple); }
+.panel-section-badge.blue { background: var(--blue-dim); color: var(--blue); }
+.panel-section-badge.green { background: var(--accent-dim); color: var(--accent); }
+.panel-section-badge.amber { background: var(--amber-dim); color: var(--amber); }
+
+/* ---- Model Agent: Model Config panel ---- */
+.model-config-panel {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.model-config-block {
+  margin-bottom: 16px;
+}
+
+.model-config-label {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.model-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.model-type-card {
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 12px;
+}
+
+.model-type-card:hover {
+  border-color: var(--purple);
+  background: var(--purple-dim);
+}
+
+.model-type-card.selected {
+  border-color: var(--purple);
+  background: var(--purple-dim);
+  color: var(--purple);
+}
+
+.model-type-icon {
+  font-size: 16px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.model-type-name {
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.model-type-desc {
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.model-config-textarea {
+  width: 100%;
+  min-height: 180px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.6;
+}
+.model-config-textarea:focus { border-color: var(--purple); }
+
+.model-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.agent-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s;
+  border: none;
+}
+.agent-btn:hover { opacity: 0.88; }
+
+.agent-btn.purple {
+  background: var(--purple);
+  color: #0a0b0d;
+}
+
+.agent-btn.blue {
+  background: var(--blue);
+  color: #0a0b0d;
+}
+
+.agent-btn.secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* ---- Model Agent: Training Log panel ---- */
+.training-log-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.metric-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+}
+
+.metric-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--purple);
+}
+
+.metric-value.dim { color: var(--text-faint); }
+
+.metric-name {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.training-progress-block {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.progress-bar-track {
+  height: 4px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--purple);
+  transition: width 0.3s ease;
+}
+
+.training-log-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-entry {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 6px 10px;
+  background: var(--surface2);
+  border-radius: 4px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.log-entry .log-time {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.log-entry.success { color: var(--accent); }
+.log-entry.warn { color: var(--amber); }
+.log-entry.error-log { color: var(--red); }
+
+.log-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ---- Model Agent: Model Registry panel ---- */
+.model-registry-panel {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.model-registry-item {
+  padding: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.model-registry-item:hover { border-color: var(--border-active); }
+
+.model-registry-item.active {
+  border-color: var(--purple);
+  background: var(--purple-dim);
+}
+
+.model-reg-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-reg-type {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--purple-dim);
+  color: var(--purple);
+}
+
+.model-reg-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 12px;
+}
+
+.model-reg-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ---- Analysis Agent: Analysis Plan panel ---- */
+.analysis-plan-panel {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.analysis-plan-textarea {
+  width: 100%;
+  min-height: 240px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.7;
+}
+.analysis-plan-textarea:focus { border-color: var(--blue); }
+
+.analysis-plan-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.analysis-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.analysis-step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--blue-dim);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.analysis-step-num.done {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.analysis-step-info { flex: 1; }
+.analysis-step-tool {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+}
+.analysis-step-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* ---- Analysis Agent: Assets panel ---- */
+.assets-panel {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.asset-filter-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.asset-filter-chip {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  cursor: pointer;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  transition: all 0.15s;
+}
+
+.asset-filter-chip:hover { color: var(--text); border-color: var(--border-active); }
+.asset-filter-chip.active { background: var(--blue-dim); color: var(--blue); border-color: var(--blue); }
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.asset-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.asset-card:hover { border-color: var(--border-active); }
+
+.asset-card-thumb {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--surface3);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.asset-card-name {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asset-card-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.asset-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.asset-list-item:hover { border-color: var(--border-active); }
+
+.asset-list-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.asset-list-info { flex: 1; min-width: 0; }
+.asset-list-name {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.asset-list-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.asset-list-action {
+  font-size: 14px;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+.asset-list-action:hover { background: var(--surface3); color: var(--text); }
+
+.assets-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ---- Analysis Agent: Pipeline panel ---- */
+.pipeline-panel {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.pipeline-node {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.pipeline-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.pipeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--blue);
+  background: var(--bg);
+  flex-shrink: 0;
+  margin-top: 4px;
+  transition: all 0.2s;
+}
+
+.pipeline-dot.done {
+  background: var(--blue);
+}
+
+.pipeline-dot.running {
+  background: var(--amber);
+  border-color: var(--amber);
+  animation: pulse 1.5s infinite;
+}
+
+.pipeline-line {
+  width: 2px;
+  flex: 1;
+  background: var(--border);
+  min-height: 20px;
+}
+
+.pipeline-card {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  transition: all 0.15s;
+}
+
+.pipeline-card:hover { border-color: var(--border-active); }
+.pipeline-card.active { border-color: var(--blue); background: var(--blue-dim); }
+.pipeline-card.done { border-color: var(--accent); }
+
+.pipeline-card-title {
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pipeline-card-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  font-family: 'DM Mono', monospace;
+}
+
+.pipeline-status-badge {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+
+.pipeline-status-badge.pending { background: var(--surface3); color: var(--text-faint); }
+.pipeline-status-badge.running { background: var(--amber-dim); color: var(--amber); }
+.pipeline-status-badge.done { background: var(--accent-dim); color: var(--accent); }
+.pipeline-status-badge.error { background: var(--red-dim); color: var(--red); }
+
+.pipeline-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ===== Agent Welcome Screens ===== */
+.welcome-icon.model {
+  background: linear-gradient(135deg, var(--purple) 0%, #c084fc 100%);
+}
+
+.welcome-icon.analysis {
+  background: linear-gradient(135deg, var(--blue) 0%, #818cf8 100%);
+}
+
+.send-btn.model { background: var(--purple); }
+.send-btn.model:hover { background: #9d78f5; }
+.send-btn.analysis { background: var(--blue); }
+.send-btn.analysis:hover { background: #5495f0; }
+
+/* ===== Snapshot styles ===== */
 .snapshot-item {
   display: flex;
   align-items: center;
@@ -1408,6 +2037,7 @@ body {
     </nav>
 
     <div class="header-actions">
+      <button class="icon-btn" onclick="openSettings()" title="设置" style="font-size:16px">⚙️</button>
       <div class="status-badge">
         <span class="status-dot"></span>
         本地服务运行中
@@ -1454,13 +2084,13 @@ body {
     <div class="chat-area" id="chatArea">
       <!-- Welcome -->
       <div class="welcome" id="welcome">
-        <div class="welcome-icon">🧬</div>
-        <h1 class="welcome-title">欢迎使用 VerumOS</h1>
-        <p class="welcome-desc">
+        <div class="welcome-icon" id="welcomeIcon">🧬</div>
+        <h1 class="welcome-title" id="welcomeTitle">欢迎使用 VerumOS</h1>
+        <p class="welcome-desc" id="welcomeDesc">
           我是你的科研 AI 助手。你可以上传数据、讨论分析需求、执行分析流程。
           只需描述你的需求，我会帮你完成技术实现。
         </p>
-        <div class="quick-actions">
+        <div class="quick-actions" id="welcomeActions">
           <div class="quick-action" onclick="quickAction('upload')">
             <span class="quick-action-icon">📁</span>
             上传数据
@@ -1494,20 +2124,22 @@ body {
 
   <!-- Right Sidebar -->
   <aside class="right-sidebar">
-    <div class="sidebar-tabs">
-      <div class="sidebar-tab active" onclick="switchSidebarTab('requirement')">需求文档</div>
-      <div class="sidebar-tab" onclick="switchSidebarTab('toolchain')">工具链</div>
-      <div class="sidebar-tab" onclick="switchSidebarTab('datasets')">数据集</div>
-    </div>
 
-    <!-- Requirement Document -->
-    <div class="sidebar-content active" id="requirementContent">
-      <div class="requirement-editor">
-        <div class="requirement-header">
-          <span class="requirement-title">需求文档</span>
-          <span class="requirement-status draft" id="requirementStatus">草稿</span>
-        </div>
-        <textarea class="requirement-textarea" id="requirementTextarea" placeholder="# 需求文档
+    <!-- ===== DATA AGENT SIDEBAR ===== -->
+    <div class="agent-sidebar active" id="dataSidebar">
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab active" onclick="switchSidebarTab('data', 'requirement')">需求文档</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('data', 'toolchain')">工具链</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('data', 'datasets')">数据集</div>
+      </div>
+
+      <div class="sidebar-content active" id="requirementContent">
+        <div class="requirement-editor">
+          <div class="requirement-header">
+            <span class="requirement-title">需求文档</span>
+            <span class="requirement-status draft" id="requirementStatus">草稿</span>
+          </div>
+          <textarea class="requirement-textarea" id="requirementTextarea" placeholder="# 需求文档
 
 ## 数据源
 | 文件 | 类型 | 描述 |
@@ -1522,38 +2154,240 @@ body {
 2. QC 过滤
 3. 标准化
 "></textarea>
-        <div class="requirement-actions">
-          <button class="requirement-btn secondary" onclick="loadRequirementTemplate()">加载模板</button>
-          <button class="requirement-btn secondary" onclick="openFullscreenEditor()">⛶ 全屏</button>
-          <button class="requirement-btn primary" onclick="saveRequirement()">保存</button>
-          <button class="requirement-btn primary" style="background: var(--blue);" onclick="executeRequirement()">▶ 执行</button>
+          <div class="requirement-actions">
+            <button class="requirement-btn secondary" onclick="loadRequirementTemplate()">加载模板</button>
+            <button class="requirement-btn secondary" onclick="openFullscreenEditor()">⛶ 全屏</button>
+            <button class="requirement-btn primary" onclick="saveRequirement()">保存</button>
+            <button class="requirement-btn primary" style="background: var(--blue);" onclick="executeRequirement()">▶ 执行</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-content" id="toolchainContent">
+        <div class="toolchain-preview">
+          <div class="requirement-header">
+            <span class="requirement-title">推荐工具链</span>
+          </div>
+          <div class="toolchain-empty" id="toolchainEmpty">
+            暂无工具链<br>
+            <small>保存需求文档后自动生成</small>
+          </div>
+          <div class="toolchain-list" id="toolchainList"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-content" id="datasetsContent">
+        <div class="datasets-panel" id="datasetsPanel">
+          <div class="toolchain-empty">
+            暂无数据集<br>
+            <small>上传文件后显示</small>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Toolchain Preview -->
-    <div class="sidebar-content" id="toolchainContent">
-      <div class="toolchain-preview">
-        <div class="requirement-header">
-          <span class="requirement-title">推荐工具链</span>
+    <!-- ===== MODEL AGENT SIDEBAR ===== -->
+    <div class="agent-sidebar" id="modelSidebar">
+      <div class="sidebar-tabs model-sidebar-tabs">
+        <div class="sidebar-tab active" onclick="switchSidebarTab('model', 'config')">模型配置</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('model', 'training')">训练日志</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('model', 'registry')">模型库</div>
+      </div>
+
+      <!-- Model Config Tab -->
+      <div class="sidebar-content active" id="modelConfigContent">
+        <div class="model-config-panel">
+          <div class="model-config-block">
+            <div class="model-config-label">模型类型</div>
+            <div class="model-type-grid">
+              <div class="model-type-card selected" onclick="selectModelType(this, 'ml')" title="机器学习">
+                <span class="model-type-icon">🤖</span>
+                <div class="model-type-name">机器学习</div>
+                <div class="model-type-desc">分类 / 回归 / 聚类</div>
+              </div>
+              <div class="model-type-card" onclick="selectModelType(this, 'stats')" title="统计建模">
+                <span class="model-type-icon">📐</span>
+                <div class="model-type-name">统计建模</div>
+                <div class="model-type-desc">线性 / 混合效应</div>
+              </div>
+              <div class="model-type-card" onclick="selectModelType(this, 'dl')" title="深度学习">
+                <span class="model-type-icon">🧠</span>
+                <div class="model-type-name">深度学习</div>
+                <div class="model-type-desc">神经网络 / Transformer</div>
+              </div>
+              <div class="model-type-card" onclick="selectModelType(this, 'llm')" title="大语言模型">
+                <span class="model-type-icon">💬</span>
+                <div class="model-type-name">LLM 调用</div>
+                <div class="model-type-desc">Prompt / Fine-tune</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="model-config-block">
+            <div class="model-config-label">超参数配置 (YAML)</div>
+            <textarea class="model-config-textarea" id="modelHyperparams" placeholder="# 超参数配置
+model_type: RandomForest
+params:
+  n_estimators: 100
+  max_depth: 10
+  random_state: 42
+
+evaluation:
+  metrics: [accuracy, f1, auc]
+  cv_folds: 5
+
+target_column: cell_type
+feature_columns: all"></textarea>
+          </div>
+
+          <div class="model-config-block">
+            <div class="model-config-label">数据集绑定</div>
+            <select style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:13px;outline:none;" id="modelDatasetSelect">
+              <option value="">— 请选择数据集 —</option>
+            </select>
+          </div>
+
+          <div class="model-action-row">
+            <button class="agent-btn secondary" onclick="saveModelConfig()">保存配置</button>
+            <button class="agent-btn purple" onclick="startTraining()">▶ 开始训练</button>
+          </div>
         </div>
-        <div class="toolchain-empty" id="toolchainEmpty">
-          暂无工具链<br>
-          <small>保存需求文档后自动生成</small>
+      </div>
+
+      <!-- Training Log Tab -->
+      <div class="sidebar-content" id="modelTrainingContent">
+        <div class="training-log-panel">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-value dim" id="metricAccuracy">—</div>
+              <div class="metric-name">Accuracy</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value dim" id="metricF1">—</div>
+              <div class="metric-name">F1 Score</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value dim" id="metricLoss">—</div>
+              <div class="metric-name">Loss</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value dim" id="metricEpoch">—</div>
+              <div class="metric-name">Epoch</div>
+            </div>
+          </div>
+
+          <div class="training-progress-block" id="trainingProgressBlock" style="display:none">
+            <div class="progress-header">
+              <span id="trainingProgressLabel">训练进度</span>
+              <span id="trainingProgressPct" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--purple)">0%</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="trainingProgressBar" style="width:0%"></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="panel-section-header">
+              <span class="panel-section-title" style="font-size:12px;color:var(--text-dim)">执行日志</span>
+              <span style="font-size:11px;color:var(--text-faint);cursor:pointer" onclick="clearTrainingLog()">清除</span>
+            </div>
+            <div class="training-log-entries" id="trainingLogEntries">
+              <div class="log-empty">暂无日志<br><small>开始训练后显示</small></div>
+            </div>
+          </div>
         </div>
-        <div class="toolchain-list" id="toolchainList"></div>
+      </div>
+
+      <!-- Model Registry Tab -->
+      <div class="sidebar-content" id="modelRegistryContent">
+        <div class="model-registry-panel">
+          <div class="panel-section-header" style="margin-bottom:12px">
+            <span class="panel-section-title">已训练模型</span>
+            <span class="panel-section-badge purple" id="modelRegistryCount">0 个</span>
+          </div>
+          <div id="modelRegistryList">
+            <div class="model-reg-empty">暂无模型<br><small>训练完成后显示</small></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Datasets -->
-    <div class="sidebar-content" id="datasetsContent">
-      <div class="datasets-panel" id="datasetsPanel">
-        <div class="toolchain-empty">
-          暂无数据集<br>
-          <small>上传文件后显示</small>
+    <!-- ===== ANALYSIS AGENT SIDEBAR ===== -->
+    <div class="agent-sidebar" id="analysisSidebar">
+      <div class="sidebar-tabs analysis-sidebar-tabs">
+        <div class="sidebar-tab active" onclick="switchSidebarTab('analysis', 'plan')">分析计划</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('analysis', 'pipeline')">执行管线</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('analysis', 'assets')">数字资产</div>
+      </div>
+
+      <!-- Analysis Plan Tab -->
+      <div class="sidebar-content active" id="analysisPlanContent">
+        <div class="analysis-plan-panel">
+          <div class="panel-section-header">
+            <span class="panel-section-title">分析计划</span>
+            <span class="requirement-status draft" id="analysisPlanStatus">草稿</span>
+          </div>
+          <textarea class="analysis-plan-textarea" id="analysisPlanTextarea" placeholder="# 分析计划
+
+## 目标
+描述本次分析要回答的科学问题
+
+## 输入数据
+- 数据集：...
+- 预处理状态：...
+
+## 分析步骤
+1. 差异基因表达分析 (DEG)
+2. 功能富集分析 (GO/KEGG)
+3. 可视化：UMAP / 热图 / 火山图
+
+## 预期输出
+- 差异基因列表 CSV
+- 富集分析结果 CSV
+- 可视化图表 PNG
+- 汇总报告 Markdown"></textarea>
+          <div class="model-action-row">
+            <button class="agent-btn secondary" onclick="loadAnalysisTemplate()">加载模板</button>
+            <button class="agent-btn secondary" onclick="saveAnalysisPlan()">保存</button>
+            <button class="agent-btn blue" onclick="executeAnalysisPlan()">▶ 执行</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline Tab -->
+      <div class="sidebar-content" id="analysisPipelineContent">
+        <div class="pipeline-panel">
+          <div class="panel-section-header" style="margin-bottom:12px">
+            <span class="panel-section-title">执行管线</span>
+            <span class="panel-section-badge blue" id="pipelineStepCount">0 步</span>
+          </div>
+          <div id="pipelineStepList">
+            <div class="pipeline-empty">暂无管线<br><small>保存分析计划后自动生成</small></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assets Tab -->
+      <div class="sidebar-content" id="analysisAssetsContent">
+        <div class="assets-panel">
+          <div class="panel-section-header" style="margin-bottom:8px">
+            <span class="panel-section-title">数字资产</span>
+            <span class="panel-section-badge blue" id="assetsCount">0 个</span>
+          </div>
+          <div class="asset-filter-row">
+            <div class="asset-filter-chip active" onclick="filterAssets('all', this)">全部</div>
+            <div class="asset-filter-chip" onclick="filterAssets('chart', this)">📊 图表</div>
+            <div class="asset-filter-chip" onclick="filterAssets('code', this)">💻 代码</div>
+            <div class="asset-filter-chip" onclick="filterAssets('data', this)">📋 数据</div>
+            <div class="asset-filter-chip" onclick="filterAssets('report', this)">📑 报告</div>
+          </div>
+          <div id="assetsList">
+            <div class="assets-empty">暂无资产<br><small>执行分析后生成</small></div>
+          </div>
         </div>
       </div>
     </div>
+
   </aside>
 </div>
 
@@ -1668,6 +2502,50 @@ body {
   </div>
 </div>
 
+<!-- Settings Dialog -->
+<div class="edit-dialog" id="settingsDialog" style="display:none" onclick="closeSettingsDialog(event)">
+  <div class="edit-dialog-box" style="min-width:480px;max-width:600px" onclick="event.stopPropagation()">
+    <div class="edit-dialog-title">⚙️ LLM API 设置</div>
+    
+    <div style="margin-bottom:16px">
+      <label class="model-config-label">API 协议</label>
+      <div style="display:flex;gap:8px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="apiProvider" value="openai" checked onchange="updateProviderHint()">
+          <span>OpenAI 兼容</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;opacity:0.5">
+          <input type="radio" name="apiProvider" value="anthropic" disabled>
+          <span>Anthropic (暂不支持)</span>
+        </label>
+      </div>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label class="model-config-label">API Key</label>
+      <input type="password" id="settingsApiKey" class="input-dialog-input" style="width:100%" placeholder="sk-...">
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label class="model-config-label">Base URL</label>
+      <input type="text" id="settingsBaseUrl" class="input-dialog-input" style="width:100%" placeholder="https://api.openai.com/v1/">
+      <div style="font-size:11px;color:var(--text-faint);margin-top:4px">OpenAI 兼容 API 的基础地址</div>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label class="model-config-label">Model Name</label>
+      <input type="text" id="settingsModelName" class="input-dialog-input" style="width:100%" placeholder="gpt-4 / glm-5 / ...">
+    </div>
+    
+    <div style="display:flex;gap:8px;margin-top:20px">
+      <button class="dialog-btn secondary" onclick="testLLMConnection()">测试连接</button>
+      <div style="flex:1"></div>
+      <button class="dialog-btn secondary" onclick="closeSettingsDialog()">取消</button>
+      <button class="dialog-btn primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let currentAgent = 'data-agent';  // 当前 Agent ID（data-agent, model-agent, analysis-agent）
 let sessionId = null;
@@ -1709,37 +2587,386 @@ function setStatus(text, connected = true) {
 }
 
 function switchAgent(agent) {
-  // 映射 agent key 到 agentId
   const agentMap = { 'data': 'data-agent', 'model': 'model-agent', 'analysis': 'analysis-agent' };
   currentAgent = agentMap[agent] || 'data-agent';
-  
-  // 更新 UI
-  document.querySelectorAll('.nav-item').forEach((element, index) => {
-    const agents = ['data', 'model', 'analysis'];
-    element.classList.toggle('active', agents[index] === agent);
+
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach((el, i) => {
+    el.classList.toggle('active', ['data','model','analysis'][i] === agent);
   });
-  
-  // 显示当前 Agent 状态
+
+  // Switch sidebar panels
+  document.getElementById('dataSidebar').classList.toggle('active', agent === 'data');
+  document.getElementById('modelSidebar').classList.toggle('active', agent === 'model');
+  document.getElementById('analysisSidebar').classList.toggle('active', agent === 'analysis');
+
+  // Update welcome screen & input placeholder
+  updateAgentWelcome(agent);
+
   const agentNames = { 'data-agent': 'Data Agent', 'model-agent': 'Model Agent', 'analysis-agent': 'Analysis Agent' };
   setStatus(`${agentNames[currentAgent]} 已激活`);
 }
 
-function switchSidebarTab(tab) {
-  document.querySelectorAll('.sidebar-tab').forEach((el, i) => {
-    const tabs = ['requirement', 'toolchain', 'datasets'];
-    el.classList.toggle('active', tabs[i] === tab);
+function updateAgentWelcome(agent) {
+  const iconEl = document.getElementById('welcomeIcon');
+  const titleEl = document.getElementById('welcomeTitle');
+  const descEl = document.getElementById('welcomeDesc');
+  const actionsEl = document.getElementById('welcomeActions');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('sendBtn');
+
+  // Reset send button color
+  sendBtn.className = 'send-btn';
+
+  if (agent === 'model') {
+    sendBtn.classList.add('model');
+    if (iconEl) { iconEl.className = 'welcome-icon model'; iconEl.textContent = '🤖'; }
+    if (titleEl) titleEl.textContent = 'Model Agent';
+    if (descEl) descEl.textContent = '我是你的建模助手。支持机器学习、统计建模、深度学习和 LLM 调用。描述你的建模目标，或在右侧配置模型参数后开始训练。';
+    if (actionsEl) actionsEl.innerHTML = `
+      <div class="quick-action" onclick="quickAction('model_train')"><span class="quick-action-icon">🤖</span>训练模型</div>
+      <div class="quick-action" onclick="quickAction('model_eval')"><span class="quick-action-icon">📊</span>评估模型</div>
+      <div class="quick-action" onclick="quickAction('model_predict')"><span class="quick-action-icon">🎯</span>推理预测</div>
+    `;
+    if (inputEl) inputEl.placeholder = '描述建模需求，如：用随机森林对细胞类型分类...';
+  } else if (agent === 'analysis') {
+    sendBtn.classList.add('analysis');
+    if (iconEl) { iconEl.className = 'welcome-icon analysis'; iconEl.textContent = '🔬'; }
+    if (titleEl) titleEl.textContent = 'Analysis Agent';
+    if (descEl) descEl.textContent = '我是你的分析助手。支持多步工具调用，生成代码、图表和分析报告等数字资产。告诉我你的分析目标，我来编排执行流程。';
+    if (actionsEl) actionsEl.innerHTML = `
+      <div class="quick-action" onclick="quickAction('analysis_deg')"><span class="quick-action-icon">🧬</span>差异表达分析</div>
+      <div class="quick-action" onclick="quickAction('analysis_vis')"><span class="quick-action-icon">📈</span>可视化出图</div>
+      <div class="quick-action" onclick="quickAction('analysis_report')"><span class="quick-action-icon">📑</span>生成报告</div>
+    `;
+    if (inputEl) inputEl.placeholder = '描述分析目标，如：对处理后的数据做差异表达分析并出图...';
+  } else {
+    if (iconEl) { iconEl.className = 'welcome-icon'; iconEl.textContent = '🧬'; }
+    if (titleEl) titleEl.textContent = '欢迎使用 VerumOS';
+    if (descEl) descEl.textContent = '我是你的科研 AI 助手。你可以上传数据、讨论分析需求、执行分析流程。只需描述你的需求，我会帮你完成技术实现。';
+    if (actionsEl) actionsEl.innerHTML = `
+      <div class="quick-action" onclick="quickAction('upload')"><span class="quick-action-icon">📁</span>上传数据</div>
+      <div class="quick-action" onclick="quickAction('requirement')"><span class="quick-action-icon">📝</span>讨论需求</div>
+      <div class="quick-action" onclick="quickAction('analyze')"><span class="quick-action-icon">🔬</span>分析数据</div>
+    `;
+    if (inputEl) inputEl.placeholder = '描述你的需求，或上传数据文件...';
+  }
+}
+
+function switchSidebarTab(agentKey, tab) {
+  // Find the right sidebar container
+  const sidebarId = { data: 'dataSidebar', model: 'modelSidebar', analysis: 'analysisSidebar' }[agentKey];
+  const sidebar = document.getElementById(sidebarId);
+  if (!sidebar) return;
+
+  // Update tabs
+  sidebar.querySelectorAll('.sidebar-tab').forEach(el => el.classList.remove('active'));
+  sidebar.querySelectorAll('.sidebar-content').forEach(el => el.classList.remove('active'));
+
+  // Find clicked tab by order
+  const tabOrders = {
+    data: ['requirement', 'toolchain', 'datasets'],
+    model: ['config', 'training', 'registry'],
+    analysis: ['plan', 'pipeline', 'assets'],
+  };
+  const idx = tabOrders[agentKey].indexOf(tab);
+  if (idx >= 0) {
+    sidebar.querySelectorAll('.sidebar-tab')[idx]?.classList.add('active');
+  }
+
+  // Show matching content panel
+  const contentIds = {
+    data: { requirement: 'requirementContent', toolchain: 'toolchainContent', datasets: 'datasetsContent' },
+    model: { config: 'modelConfigContent', training: 'modelTrainingContent', registry: 'modelRegistryContent' },
+    analysis: { plan: 'analysisPlanContent', pipeline: 'analysisPipelineContent', assets: 'analysisAssetsContent' },
+  };
+  const contentId = contentIds[agentKey]?.[tab];
+  if (contentId) document.getElementById(contentId)?.classList.add('active');
+}
+
+// ===== Model Agent Functions =====
+
+let selectedModelType = 'ml';
+
+function selectModelType(cardEl, type) {
+  document.querySelectorAll('.model-type-card').forEach(c => c.classList.remove('selected'));
+  cardEl.classList.add('selected');
+  selectedModelType = type;
+}
+
+function saveModelConfig() {
+  const yaml = document.getElementById('modelHyperparams')?.value || '';
+  addMessage('system', `模型配置已保存（类型：${selectedModelType}）`);
+}
+
+function startTraining() {
+  const input = document.getElementById('input');
+  const yaml = document.getElementById('modelHyperparams')?.value || '';
+  input.value = `开始训练模型，配置如下：\n${yaml.slice(0, 200)}`;
+  switchSidebarTab('model', 'training');
+  showTrainingProgress();
+  sendMessage();
+}
+
+function showTrainingProgress() {
+  const block = document.getElementById('trainingProgressBlock');
+  if (block) block.style.display = 'block';
+}
+
+function addTrainingLog(text, type = '') {
+  const container = document.getElementById('trainingLogEntries');
+  if (!container) return;
+  // Remove empty placeholder
+  const emptyEl = container.querySelector('.log-empty');
+  if (emptyEl) emptyEl.remove();
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  const time = new Date().toLocaleTimeString();
+  entry.innerHTML = `<span class="log-time">${time}</span><span>${escapeHtml(text)}</span>`;
+  container.appendChild(entry);
+  container.scrollTop = container.scrollHeight;
+}
+
+function clearTrainingLog() {
+  const container = document.getElementById('trainingLogEntries');
+  if (container) container.innerHTML = '<div class="log-empty">暂无日志<br><small>开始训练后显示</small></div>';
+}
+
+function updateTrainingMetrics(metrics) {
+  if (metrics.accuracy !== undefined) {
+    const el = document.getElementById('metricAccuracy');
+    if (el) { el.textContent = (metrics.accuracy * 100).toFixed(1) + '%'; el.classList.remove('dim'); }
+  }
+  if (metrics.f1 !== undefined) {
+    const el = document.getElementById('metricF1');
+    if (el) { el.textContent = metrics.f1.toFixed(3); el.classList.remove('dim'); }
+  }
+  if (metrics.loss !== undefined) {
+    const el = document.getElementById('metricLoss');
+    if (el) { el.textContent = metrics.loss.toFixed(4); el.classList.remove('dim'); }
+  }
+  if (metrics.epoch !== undefined) {
+    const el = document.getElementById('metricEpoch');
+    if (el) { el.textContent = metrics.epoch; el.classList.remove('dim'); }
+  }
+}
+
+function addModelToRegistry(model) {
+  const list = document.getElementById('modelRegistryList');
+  if (!list) return;
+  const emptyEl = list.querySelector('.model-reg-empty');
+  if (emptyEl) emptyEl.remove();
+
+  const typeLabels = { ml: 'ML', stats: 'Stats', dl: 'DL', llm: 'LLM' };
+  const item = document.createElement('div');
+  item.className = 'model-registry-item';
+  item.innerHTML = `
+    <div class="model-reg-name">
+      ${escapeHtml(model.name)}
+      <span class="model-reg-type">${typeLabels[model.type] || model.type}</span>
+    </div>
+    <div class="model-reg-meta">
+      <span>acc: ${model.accuracy ? (model.accuracy * 100).toFixed(1) + '%' : '—'}</span>
+      <span>${new Date(model.createdAt || Date.now()).toLocaleDateString()}</span>
+    </div>
+  `;
+  list.appendChild(item);
+
+  const countEl = document.getElementById('modelRegistryCount');
+  if (countEl) countEl.textContent = list.querySelectorAll('.model-registry-item').length + ' 个';
+}
+
+// ===== Analysis Agent Functions =====
+
+function saveAnalysisPlan() {
+  const textarea = document.getElementById('analysisPlanTextarea');
+  const content = textarea?.value || '';
+  if (!content.trim()) { addMessage('system', '请先填写分析计划'); return; }
+  addMessage('system', '分析计划已保存');
+  updateAnalysisPlanStatus('confirmed');
+  // Auto-generate pipeline preview from plan text
+  generatePipelineFromPlan(content);
+}
+
+function loadAnalysisTemplate() {
+  const template = `# 分析计划_差异表达分析
+
+## 目标
+比较两组细胞间的差异基因表达，鉴定上调/下调基因
+
+## 输入数据
+- 数据集：normalized_matrix.csv（已标准化）
+- 分组信息：cell_metadata.csv（group 列）
+
+## 分析步骤
+1. 加载数据并检验分组完整性
+2. 差异表达分析（DESeq2 / Wilcoxon）
+3. 结果过滤（|log2FC| > 1, p_adj < 0.05）
+4. 功能富集分析（GO BP / KEGG）
+5. 可视化：火山图、热图、GSEA 图
+6. 导出汇总报告
+
+## 预期输出
+- deg_results.csv
+- enrichment_results.csv
+- volcano_plot.png
+- heatmap.png
+- analysis_report.md`;
+  const el = document.getElementById('analysisPlanTextarea');
+  if (el) el.value = template;
+}
+
+function updateAnalysisPlanStatus(status) {
+  const el = document.getElementById('analysisPlanStatus');
+  if (!el) return;
+  el.className = `requirement-status ${status}`;
+  const labels = { draft: '草稿', discussing: '讨论中', confirmed: '已确认', executing: '执行中', completed: '已完成' };
+  el.textContent = labels[status] || status;
+}
+
+function generatePipelineFromPlan(planText) {
+  // Simple parser: extract numbered steps from plan
+  const lines = planText.split('\n');
+  const steps = [];
+  lines.forEach(line => {
+    const m = line.match(/^\s*(\d+)\.\s+(.+)/);
+    if (m) steps.push(m[2].trim());
   });
-  document.querySelectorAll('.sidebar-content').forEach((el, i) => {
-    const tabs = ['requirement', 'toolchain', 'datasets'];
-    el.classList.toggle('active', tabs[i] === tab);
-  });
+  if (steps.length === 0) return;
+
+  updatePipelineSteps(steps.map(s => ({ title: s, status: 'pending' })));
+}
+
+function updatePipelineSteps(steps) {
+  const list = document.getElementById('pipelineStepList');
+  const countEl = document.getElementById('pipelineStepCount');
+  if (!list) return;
+
+  if (!steps.length) {
+    list.innerHTML = '<div class="pipeline-empty">暂无管线<br><small>保存分析计划后自动生成</small></div>';
+    if (countEl) countEl.textContent = '0 步';
+    return;
+  }
+
+  if (countEl) countEl.textContent = steps.length + ' 步';
+
+  list.innerHTML = steps.map((step, i) => {
+    const statusClass = step.status || 'pending';
+    const dotClass = statusClass === 'done' ? 'done' : statusClass === 'running' ? 'running' : '';
+    const isLast = i === steps.length - 1;
+    return `
+      <div class="pipeline-node">
+        <div class="pipeline-connector">
+          <div class="pipeline-dot ${dotClass}"></div>
+          ${!isLast ? '<div class="pipeline-line"></div>' : ''}
+        </div>
+        <div class="pipeline-card ${statusClass === 'done' ? 'done' : statusClass === 'running' ? 'active' : ''}">
+          <div class="pipeline-card-title">
+            ${escapeHtml(step.title)}
+            <span class="pipeline-status-badge ${statusClass}">${
+              { pending: '待执行', running: '执行中', done: '已完成', error: '错误' }[statusClass] || statusClass
+            }</span>
+          </div>
+          ${step.tool ? `<div class="pipeline-card-sub">${escapeHtml(step.tool)}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function executeAnalysisPlan() {
+  const textarea = document.getElementById('analysisPlanTextarea');
+  const plan = textarea?.value || '';
+  if (!plan.trim()) { addMessage('system', '请先填写并保存分析计划'); return; }
+  
+  saveAnalysisPlan();
+  updateAnalysisPlanStatus('executing');
+  addMessage('system', '🚀 开始执行分析管线...');
+  switchSidebarTab('analysis', 'pipeline');
+
+  const input = document.getElementById('input');
+  input.value = '执行分析计划：' + plan.slice(0, 300);
+  sendMessage();
+}
+
+// Asset management
+let currentAssets = [];
+let currentAssetFilter = 'all';
+
+function addAsset(asset) {
+  currentAssets.push(asset);
+  renderAssets();
+  // Switch to assets tab
+  switchSidebarTab('analysis', 'assets');
+}
+
+function filterAssets(type, chipEl) {
+  currentAssetFilter = type;
+  document.querySelectorAll('.asset-filter-chip').forEach(c => c.classList.remove('active'));
+  chipEl.classList.add('active');
+  renderAssets();
+}
+
+function renderAssets() {
+  const list = document.getElementById('assetsList');
+  const countEl = document.getElementById('assetsCount');
+  if (!list) return;
+
+  const filtered = currentAssetFilter === 'all'
+    ? currentAssets
+    : currentAssets.filter(a => a.type === currentAssetFilter);
+
+  if (countEl) countEl.textContent = currentAssets.length + ' 个';
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="assets-empty">暂无资产<br><small>执行分析后生成</small></div>';
+    return;
+  }
+
+  const typeIcons = { chart: '📊', code: '💻', data: '📋', report: '📑' };
+  list.innerHTML = filtered.map(asset => `
+    <div class="asset-list-item" onclick="openAsset('${escapeHtml(asset.id)}')">
+      <div class="asset-list-icon">${typeIcons[asset.type] || '📄'}</div>
+      <div class="asset-list-info">
+        <div class="asset-list-name">${escapeHtml(asset.name)}</div>
+        <div class="asset-list-meta">${escapeHtml(asset.meta || '')}</div>
+      </div>
+      <div class="asset-list-action" onclick="event.stopPropagation(); downloadAsset('${escapeHtml(asset.id)}')">⬇</div>
+    </div>
+  `).join('');
+}
+
+function openAsset(assetId) {
+  const asset = currentAssets.find(a => a.id === assetId);
+  if (!asset) return;
+  if (asset.path) {
+    previewFile(asset.path, asset.name);
+  }
+}
+
+function downloadAsset(assetId) {
+  const asset = currentAssets.find(a => a.id === assetId);
+  if (!asset || !asset.path) return;
+  const a = document.createElement('a');
+  a.href = `/api/files/content?path=${encodeURIComponent(asset.path)}`;
+  a.download = asset.name;
+  a.click();
 }
 
 function quickAction(action) {
   const input = document.getElementById('input');
-  if (action === 'upload') input.value = '上传 data/count_matrix.csv';
-  if (action === 'requirement') input.value = '我想做细胞类型鉴定';
-  if (action === 'analyze') input.value = '探索这份数据';
+  const prompts = {
+    upload: '上传 data/count_matrix.csv',
+    requirement: '我想做细胞类型鉴定',
+    analyze: '探索这份数据',
+    model_train: '帮我用随机森林对细胞类型分类，目标列是 cell_type',
+    model_eval: '评估当前模型的性能，包括混淆矩阵和 ROC 曲线',
+    model_predict: '用训练好的模型对新数据进行推理预测',
+    analysis_deg: '对 group A 和 group B 做差异表达分析，输出火山图',
+    analysis_vis: '对数据集生成 UMAP 降维图和细胞类型热图',
+    analysis_report: '汇总所有分析结果，生成 Markdown 格式的分析报告',
+  };
+  input.value = prompts[action] || '';
   input.focus();
 }
 
@@ -3290,6 +4517,113 @@ function showSnapshotContextMenu(event, jobId, snapshotId) {
   menu.style.display = 'block';
   menu.style.left = `${event.clientX}px`;
   menu.style.top = `${event.clientY}px`;
+}
+
+// ============ Settings Functions ============
+async function openSettings() {
+  try {
+    const response = await fetch('/api/config');
+    const payload = await response.json();
+    if (payload.ok) {
+      const config = payload.config;
+      document.getElementById('settingsApiKey').value = config.llm?.apiKey || '';
+      document.getElementById('settingsBaseUrl').value = config.llm?.baseUrl || '';
+      document.getElementById('settingsModelName').value = config.llm?.model || '';
+      
+      // Set provider radio
+      const provider = config.llm?.apiProvider || 'openai';
+      document.querySelectorAll('input[name="apiProvider"]').forEach(r => {
+        r.checked = r.value === provider;
+      });
+    }
+  } catch (error) {
+    console.error('Failed to load config:', error);
+  }
+  document.getElementById('settingsDialog').style.display = 'flex';
+}
+
+function closeSettingsDialog(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('settingsDialog').style.display = 'none';
+}
+
+async function saveSettings() {
+  const apiKey = document.getElementById('settingsApiKey').value.trim();
+  const baseUrl = document.getElementById('settingsBaseUrl').value.trim();
+  const model = document.getElementById('settingsModelName').value.trim();
+  const provider = document.querySelector('input[name="apiProvider"]:checked')?.value || 'openai';
+  
+  try {
+    const response = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        llm: {
+          apiProvider: provider,
+          apiKey: apiKey,
+          baseUrl: baseUrl,
+          model: model,
+        },
+      }),
+    });
+    const payload = await response.json();
+    
+    if (payload.ok) {
+      addMessage('system', '✅ 设置已保存。' + (payload.message || ''));
+      closeSettingsDialog();
+    } else {
+      alert('保存失败: ' + payload.error);
+    }
+  } catch (error) {
+    alert('保存失败: ' + error.message);
+  }
+}
+
+async function testLLMConnection() {
+  const apiKey = document.getElementById('settingsApiKey').value.trim();
+  const baseUrl = document.getElementById('settingsBaseUrl').value.trim();
+  const model = document.getElementById('settingsModelName').value.trim();
+  const provider = document.querySelector('input[name="apiProvider"]:checked')?.value || 'openai';
+  
+  if (!apiKey && !baseUrl) {
+    alert('请填写 API Key 或 Base URL');
+    return;
+  }
+  
+  try {
+    addMessage('system', '🔄 正在测试 LLM 连接...');
+    
+    const response = await fetch('/api/config/test-llm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        baseUrl,
+        model,
+        apiProvider: provider,
+      }),
+    });
+    const payload = await response.json();
+    
+    if (payload.ok) {
+      addMessage('system', '✅ LLM 连接成功: ' + (payload.response || 'OK'));
+    } else {
+      addMessage('system', '❌ LLM 连接失败: ' + payload.error);
+    }
+  } catch (error) {
+    addMessage('system', '❌ 测试失败: ' + error.message);
+  }
+}
+
+function updateProviderHint() {
+  const provider = document.querySelector('input[name="apiProvider"]:checked')?.value;
+  const baseUrlInput = document.getElementById('settingsBaseUrl');
+  
+  if (provider === 'openai') {
+    baseUrlInput.placeholder = 'https://api.openai.com/v1/';
+  } else if (provider === 'anthropic') {
+    baseUrlInput.placeholder = 'https://api.anthropic.com';
+  }
 }
 </script>
 
