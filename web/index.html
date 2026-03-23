@@ -1170,6 +1170,13 @@ body {
   color: var(--text);
   border: 1px solid var(--border);
 }
+
+.confirm-dialog-message {
+  padding: 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
 </style>
 </head>
 <body>
@@ -1384,6 +1391,18 @@ body {
     <div class="input-dialog-actions">
       <button class="dialog-btn secondary" onclick="closeInputDialog()">取消</button>
       <button class="dialog-btn primary" onclick="confirmDialog()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="input-dialog" id="confirmDialog" style="display:none" onclick="closeConfirmDialogBox(event)">
+  <div class="input-dialog-box" onclick="event.stopPropagation()">
+    <div class="input-dialog-title" id="confirmDialogTitle">确认</div>
+    <div class="confirm-dialog-message" id="confirmDialogMessage"></div>
+    <div class="input-dialog-actions">
+      <button class="dialog-btn secondary" id="confirmDialogCancel">取消</button>
+      <button class="dialog-btn primary" id="confirmDialogOk">确定</button>
     </div>
   </div>
 </div>
@@ -1832,7 +1851,7 @@ function updateExplorerHeader() {
     <button class="icon-btn ${batchMode ? 'active' : ''}" onclick="toggleBatchMode()" title="${batchMode ? '退出选择' : '批量选择'}">${batchMode ? '✓' : '○'}</button>
     <button class="icon-btn" onclick="createNewJob()" title="新建任务">+</button>
     <button class="icon-btn" onclick="loadJobs()" title="刷新">↻</button>
-    ${batchMode && selectedJobs.size > 0 ? `<button class="icon-btn danger" onclick="batchDeleteJobs()" title="删除选中 (${selectedJobs.size})">🗑️</button>` : ''}
+    ${batchMode && selectedJobs.size > 0 ? `<button class="icon-btn danger" onclick="batchDeleteJobs(event)" title="删除选中 (${selectedJobs.size})">🗑️</button>` : ''}
   `;
 }
 
@@ -1855,11 +1874,18 @@ function toggleJobSelection(jobId) {
   updateExplorerHeader();
 }
 
-async function batchDeleteJobs() {
+async function batchDeleteJobs(event) {
+  // 阻止事件冒泡
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  
   if (selectedJobs.size === 0) return;
   
   const count = selectedJobs.size;
-  if (!confirm(`确定要删除选中的 ${count} 个任务吗？`)) return;
+  const confirmed = await showConfirmDialog('批量删除', `确定要删除选中的 ${count} 个任务吗？`);
+  if (!confirmed) return;
   
   try {
     const response = await fetch('/api/jobs/batch-delete', {
@@ -2193,41 +2219,43 @@ async function contextAction(action) {
 
     case 'delete':
       const itemName = type === 'job' ? (jobs.find(j => j.id === jobId)?.summary || jobId) : path.split('/').pop();
-      if (!confirm(`确定要删除 ${itemName} 吗？`)) return;
-      try {
-        let response;
-        if (type === 'job') {
-          response = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
-        } else {
-          response = await fetch(`/api/files?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(path)}`, {
-            method: 'DELETE',
-          });
-        }
-        const payload = await response.json();
-        if (payload.ok) {
+      showConfirmDialog('删除确认', `确定要删除 ${itemName} 吗？`).then(async (confirmed) => {
+        if (!confirmed) return;
+        try {
+          let response;
           if (type === 'job') {
-            currentJobId = null;
-            expandedFolders.delete(jobId);  // 清除展开状态
-            await loadJobs();
-            addMessage('system', `任务 ${itemName} 已删除`);
+            response = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
           } else {
-            // 清除子文件夹的展开状态
-            for (const key of expandedFolders) {
-              if (key.startsWith(`${jobId}/${path}`) || key === `${jobId}/${path}`) {
-                expandedFolders.delete(key);
-              }
-            }
-            // 重新加载父目录
-            const parentPath = path.split('/').slice(0, -1).join('/');
-            await loadFileTree(jobId, parentPath || '');
-            addMessage('system', `${itemName} 已删除`);
+            response = await fetch(`/api/files?jobId=${encodeURIComponent(jobId)}&path=${encodeURIComponent(path)}`, {
+              method: 'DELETE',
+            });
           }
-        } else {
-          alert(`删除失败: ${payload.error}`);
+          const payload = await response.json();
+          if (payload.ok) {
+            if (type === 'job') {
+              currentJobId = null;
+              expandedFolders.delete(jobId);  // 清除展开状态
+              await loadJobs();
+              addMessage('system', `任务 ${itemName} 已删除`);
+            } else {
+              // 清除子文件夹的展开状态
+              for (const key of expandedFolders) {
+                if (key.startsWith(`${jobId}/${path}`) || key === `${jobId}/${path}`) {
+                  expandedFolders.delete(key);
+                }
+              }
+              // 重新加载父目录
+              const parentPath = path.split('/').slice(0, -1).join('/');
+              await loadFileTree(jobId, parentPath || '');
+              addMessage('system', `${itemName} 已删除`);
+            }
+          } else {
+            alert(`删除失败: ${payload.error}`);
+          }
+        } catch (error) {
+          alert(`删除失败: ${error.message}`);
         }
-      } catch (error) {
-        alert(`删除失败: ${error.message}`);
-      }
+      });
       break;
 
     case 'download':
@@ -2416,6 +2444,37 @@ function confirmDialog() {
     dialogCallback(value);
   }
   closeInputDialog();
+}
+
+// Confirm Dialog
+let confirmResolve = null;
+
+function showConfirmDialog(title, message) {
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+    document.getElementById('confirmDialogTitle').textContent = title;
+    document.getElementById('confirmDialogMessage').textContent = message;
+    document.getElementById('confirmDialog').style.display = 'flex';
+    
+    // 绑定按钮事件
+    const cancelBtn = document.getElementById('confirmDialogCancel');
+    const okBtn = document.getElementById('confirmDialogOk');
+    
+    cancelBtn.onclick = () => {
+      document.getElementById('confirmDialog').style.display = 'none';
+      resolve(false);
+    };
+    
+    okBtn.onclick = () => {
+      document.getElementById('confirmDialog').style.display = 'none';
+      resolve(true);
+    };
+  });
+}
+
+function closeConfirmDialogBox(event) {
+  // 点击遮罩层不关闭，必须点击按钮
+  if (event && event.target !== event.currentTarget) return;
 }
 
 // Utilities
