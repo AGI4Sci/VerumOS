@@ -50,19 +50,34 @@ export interface RouteRule {
  * 记忆策略
  */
 export interface MemoryPolicy {
-  workingMemory?: {
-    maxMessages?: number;       // 保留最近 N 条消息
-    maxTokens?: number;         // token 预算上限
-  };
-  jobMemory?: {
-    includeDatasetMeta?: boolean;
-    includeRequirementDoc?: boolean;
-    includeRecentTraces?: number;   // 保留最近 N 条执行轨迹
-  };
-  longTermMemory?: {
-    enabled?: boolean;
-    topK?: number;              // 检索最相关的 K 条记忆
-  };
+  workingMemory?: WorkingMemoryPolicy;
+  jobMemory?: JobMemoryPolicy;
+  longTermMemory?: LongTermMemoryPolicy;
+}
+
+/**
+ * Working Memory 策略
+ */
+export interface WorkingMemoryPolicy {
+  maxMessages?: number;       // 保留最近 N 条消息
+  maxTokens?: number;         // token 预算上限
+}
+
+/**
+ * Job Memory 策略
+ */
+export interface JobMemoryPolicy {
+  includeDatasetMeta?: boolean;
+  includeRequirementDoc?: boolean;
+  includeRecentTraces?: number;   // 保留最近 N 条执行轨迹
+}
+
+/**
+ * Long Term Memory 策略
+ */
+export interface LongTermMemoryPolicy {
+  enabled?: boolean;
+  topK?: number;              // 检索最相关的 K 条记忆
 }
 
 /**

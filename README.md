@@ -383,7 +383,14 @@ const dataAgentConfig = {
    - 管理所有 Tool 的注册和执行
    - 支持 OpenAI function calling 格式输出
 
-4. **Agent Runtime 与业务逻辑分离**
+4. **Memory 层抽象**
+   - 新增 `src/core/memory/` 目录
+   - WorkingMemory: 消息历史 + token 截断（优先保留 system 和最新用户消息）
+   - JobMemory: job 结构化状态注入（数据集元信息、需求文档、执行轨迹）
+   - LongTermMemory: 接口预留，Phase 2 实现
+   - MemoryManager: 组合三层 Memory，提供统一接口
+
+5. **Agent Runtime 与业务逻辑分离**
    - 新增 `runtime/agent-loop.ts`，实现纯执行引擎
    - Agent 不再继承 BaseAgent，改为声明式配置
    - 支持事件流（agent_start, turn_start, message_update 等）
