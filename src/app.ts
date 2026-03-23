@@ -8,6 +8,7 @@ import uploadRouter from './routes/upload.js';
 import requirementRouter from './routes/requirement.js';
 import jobRouter from './routes/job.js';
 import fileRouter from './routes/file.js';
+import snapshotRouter from './routes/snapshot.js';
 import { initializeSkills } from './skills/index.js';
 import { ensureDataDir } from './job/index.js';
 
@@ -22,6 +23,7 @@ app.route('/api', uploadRouter);
 app.route('/api', requirementRouter);
 app.route('/api', jobRouter);
 app.route('/api', fileRouter);
+app.route('/api', snapshotRouter);
 app.get('/', serveStatic({ path: './web/index.html' }));
 app.use('/*', serveStatic({ root: './web' }));
 

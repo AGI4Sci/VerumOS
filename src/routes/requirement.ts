@@ -8,6 +8,7 @@ import {
   documentToMarkdown,
   generateToolChain,
 } from '../agents/requirement-doc.js';
+import { createSnapshot } from '../job/snapshot-manager.js';
 
 const requirementRouter = new Hono();
 
@@ -62,6 +63,15 @@ requirementRouter.post('/requirement/:sessionId', async (c) => {
   if (body.content) doc.content = body.content;
 
   const savedPath = await saveRequirementDocument(doc);
+
+  // 创建快照
+  if (doc.jobId) {
+    try {
+      await createSnapshot(doc.jobId, 'requirement_saved');
+    } catch (error) {
+      console.error('Failed to create snapshot:', error);
+    }
+  }
 
   return c.json({
     ok: true,

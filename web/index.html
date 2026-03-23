@@ -1224,6 +1224,161 @@ body {
 .fullscreen-editor-textarea:focus {
   background: var(--surface);
 }
+
+/* Message Edit Button */
+.message-text-wrapper {
+  position: relative;
+}
+
+.message-edit-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: var(--surface2);
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.message-text-wrapper:hover .message-edit-btn {
+  opacity: 1;
+}
+
+.message-edit-btn:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.message-edited-mark {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-style: italic;
+  margin-left: 8px;
+}
+
+/* Edit Dialog */
+.edit-dialog {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.edit-dialog-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  min-width: 400px;
+  max-width: 600px;
+}
+
+.edit-dialog-title {
+  font-weight: 500;
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.edit-dialog-input {
+  width: 100%;
+  min-height: 100px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+}
+
+.edit-dialog-input:focus { border-color: var(--accent); }
+
+.edit-dialog-options {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.edit-option:hover {
+  border-color: var(--border-active);
+}
+
+.edit-option input[type="radio"] {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.edit-option-content {
+  flex: 1;
+}
+
+.edit-option-title {
+  font-weight: 500;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.edit-option-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.edit-dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+/* Snapshot styles */
+.snapshot-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 24px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.snapshot-item:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.snapshot-time {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+}
+
+.snapshot-label {
+  flex: 1;
+}
 </style>
 </head>
 <body>
@@ -1481,6 +1636,36 @@ body {
 2. QC 过滤
 3. 标准化
 "></textarea>
+</div>
+
+<!-- Edit Message Dialog -->
+<div class="edit-dialog" id="editDialog" style="display:none" onclick="closeEditDialog(event)">
+  <div class="edit-dialog-box" onclick="event.stopPropagation()">
+    <div class="edit-dialog-title">✏️ 编辑消息</div>
+    <textarea class="edit-dialog-input" id="editDialogInput"></textarea>
+    
+    <div class="edit-dialog-options">
+      <label class="edit-option">
+        <input type="radio" name="editMode" value="keep_and_continue" checked>
+        <div class="edit-option-content">
+          <div class="edit-option-title">仅修改记录</div>
+          <div class="edit-option-desc">保留当前状态，只修改历史记录</div>
+        </div>
+      </label>
+      <label class="edit-option">
+        <input type="radio" name="editMode" value="revert_and_reexecute">
+        <div class="edit-option-content">
+          <div class="edit-option-title">回退并重新执行</div>
+          <div class="edit-option-desc">恢复到该消息时的状态，修改后可重新执行</div>
+        </div>
+      </label>
+    </div>
+    
+    <div class="edit-dialog-actions">
+      <button class="dialog-btn secondary" onclick="closeEditDialog()">取消</button>
+      <button class="dialog-btn primary" onclick="confirmEditMessage()">确认</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1741,11 +1926,16 @@ function renderHistoryMessages(messages) {
   const welcome = document.getElementById('welcome');
   if (welcome) welcome.style.display = 'none';
   
-  for (const msg of messages) {
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
     const meta = {
       user: { icon: '👤', name: '你' },
       assistant: { icon: '📊', name: 'Data Agent' },
+      system: { icon: '⚡', name: 'System' },
     }[msg.role] || { icon: '💬', name: 'Assistant' };
+    
+    const editedMark = msg.edited ? '<span class="message-edited-mark">(已编辑)</span>' : '';
+    const editBtn = msg.role === 'user' ? `<button class="message-edit-btn" onclick="editMessage(${i})">✏️</button>` : '';
     
     const node = document.createElement('div');
     node.className = 'message';
@@ -1753,10 +1943,13 @@ function renderHistoryMessages(messages) {
       <div class="message-avatar ${msg.role === 'user' ? 'user' : 'data'}">${meta.icon}</div>
       <div class="message-content">
         <div class="message-header">
-          <span class="message-name">${meta.name}</span>
-          <span class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+          <span class="message-name">${meta.name}${editedMark}</span>
+          <span class="message-time">${msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : ''}</span>
         </div>
-        <div class="message-text">${formatText(msg.content)}</div>
+        <div class="message-text-wrapper">
+          <div class="message-text">${formatText(msg.content)}</div>
+          ${editBtn}
+        </div>
       </div>
     `;
     chatArea.appendChild(node);
@@ -1819,39 +2012,13 @@ async function loadJobHistory(jobId) {
     
     // 加载历史消息
     if (job.state?.messages?.length > 0) {
-      const welcome = document.getElementById('welcome');
-      if (welcome) welcome.style.display = 'none';
-      
+      // 清空现有消息并渲染历史
       const chatArea = document.getElementById('chatArea');
-      // 清空现有消息（保留 welcome）
       const existingMessages = chatArea.querySelectorAll('.message');
       existingMessages.forEach(m => m.remove());
       
-      // 渲染历史消息
-      for (const msg of job.state.messages) {
-        const meta = {
-          user: { icon: '👤', name: '你' },
-          assistant: { icon: '📊', name: 'Data Agent' },
-          system: { icon: '⚡', name: 'System' },
-        }[msg.role] || { icon: '💬', name: 'Assistant' };
-        
-        const node = document.createElement('div');
-        node.className = 'message';
-        node.innerHTML = `
-          <div class="message-avatar ${msg.role === 'user' ? 'user' : 'data'}">${meta.icon}</div>
-          <div class="message-content">
-            <div class="message-header">
-              <span class="message-name">${meta.name}</span>
-              <span class="message-time">${msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : ''}</span>
-            </div>
-            <div class="message-text">${formatText(msg.content)}</div>
-          </div>
-        `;
-        chatArea.appendChild(node);
-      }
-      
-      // 滚动到底部
-      chatArea.scrollTop = chatArea.scrollHeight;
+      // 使用统一的渲染函数
+      renderHistoryMessages(job.state.messages);
     }
     
     // 恢复数据集
@@ -2215,7 +2382,8 @@ async function loadFileTree(jobId, dirPath) {
     const container = document.getElementById(`tree-${jobId}`);
     if (!container) return;
 
-    container.innerHTML = renderDirectoryTree(jobId, payload.entries, dirPath);
+    // 使用带快照的渲染函数
+    container.innerHTML = await renderJobFileTree(jobId, payload.entries, dirPath);
   } catch (error) {
     console.error('Failed to load file tree:', error);
   }
@@ -2262,6 +2430,44 @@ function renderDirectoryTree(jobId, entries, parentPath) {
       `;
     }
   }).join('');
+}
+
+// Render job file tree with snapshots
+async function renderJobFileTree(jobId, entries, dirPath) {
+  // 加载快照
+  const snapshots = await loadSnapshots(jobId);
+  
+  let html = renderDirectoryTree(jobId, entries, dirPath);
+  
+  // 在文件树末尾添加快照节点
+  if (snapshots.length > 0) {
+    html += `
+      <div class="tree-item">
+        <div class="tree-folder" onclick="toggleSnapshotFolder('${jobId}')">
+          <span class="tree-folder-icon">▶</span>
+          <span class="tree-folder-name">📸 快照 (${snapshots.length})</span>
+        </div>
+        <div class="tree-children" id="snapshots-${jobId}">
+          ${renderSnapshotTree(jobId, snapshots)}
+        </div>
+      </div>
+    `;
+  }
+  
+  return html;
+}
+
+function toggleSnapshotFolder(jobId) {
+  const folder = event.currentTarget;
+  const children = document.getElementById(`snapshots-${jobId}`);
+  
+  if (folder.classList.contains('expanded')) {
+    folder.classList.remove('expanded');
+    children.style.display = 'none';
+  } else {
+    folder.classList.add('expanded');
+    children.style.display = 'block';
+  }
 }
 
 async function toggleFolder(jobId, dirPath) {
@@ -2821,6 +3027,201 @@ window.addEventListener('load', async () => {
   await ensureSession();
   setStatus('会话已建立');
 });
+
+// ============ Edit Message Functions ============
+let editingMessageIndex = null;
+
+function editMessage(index) {
+  const job = jobs.find(j => j.id === currentJobId);
+  if (!job || !job.state.messages[index]) return;
+  
+  editingMessageIndex = index;
+  const message = job.state.messages[index];
+  
+  document.getElementById('editDialogInput').value = message.content;
+  document.getElementById('editDialog').style.display = 'flex';
+}
+
+function closeEditDialog(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('editDialog').style.display = 'none';
+  editingMessageIndex = null;
+}
+
+async function confirmEditMessage() {
+  const newContent = document.getElementById('editDialogInput').value.trim();
+  const mode = document.querySelector('input[name="editMode"]:checked').value;
+  
+  if (!newContent || editingMessageIndex === null) return;
+  
+  try {
+    const response = await fetch(`/api/jobs/${currentJobId}/messages/${editingMessageIndex}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newContent, mode })
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      closeEditDialog();
+      
+      if (mode === 'revert_and_reexecute') {
+        // 重新加载历史消息
+        await loadJobHistory(currentJobId);
+        addMessage('system', '已回退到修改点。您可以在输入框中重新描述需求，或点击"执行"按钮。');
+      } else {
+        // 刷新当前消息显示
+        await loadJobHistory(currentJobId);
+        addMessage('system', '历史记录已修改');
+      }
+      
+      // 刷新文件树
+      await loadFileTree(currentJobId, '');
+    } else {
+      alert(`编辑失败: ${result.error}`);
+    }
+  } catch (error) {
+    alert(`编辑失败: ${error.message}`);
+  }
+}
+
+// ============ Snapshot Functions ============
+async function loadSnapshots(jobId) {
+  try {
+    const response = await fetch(`/api/jobs/${jobId}/snapshots`);
+    const payload = await response.json();
+    return payload.ok ? payload.snapshots : [];
+  } catch (error) {
+    console.error('Failed to load snapshots:', error);
+    return [];
+  }
+}
+
+async function createManualSnapshot() {
+  if (!currentJobId) {
+    addMessage('system', '请先选择一个任务');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/jobs/${currentJobId}/snapshots`, { method: 'POST' });
+    const payload = await response.json();
+    
+    if (payload.ok) {
+      if (payload.snapshot) {
+        addMessage('system', `快照已创建：${new Date(payload.snapshot.timestamp).toLocaleTimeString()}`);
+      } else {
+        addMessage('system', '无变化，快照未创建');
+      }
+      await loadFileTree(currentJobId, '');
+    } else {
+      addMessage('system', `创建快照失败：${payload.error}`);
+    }
+  } catch (error) {
+    addMessage('system', `创建快照失败：${error.message}`);
+  }
+}
+
+async function viewSnapshot(jobId, snapshotId) {
+  try {
+    const response = await fetch(`/api/jobs/${jobId}/snapshots/${snapshotId}`);
+    const payload = await response.json();
+    
+    if (payload.ok) {
+      const content = payload.content;
+      let displayContent = `快照时间: ${new Date(content.timestamp).toLocaleString()}\n\n`;
+      displayContent += `消息数量: ${content.state.messages.length}\n`;
+      displayContent += `数据集数量: ${content.state.datasets.length}\n\n`;
+      
+      if (content.files['requirement.md']) {
+        displayContent += `=== 需求文档 ===\n${content.files['requirement.md']}\n\n`;
+      }
+      
+      if (content.files['analysis.py']) {
+        displayContent += `=== 分析脚本 ===\n${content.files['analysis.py']}\n`;
+      }
+      
+      document.getElementById('previewModalTitle').textContent = '快照详情';
+      document.getElementById('previewContent').textContent = displayContent;
+      document.getElementById('previewModal').style.display = 'flex';
+    }
+  } catch (error) {
+    alert(`加载快照失败: ${error.message}`);
+  }
+}
+
+async function revertToSnapshotUI(jobId, snapshotId) {
+  const confirmed = await showConfirmDialog('回退确认', '确定要回退到该快照吗？当前状态将被覆盖。');
+  if (!confirmed) return;
+  
+  try {
+    const response = await fetch(`/api/jobs/${jobId}/snapshots/${snapshotId}/revert`, { method: 'POST' });
+    const payload = await response.json();
+    
+    if (payload.ok) {
+      await loadJobHistory(jobId);
+      await loadFileTree(jobId, '');
+      addMessage('system', '已回退到快照版本');
+    } else {
+      alert(`回退失败: ${payload.error}`);
+    }
+  } catch (error) {
+    alert(`回退失败: ${error.message}`);
+  }
+}
+
+// Render snapshots in file tree
+function renderSnapshotTree(jobId, snapshots) {
+  if (!snapshots || snapshots.length === 0) {
+    return '<div style="padding:8px 24px;color:var(--text-faint);font-size:12px">暂无快照</div>';
+  }
+  
+  const triggerLabels = {
+    'requirement_saved': '需求保存',
+    'pre_execute': '执行前',
+    'post_execute': '执行后',
+    'script_generated': '脚本生成',
+    'dataset_changed': '数据变化',
+    'manual': '手动保存',
+    'pre_edit_revert': '编辑前',
+    'history_edited': '历史编辑'
+  };
+  
+  return snapshots.map(snap => {
+    const time = new Date(snap.timestamp).toLocaleTimeString();
+    const label = triggerLabels[snap.trigger] || snap.trigger;
+    return `
+      <div class="snapshot-item" 
+           onclick="viewSnapshot('${jobId}', '${snap.id}')"
+           oncontextmenu="event.preventDefault(); showSnapshotContextMenu(event, '${jobId}', '${snap.id}')">
+        <span>📸</span>
+        <span class="snapshot-time">${time}</span>
+        <span class="snapshot-label">${label}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// Snapshot context menu
+function showSnapshotContextMenu(event, jobId, snapshotId) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const menu = document.getElementById('contextMenu');
+  menu.innerHTML = `
+    <div class="context-menu-item" onclick="viewSnapshot('${jobId}', '${snapshotId}'); hideContextMenu();">
+      <span>👁️</span> 查看详情
+    </div>
+    <div class="context-menu-item" onclick="revertToSnapshotUI('${jobId}', '${snapshotId}'); hideContextMenu();">
+      <span>↩️</span> 回退到此版本
+    </div>
+  `;
+  
+  menu.style.display = 'block';
+  menu.style.left = `${event.clientX}px`;
+  menu.style.top = `${event.clientY}px`;
+}
 </script>
 
 </body>

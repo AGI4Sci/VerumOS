@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Hono } from 'hono';
 import { config } from '../config.js';
+import { createSnapshot } from '../job/snapshot-manager.js';
 
 const fileRouter = new Hono();
 
@@ -312,6 +313,13 @@ fileRouter.post('/files/upload', async (c) => {
     const filePath = path.join(targetDir, fileName);
 
     await fs.writeFile(filePath, Buffer.from(await file.arrayBuffer()));
+
+    // 创建快照（数据集变化）
+    try {
+      await createSnapshot(jobId, 'dataset_changed');
+    } catch (error) {
+      console.error('Failed to create snapshot:', error);
+    }
 
     return c.json({
       ok: true,

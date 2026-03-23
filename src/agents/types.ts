@@ -24,6 +24,12 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  /** 是否被编辑过 */
+  edited?: boolean;
+  /** 编辑时间 */
+  editedAt?: string;
+  /** 原始内容（编辑后保留） */
+  originalContent?: string;
 }
 
 export interface DatasetShape {

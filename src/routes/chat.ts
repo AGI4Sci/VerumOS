@@ -11,6 +11,7 @@ import {
 } from '../job/index.js';
 import type { Job } from '../job/types.js';
 import { emitSessionEvent } from '../ws/server.js';
+import { createSnapshot } from '../job/snapshot-manager.js';
 
 const chatRouter = new Hono();
 
@@ -112,6 +113,20 @@ chatRouter.post('/chat', async (c) => {
     const { jobId, job } = await getOrCreateJobForSession(sessionId);
     const context = jobToContext(job);
 
+    // 判断是否是执行需求的意图
+    const isExecuteIntent = message.includes('执行需求文档中的分析方案') ||
+                             message.includes('执行分析方案') ||
+                             message.includes('开始执行');
+
+    // 执行需求前创建快照
+    if (isExecuteIntent) {
+      try {
+        await createSnapshot(jobId, 'pre_execute');
+      } catch (error) {
+        console.error('Failed to create pre-execute snapshot:', error);
+      }
+    }
+
     const userMessage: Message = {
       role: 'user',
       content: message,
@@ -153,6 +168,15 @@ chatRouter.post('/chat', async (c) => {
         messages: [...job.state.messages, userMessage, assistantMessage],
       },
     });
+
+    // 执行需求后创建快照
+    if (isExecuteIntent) {
+      try {
+        await createSnapshot(jobId, 'post_execute');
+      } catch (error) {
+        console.error('Failed to create post-execute snapshot:', error);
+      }
+    }
 
     emitSessionEvent(context.sessionId, {
       type: 'chat.completed',

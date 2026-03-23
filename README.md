@@ -39,6 +39,12 @@
 - `DELETE /api/files` - 删除文件或文件夹
 - `PATCH /api/files/rename` - 重命名文件或文件夹
 - `POST /api/files/upload` - 上传文件到指定目录
+- **快照 API**：
+  - `GET /api/jobs/:jobId/snapshots` - 列出快照
+  - `POST /api/jobs/:jobId/snapshots` - 手动创建快照
+  - `GET /api/jobs/:jobId/snapshots/:snapId` - 获取快照详情
+  - `POST /api/jobs/:jobId/snapshots/:snapId/revert` - 回退到快照
+  - `PUT /api/jobs/:jobId/messages/:index` - 编辑历史消息
 - `GET /health` - 健康检查
 - `WS /ws` - WebSocket 会话同步
 
@@ -52,6 +58,13 @@
 - 数据预览表格：显示前 20 行，支持横向滚动，列类型标注
 - 需求文档编辑器：Markdown 编辑 + 实时保存
 - 工具链预览：自动生成推荐工具链
+- **快照功能**：
+  - 编辑历史消息：用户消息悬停显示编辑按钮
+  - 两种编辑模式：仅修改记录 / 回退并重新执行
+  - 自动快照：关键操作前后自动创建快照
+  - 快照列表：文件树中显示快照节点
+  - 快照查看：点击快照查看详情（需求文档、分析脚本）
+  - 版本回退：可回退到任意快照版本
 
 ## 项目结构
 
@@ -213,7 +226,10 @@ curl -X POST http://localhost:3000/api/upload \
 
 ```
 data/job_20260322_2201_a1b2c3/
-├── job.json          # 元数据 + 轨迹 + 状态（一个文件搞定）
+├── job.json          # 元数据 + 轨迹 + 状态 + 快照索引
+├── snapshots/        # 快照目录
+│   ├── snap_001.json # 快照内容（状态 + 代码文件）
+│   └── snap_002.json
 ├── inputs/           # 输入文件
 │   ├── count_matrix.csv
 │   └── cell_metadata.csv
@@ -261,6 +277,25 @@ GET /api/jobs
 POST /api/session/resume
 {"jobId": "job_20260322_2201_a1b2c3"}
 ```
+
+### 快照功能
+
+**快照边界**：只存储状态和代码，不存储数据文件
+
+| 进快照 | 不进快照 |
+|--------|----------|
+| `requirement.md` | `inputs/*.csv` |
+| `analysis.py` | `outputs/*.csv` |
+| `state.messages` | |
+| `state.datasets`（元信息） | |
+
+**快照触发时机**：
+- 自动触发：需求文档保存、执行分析前后、上传文件后
+- 手动触发：用户点击"创建快照"
+
+**编辑历史消息**：
+- 仅修改记录：保留当前状态，只修改历史
+- 回退并重新执行：恢复到该消息时的状态，裁剪后续消息
 
 ## Agent Runtime 架构
 
