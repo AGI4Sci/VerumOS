@@ -1774,6 +1774,12 @@ async function saveRequirement() {
     await ensureSession();
   }
 
+  // 如果没有当前 Job，提示用户
+  if (!currentJobId) {
+    const confirmed = await showConfirmDialog('保存需求文档', '当前没有关联的任务，需求文档将仅保存到会话。是否继续？');
+    if (!confirmed) return;
+  }
+
   const content = document.getElementById('requirementTextarea').value;
 
   try {
@@ -1815,6 +1821,7 @@ async function saveFromFullscreenEditor() {
   const content = document.getElementById('fullscreenTextarea').value;
   document.getElementById('requirementTextarea').value = content;
   await saveRequirement();
+  closeFullscreenEditor();  // 保存后自动关闭
 }
 
 // Execute requirement
