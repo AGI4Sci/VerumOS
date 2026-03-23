@@ -1722,10 +1722,46 @@ async function ensureSession() {
   const response = await fetch('/api/session', { method: 'POST' });
   const payload = await response.json();
   sessionId = payload.sessionId;
+  currentJobId = payload.jobId;  // 保存 jobId
   refreshDataPanel(payload.context?.datasets || []);
   loadRequirement();
   connectWebSocket();
+  
+  // 加载历史消息
+  if (payload.context?.messages?.length > 0) {
+    renderHistoryMessages(payload.context.messages);
+  }
+  
   return sessionId;
+}
+
+// 渲染历史消息
+function renderHistoryMessages(messages) {
+  const chatArea = document.getElementById('chatArea');
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.style.display = 'none';
+  
+  for (const msg of messages) {
+    const meta = {
+      user: { icon: '👤', name: '你' },
+      assistant: { icon: '📊', name: 'Data Agent' },
+    }[msg.role] || { icon: '💬', name: 'Assistant' };
+    
+    const node = document.createElement('div');
+    node.className = 'message';
+    node.innerHTML = `
+      <div class="message-avatar ${msg.role === 'user' ? 'user' : 'data'}">${meta.icon}</div>
+      <div class="message-content">
+        <div class="message-header">
+          <span class="message-name">${meta.name}</span>
+          <span class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+        </div>
+        <div class="message-text">${formatText(msg.content)}</div>
+      </div>
+    `;
+    chatArea.appendChild(node);
+  }
+  chatArea.scrollTop = chatArea.scrollHeight;
 }
 
 function connectWebSocket() {

@@ -127,18 +127,22 @@ chatRouter.post('/chat', async (c) => {
       timestamp: Date.now(),
     };
 
-    // 记录执行轨迹
-    if (response.result?.results) {
-      for (const stepResult of response.result.results) {
-        await appendTrace(jobId, {
-          type: 'tool_call',
-          tool: stepResult.tool,
-          success: stepResult.success,
-          message: stepResult.message,
-          timestamp: Date.now(),
-        });
-      }
-    }
+    // 记录用户消息轨迹
+    await appendTrace(jobId, {
+      type: 'tool_call',
+      data: { role: 'user', message },
+    });
+
+    // 记录助手响应轨迹
+    await appendTrace(jobId, {
+      type: 'tool_result',
+      data: { 
+        role: 'assistant', 
+        responseType: response.type,
+        content: response.content?.slice(0, 500),
+        results: (response.result as { results?: unknown })?.results,
+      },
+    });
 
     // 更新 Job 状态
     await updateJob(jobId, {

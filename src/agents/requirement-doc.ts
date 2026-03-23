@@ -141,30 +141,54 @@ export function parseMarkdownToDocument(markdown: string): Partial<RequirementDo
   }
 
   // 解析数据源表格
-  const dataSection = markdown.match(/##\s*数据源?\s*\n([\s\S]*?)(?=\n##|$)/i);
+  const dataSection = markdown.match(/##\s*数据\s*\n([\s\S]*?)(?=\n##|$)/i);
   if (dataSection) {
+    // 提取文件列表
+    const fileMatches = dataSection[1].matchAll(/`([^`]+\.(?:csv|tsv|xlsx|xls))`/gi);
+    const datasets: DatasetInfo[] = [];
+    for (const match of fileMatches) {
+      datasets.push({
+        file: match[1],
+        type: 'data file',
+        description: '',
+      });
+    }
+    if (datasets.length > 0) {
+      result.datasets = datasets;
+    }
+    
+    // 也尝试解析表格
     const tableRows = dataSection[1].match(/\|.+\|/g);
     if (tableRows && tableRows.length > 2) {
-      result.datasets = tableRows.slice(2).map((row) => {
+      const tableDatasets = tableRows.slice(2).map((row) => {
         const cells = row.split('|').map((c) => c.trim()).filter(Boolean);
         return {
           file: cells[0] || '',
           type: cells[1] || '',
           description: cells[2] || '',
         };
-      });
+      }).filter(d => d.file && !d.file.startsWith('-') && d.file !== '');
+      if (tableDatasets.length > 0) {
+        result.datasets = tableDatasets;
+      }
     }
   }
 
   // 解析目标
   const goalSection = markdown.match(/##\s*目标\s*\n([\s\S]*?)(?=\n##|$)/i);
   if (goalSection) {
-    const goals = goalSection[1]
-      .split('\n')
-      .filter((line) => line.trim())
-      .map((line) => line.replace(/^[-*]\s*/, '').trim())
-      .filter(Boolean);
-    result.goals = goals;
+    // 提取核心目标
+    const coreGoal = goalSection[1].match(/\*\*核心\*\*[：:]\s*(.+?)(?:\n|$)/i);
+    if (coreGoal) {
+      result.goals = [coreGoal[1].trim()];
+    } else {
+      const goals = goalSection[1]
+        .split('\n')
+        .filter((line) => line.trim())
+        .map((line) => line.replace(/^[-*]\s*/, '').trim())
+        .filter(Boolean);
+      result.goals = goals;
+    }
   }
 
   // 解析分析方案
@@ -172,17 +196,17 @@ export function parseMarkdownToDocument(markdown: string): Partial<RequirementDo
   if (planSection) {
     const steps = planSection[1]
       .split('\n')
-      .filter((line) => /^\d+\./.test(line.trim()))
+      .filter((line) => /^\s*[-*]\s*\*\*/.test(line) || /^\s*\d+\./.test(line))
       .map((line, index) => ({
         step: index + 1,
-        description: line.replace(/^\d+\.\s*/, '').trim(),
+        description: line.replace(/^\s*[-*]\s*/, '').replace(/^\d+\.\s*/, '').trim(),
         status: 'pending' as const,
       }));
     result.analysisPlan = steps;
   }
 
   // 解析状态
-  const statusMatch = markdown.match(/##\s*状态\s*\n([\s\S]*?)(?=\n##|$)/i);
+  const statusMatch = markdown.match(/\*\*状态\*\*[：:]\s*(.+)/i);
   if (statusMatch) {
     const statusText = statusMatch[1].toLowerCase();
     if (statusText.includes('完成')) {
@@ -245,12 +269,7 @@ export function documentToMarkdown(doc: RequirementDocument): string {
     lines.push('');
   }
 
-  // 原始内容（如果有额外内容）
-  if (doc.content && !lines.includes(doc.content)) {
-    lines.push('---');
-    lines.push('');
-    lines.push(doc.content);
-  }
+  // 注意：不再追加原始 content，避免重复
 
   return lines.join('\n');
 }
@@ -275,19 +294,19 @@ function getStatusText(status: RequirementDocument['status']): string {
 export function generateToolChain(doc: RequirementDocument): Array<{ skill: string; tool: string; params: Record<string, unknown> }> {
   const chain: Array<{ skill: string; tool: string; params: Record<string, unknown> }> = [];
 
-  // 根据数据类型和分析方案生成工具链
+  // 根据数据源生成加载步骤
   for (const ds of doc.datasets) {
     const ext = path.extname(ds.file).toLowerCase();
-
+    
     // 判断是否为表达矩阵
     const isExpressionMatrix = /表达矩阵|expression|count|matrix/i.test(ds.description) ||
       /count_matrix|expression_matrix/i.test(ds.file);
 
     if (isExpressionMatrix) {
       chain.push({
-        skill: 'bioinfo-skill',
-        tool: 'read_expression_matrix',
-        params: { path: ds.file },
+        skill: 'csv-skill',
+        tool: 'read_file',
+        params: { path: ds.file, description: 'expression matrix' },
       });
     } else if (['.csv', '.tsv', '.xlsx', '.xls'].includes(ext)) {
       chain.push({
@@ -301,23 +320,117 @@ export function generateToolChain(doc: RequirementDocument): Array<{ skill: stri
   // 根据目标添加分析步骤
   const goals = doc.goals.join(' ').toLowerCase();
 
-  if (/细胞类型|cell.type|鉴定/i.test(goals)) {
+  if (/细胞类型|cell.type|鉴定|annotation/i.test(goals)) {
+    // 数据整合步骤
+    if (doc.datasets.length > 1) {
+      chain.push({
+        skill: 'csv-skill',
+        tool: 'merge_data',
+        params: { 
+          description: 'merge all datasets',
+          datasets: doc.datasets.map(d => d.file),
+        },
+      });
+    }
+    
+    // QC 和标准化
     chain.push({
       skill: 'bioinfo-skill',
       tool: 'quality_control',
-      params: { path: doc.datasets[0]?.file || '' },
+      params: { description: 'quality control' },
     });
+    
     chain.push({
       skill: 'bioinfo-skill',
       tool: 'normalize_counts',
-      params: { path: doc.datasets[0]?.file || '', method: 'scanpy' },
+      params: { method: 'scanpy' },
     });
+    
+    // 细胞类型注释
     chain.push({
       skill: 'bioinfo-skill',
       tool: 'find_markers',
-      params: { path: doc.datasets[0]?.file || '' },
+      params: { description: 'find cell type markers' },
     });
   }
 
   return chain;
+}
+
+/**
+ * 生成 Python 脚本
+ */
+export function generatePythonScript(doc: RequirementDocument, outputPath: string): string {
+  const lines: string[] = [
+    '#!/usr/bin/env python3',
+    `# ${doc.title}`,
+    `# Generated at ${new Date().toISOString()}`,
+    '',
+    'import pandas as pd',
+    'import scanpy as sc',
+    'from pathlib import Path',
+    '',
+    '# Input/output paths',
+    `output_dir = Path("${outputPath}")`,
+    'output_dir.mkdir(parents=True, exist_ok=True)',
+    '',
+  ];
+
+  // 加载数据
+  if (doc.datasets.length > 0) {
+    lines.push('# Load data');
+    for (const [i, ds] of doc.datasets.entries()) {
+      const varName = `data_${i}`;
+      if (ds.file.endsWith('.csv')) {
+        lines.push(`${varName} = pd.read_csv("${ds.file}")`);
+      } else if (ds.file.endsWith('.tsv')) {
+        lines.push(`${varName} = pd.read_csv("${ds.file}", sep="\\t")`);
+      }
+    }
+    lines.push('');
+  }
+
+  // 数据整合
+  if (doc.datasets.length > 1) {
+    lines.push('# Merge datasets');
+    lines.push('# TODO: implement merge logic based on requirement');
+    lines.push('');
+  }
+
+  // 分析流程
+  const goals = doc.goals.join(' ').toLowerCase();
+  
+  if (/细胞类型|cell.type|鉴定|annotation/i.test(goals)) {
+    lines.push('# Cell type annotation workflow');
+    lines.push('# 1. Create AnnData object');
+    lines.push('# adata = sc.AnnData(X=count_matrix)');
+    lines.push('');
+    lines.push('# 2. Quality control');
+    lines.push('# sc.pp.filter_cells(adata, min_genes=200)');
+    lines.push('# sc.pp.filter_genes(adata, min_cells=3)');
+    lines.push('');
+    lines.push('# 3. Normalization');
+    lines.push('# sc.pp.normalize_total(adata, target_sum=1e4)');
+    lines.push('# sc.pp.log1p(adata)');
+    lines.push('');
+    lines.push('# 4. Dimensionality reduction');
+    lines.push('# sc.pp.highly_variable_genes(adata, n_top_genes=2000)');
+    lines.push('# sc.tl.pca(adata)');
+    lines.push('# sc.pp.neighbors(adata)');
+    lines.push('# sc.tl.umap(adata)');
+    lines.push('');
+    lines.push('# 5. Clustering');
+    lines.push('# sc.tl.leiden(adata)');
+    lines.push('');
+    lines.push('# 6. Find markers');
+    lines.push('# sc.tl.rank_genes_groups(adata, groupby="leiden")');
+    lines.push('');
+    lines.push('# 7. Save results');
+    lines.push('# adata.write_h5ad(output_dir / "annotated_data.h5ad")');
+    lines.push('');
+  }
+
+  lines.push('print("Analysis complete!")');
+  
+  return lines.join('\n');
 }

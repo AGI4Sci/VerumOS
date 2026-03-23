@@ -20,6 +20,7 @@ import {
   updateRequirementDocument,
   documentToMarkdown,
   generateToolChain,
+  generatePythonScript,
 } from './requirement-doc.js';
 import { config } from '../config.js';
 
@@ -641,36 +642,74 @@ export class DataAgentProcessor {
   private async handleExecute(context: ConversationContext): Promise<AgentResponse> {
     const doc = await getRequirementDocument(context.sessionId);
 
-    if (!doc || doc.status !== 'confirmed') {
+    if (!doc) {
       return {
         type: 'text',
-        content: '请先确认需求文档后再执行。你可以说"我想做细胞类型鉴定"来开始需求讨论。',
+        content: '请先创建需求文档。你可以说"我想做细胞类型鉴定"来开始需求讨论。',
       };
+    }
+
+    // 如果状态不是 confirmed，先更新为 confirmed
+    if (doc.status !== 'confirmed' && doc.status !== 'executing') {
+      await updateRequirementDocument(context.sessionId, { status: 'confirmed' });
+      doc.status = 'confirmed';
     }
 
     const toolChain = generateToolChain(doc);
     if (toolChain.length === 0) {
       return {
         type: 'text',
-        content: '未找到可执行的工具链，请检查需求文档中的数据源配置。',
+        content: '未找到可执行的工具链。请在需求文档中配置数据源（如 count_matrix.csv）。',
       };
     }
 
     // 更新状态为执行中
     await updateRequirementDocument(context.sessionId, { status: 'executing' });
 
-    const results: Array<{ step: number; tool: string; success: boolean; message: string }> = [];
+    const results: Array<{ step: number; tool: string; success: boolean; message: string; output?: string }> = [];
+    const jobDir = doc.jobId ? path.join(config.data.dir, doc.jobId) : null;
+    const outputsDir = jobDir ? path.join(jobDir, 'outputs') : null;
+
+    // 确保输出目录存在
+    if (outputsDir) {
+      await fs.mkdir(outputsDir, { recursive: true });
+    }
+
+    // 生成 Python 脚本
+    let pythonScript: string | undefined;
+    if (outputsDir && doc.datasets.length > 0) {
+      pythonScript = generatePythonScript(doc, outputsDir);
+      const scriptPath = path.join(jobDir!, 'analysis.py');
+      await fs.writeFile(scriptPath, pythonScript, 'utf-8');
+      results.push({
+        step: 0,
+        tool: 'generate_script',
+        success: true,
+        message: `Python 脚本已生成: analysis.py`,
+        output: scriptPath,
+      });
+    }
 
     for (let i = 0; i < toolChain.length; i++) {
       const step = toolChain[i];
       try {
         const skill = step.skill === 'csv-skill' ? csvSkill : bioinfoSkill;
         const result = await skill.execute(step.tool, step.params);
+        
+        // 如果有输出目录，保存结果
+        let outputFile: string | undefined;
+        if (outputsDir && result) {
+          const resultData = typeof result === 'object' ? result : { result };
+          outputFile = path.join(outputsDir, `step_${i + 1}_${step.tool}.json`);
+          await fs.writeFile(outputFile, JSON.stringify(resultData, null, 2), 'utf-8');
+        }
+        
         results.push({
           step: i + 1,
           tool: `${step.skill}.${step.tool}`,
           success: true,
-          message: JSON.stringify(result).slice(0, 200),
+          message: typeof result === 'object' ? JSON.stringify(result).slice(0, 200) : String(result).slice(0, 200),
+          output: outputFile,
         });
       } catch (error) {
         results.push({
@@ -686,16 +725,27 @@ export class DataAgentProcessor {
     const allSuccess = results.every((r) => r.success);
     if (allSuccess) {
       await updateRequirementDocument(context.sessionId, { status: 'completed' });
+    } else {
+      await updateRequirementDocument(context.sessionId, { status: 'confirmed' });  // 回滚到 confirmed
     }
 
     const summary = results
       .map((r) => `${r.step}. ${r.tool}: ${r.success ? '✓ 成功' : `✗ 失败: ${r.message}`}`)
       .join('\n');
 
+    // 保存执行摘要
+    if (outputsDir && results.length > 0) {
+      const summaryPath = path.join(outputsDir, 'execution_summary.md');
+      const summaryContent = `# 执行摘要\n\n**时间**: ${new Date().toISOString()}\n**状态**: ${allSuccess ? '✅ 成功' : '❌ 失败'}\n\n## 步骤\n\n${results.map(r => `- ${r.tool}: ${r.success ? '✓' : '✗'}`).join('\n')}\n`;
+      await fs.writeFile(summaryPath, summaryContent, 'utf-8');
+    }
+
     return {
       type: 'result',
-      content: allSuccess ? `执行完成！\n\n${summary}` : `执行过程中遇到问题：\n\n${summary}`,
-      result: { results, toolChain },
+      content: allSuccess 
+        ? `✅ 执行完成！\n\n${summary}\n\n输出已保存到 outputs 目录。` 
+        : `❌ 执行过程中遇到问题：\n\n${summary}`,
+      result: { results, toolChain, outputsDir },
     };
   }
 
