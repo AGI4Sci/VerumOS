@@ -321,37 +321,24 @@ export function generateToolChain(doc: RequirementDocument): Array<{ skill: stri
   const goals = doc.goals.join(' ').toLowerCase();
 
   if (/细胞类型|cell.type|鉴定|annotation/i.test(goals)) {
-    // 数据整合步骤
-    if (doc.datasets.length > 1) {
+    // 对于单细胞分析，不做简单的 merge，而是做整合分析
+    // 在实际实现中应该创建 AnnData 对象，这里简化处理
+    
+    // QC 步骤 - 传入第一个数据文件
+    const firstData = doc.datasets[0]?.file;
+    if (firstData) {
       chain.push({
-        skill: 'csv-skill',
-        tool: 'merge_data',
-        params: { 
-          description: 'merge all datasets',
-          datasets: doc.datasets.map(d => d.file),
-        },
+        skill: 'bioinfo-skill',
+        tool: 'quality_control',
+        params: { path: firstData },
+      });
+      
+      chain.push({
+        skill: 'bioinfo-skill',
+        tool: 'normalize_counts',
+        params: { path: firstData, method: 'scanpy' },
       });
     }
-    
-    // QC 和标准化
-    chain.push({
-      skill: 'bioinfo-skill',
-      tool: 'quality_control',
-      params: { description: 'quality control' },
-    });
-    
-    chain.push({
-      skill: 'bioinfo-skill',
-      tool: 'normalize_counts',
-      params: { method: 'scanpy' },
-    });
-    
-    // 细胞类型注释
-    chain.push({
-      skill: 'bioinfo-skill',
-      tool: 'find_markers',
-      params: { description: 'find cell type markers' },
-    });
   }
 
   return chain;
