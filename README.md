@@ -371,9 +371,19 @@ const dataAgentConfig = {
 1. **核心类型定义（Core Types）**
    - 新增 `src/core/types.ts`，定义核心类型：`AgentDef`、`MemoryPolicy`、`AgentContext`、`AgentEvent`、`RouteRule`、`ToolDef` 等
    - `AgentDef` 是 Core 层和 Application 层之间的唯一合同
-   - 为后续架构重构奠定类型基础
+   - 定义 interfaces for Router, Memory, EventBus, SkillRegistry, ToolRegistry, JobManager
 
-2. **Agent Runtime 与业务逻辑分离**
+2. **SkillRegistry 增强**
+   - 新增 `resolve` 方法：将 skill id 列表解析为 tools + SKILL.md 文档
+   - 支持 Skill 到 SkillDef 的自动转换
+   - SKILL.md 内容可追加到 system prompt
+
+3. **ToolRegistry 实现**
+   - 新增 `src/core/registry/tool-registry.ts`
+   - 管理所有 Tool 的注册和执行
+   - 支持 OpenAI function calling 格式输出
+
+4. **Agent Runtime 与业务逻辑分离**
    - 新增 `runtime/agent-loop.ts`，实现纯执行引擎
    - Agent 不再继承 BaseAgent，改为声明式配置
    - 支持事件流（agent_start, turn_start, message_update 等）

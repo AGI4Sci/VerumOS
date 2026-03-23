@@ -49,6 +49,11 @@ export const skillRegistry = new SimpleSkillRegistry();
 // 导出新的 registry 供高级使用
 export { NewSkillRegistry };
 
+/**
+ * 初始化 Skills
+ *
+ * 加载 SKILL.md 文件并注册到 skillRegistry
+ */
 export async function initializeSkills(skillsDir = path.resolve('skills')): Promise<SkillManifest[]> {
   const manifests = await loadSkillsFromDir(skillsDir);
 
@@ -66,6 +71,22 @@ export async function initializeSkills(skillsDir = path.resolve('skills')): Prom
   }
 
   return manifests;
+}
+
+/**
+ * 创建并初始化新版 SkillRegistry
+ *
+ * 用于 AgentLoop 中解析 AgentDef.skills
+ */
+export function createSkillRegistry(): NewSkillRegistry {
+  const registry = new NewSkillRegistry();
+
+  // 注册内置 Skills
+  for (const [id, skill] of builtInSkills) {
+    registry.register(skill);
+  }
+
+  return registry;
 }
 
 export async function loadSkillsFromDir(skillsDir: string): Promise<SkillManifest[]> {
