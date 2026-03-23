@@ -469,5 +469,3 @@ research_session_[jobId]/
 - **Phase 1 不做跨 Agent 动态编排**：先让三个 Agent 各自稳定
 - **暂不建领域知识层**：先用通用 LLM 能力覆盖，等有领域合作者再补
 - **不做 AI 猜测用户意图的路由**：Phase 1 用户主动选 Agent，减少误判
-
-

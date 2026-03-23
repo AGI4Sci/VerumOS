@@ -1,0 +1,139 @@
+# TOOLS.md - Local Notes
+
+Skills define _how_ tools work. This file is for _your_ specifics — the stuff that's unique to your setup.
+
+
+
+**使用说明：**
+- 兼容 OpenAI API 格式
+- 可用于各类需要 LLM 的项目
+
+---
+
+## What Goes Here
+
+Things like:
+
+- Camera names and locations
+- SSH hosts and aliases
+- Preferred voices for TTS
+- Speaker/room names
+- Device nicknames
+- Anything environment-specific
+
+## Examples
+
+```markdown
+### Cameras
+
+- living-room → Main area, 180° wide angle
+- front-door → Entrance, motion-triggered
+
+### SSH
+
+- home-server → 192.168.1.100, user: admin
+
+### TTS
+
+- Preferred voice: "Nova" (warm, slightly British)
+- Default speaker: Kitchen HomePod
+```
+
+## Why Separate?
+
+Skills are shared. Your setup is yours. Keeping them apart means you can update skills without losing your notes, and share skills without leaking your infrastructure.
+
+---
+
+## SCP Hub 生命科学服务清单
+
+> 来源: https://scphub.intern-ai.org.cn/
+> 更新时间: 2026-03-23
+> 总计: 40 个科研服务，2302 个工具
+
+### 🧬 药物研发
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **DrugSDA-Tool** | 北京大学 | 28.6K | 数据库/计算工具 | 药物分子筛选、设计与分析工具集，支持格式转换、蛋白质结构修复、分子规范化、相似度计算等 |
+| **DrugSDA-Model** | 北京大学 | 1.7K | 模型服务 | 分子对接、结合口袋识别、亲和力预测、ADMET评估、蛋白质结构预测、疾病逆转状态预测 |
+| **Origene-FDADrug** | 临港实验室 | 57 | 数据库 | FDA 药品监管与上市信息数据库检索 |
+
+### 🧪 蛋白质工程
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **VenusFactory** | 上海交通大学 | 1.5K | 数据库/计算工具/模型服务 | 蛋白质工程 AI 全流程工具，支持蛋白质突变预测、功能预测、氨基酸点位预测、模型训练与部署 |
+| **BioInfo-Tools** | 上海人工智能实验室 | 55 | 数据库/计算工具/模型服务 | 蛋白质序列分析工具，集成 InterProScan 和 BLAST，支持结构域识别、GO 注释和序列相似性搜索 |
+| **Origene-UniProt** | 临港实验室 | 121 | 数据库 | 全球权威的蛋白质序列与功能数据库 UniProt 检索 |
+| **Origene-STRING** | 临港实验室 | 6 | 数据库 | 蛋白质相互作用与功能注释数据库 STRING 检索 |
+
+### 🧫 基因组学
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **Origene-Ensembl** | 临港实验室 | 14 | 数据库 | 基因组注释与比较数据库 Ensembl 检索 |
+| **Origene-UCSC** | 临港实验室 | 12 | 数据库 | 基因组注释与可视化数据库 UCSC 检索 |
+| **Origene-NCBI** | 临港实验室 | 9 | 数据库 | 全球最大开放生物信息数据库 NCBI 检索 |
+| **Origene-TCGA** | 临港实验室 | 8 | 数据库 | 国际权威癌症基因组图谱数据库 TCGA 检索 |
+
+### 🧬 疾病与靶点
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **Origene-OpenTargets** | 临港实验室 | 189 | 数据库 | 药品靶点发现与验证平台 OpenTargets 检索 |
+| **Origene-Monarch** | 临港实验室 | 49 | 数据库 | 疾病-表型-基因关联知识库 Monarch Initiative 检索 |
+
+### 🔬 化学与分子
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **Origene-ChEMBL** | 临港实验室 | 47 | 数据库 | 小分子药物与生物活性数据库 ChEMBL 检索 |
+| **Origene-PubChem** | 临港实验室 | 306 | 数据库 | 全球最大开放化学信息数据库 PubChem 检索 |
+| **Origene-KEGG** | 临港实验室 | 10 | 数据库 | 通路与功能注释数据库 KEGG 检索 |
+
+### ⚗️ 化学计算
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **SciToolAgent-Chem** | 浙江大学 | 505 | 数据库/计算工具 | 化学实验综合性工具库，支持化学结构格式互转、分子性质计算、化学反应预测与逆合成规划、分子相似度与子结构匹配、官能团识别、安全性评估、分子聚类与ML分类等 |
+| **化学与反应计算** | 上海人工智能实验室 | 276 | 计算工具 | 化学反应参数计算、物质量与溶液浓度分析、反应速率与平衡常数求解、质量守恒与能量平衡核查、配比与产率估算等 |
+
+### 🧪 湿实验操作
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **Thoth** | 上海人工智能实验室 | 1.3K+ | 湿实验操作/模型服务 | 湿实验智能编排系统，包含 Thoth-Plan（实验流程自动生成）和 Thoth-OP（原子操作执行引擎） |
+
+### 🔍 综合工具
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **SciToolAgent-Bio** | 浙江大学 | 40 | 数据库/计算工具 | 蛋白质组学、基因组学工具库，支持蛋白质理化性质计算、DNA/RNA序列分析、结构预测、序列比对等 |
+| **SciGraph-Bio** | 上海人工智能实验室 | 56 | 数据库 | 生命科学知识查询服务，集成生物医学、蛋白质、药物、临床等领域知识图谱 |
+| **Origene-Search** | 临港实验室 | 6 | 文献检索/数据库 | 集成 Tavily、Jina、ClinVar、GSEA、PubMed 等文献与数据库一键检索 |
+
+### 🌐 通用工具
+
+| 服务名称 | 提供方 | 工具数 | 类型 | 描述 |
+|---------|--------|-------|------|------|
+| **SciGraph** | 上海人工智能实验室 | 4.8K | 数据库 | 科学研究统一知识查询服务，集成化学、生物等多个学科领域知识图谱，支持跨学科知识检索、实体关系查询、领域知识问答 |
+| **ToolUniverse** | 上海人工智能实验室 | 236 | 文献检索/数据库 | 标准化工具生态平台，整合生物医学数据库查询、科学计算、文献检索、实验设计等领域的数百个工具 |
+| **数据处理与统计分析** | 上海人工智能实验室 | 320 | 计算工具 | 数据清洗、筛选、归一化、异常值检测、数据拟合与插值、误差评估、分布分析、相关性计算等 |
+
+### 📋 服务类型说明
+
+- **数据库**: 数据检索与查询服务
+- **计算工具**: 数值计算与分析工具
+- **模型服务**: AI 模型推理服务
+- **湿实验操作**: 实验室自动化与机器人操作
+- **文献检索**: 学术文献搜索服务
+
+### 🔗 相关链接
+
+- SCP 广场主页: https://scphub.intern-ai.org.cn/
+- 兼容 MCP 协议，可直接集成到 AI Agent 中使用
+
+---
+
+Add whatever helps you do your job. This is your cheat sheet.
