@@ -396,7 +396,14 @@ const dataAgentConfig = {
    - AgentRegistry 增强：支持 AgentDef 注册和路由规则汇总
    - Session 级路由锁定（待集成）
 
-6. **Agent Runtime 与业务逻辑分离**
+6. **EventBus 实现**
+   - 新增 `src/core/event-bus.ts`
+   - 发布/订阅模式，解耦事件源和处理者
+   - 支持同步和异步处理器
+   - 事件日志记录
+   - 快照触发事件：requirement.saved, analysis.before_execute, analysis.after_execute, file.uploaded
+
+7. **Agent Runtime 与业务逻辑分离**
    - 新增 `runtime/agent-loop.ts`，实现纯执行引擎
    - Agent 不再继承 BaseAgent，改为声明式配置
    - 支持事件流（agent_start, turn_start, message_update 等）
