@@ -359,40 +359,15 @@ function getStatusText(status: RequirementDocument['status']): string {
 }
 
 /**
- * 分析类型配置（可扩展）
- * 通过关键词匹配确定分析类型和对应的工具链
+ * 分析类型配置（已弃用硬编码，保留向后兼容）
+ * 现在使用 LLM 驱动的 analyzeRequirement 函数
  */
 const ANALYSIS_PATTERNS: Array<{
   name: string;
   patterns: RegExp[];
   steps: Array<{ skill: string; tool: string; params: Record<string, unknown> }>;
-  finalOutput?: string; // 最终输出文件名
-}> = [
-  {
-    name: 'single-cell',
-    patterns: [/细胞类型|cell\.?type|鉴定|annotation|单细胞|scRNA|表达矩阵/i],
-    steps: [
-      { skill: 'bioinfo-skill', tool: 'quality_control', params: {} },
-      { skill: 'bioinfo-skill', tool: 'normalize_counts', params: { method: 'log1p' } },
-    ],
-    finalOutput: 'normalized_matrix.csv',
-  },
-  {
-    name: 'differential-expression',
-    patterns: [/差异|differential|DEG|差异表达/i],
-    steps: [
-      { skill: 'csv-skill', tool: 'explore_data', params: {} },
-    ],
-  },
-  {
-    name: 'data-integration',
-    patterns: [/整合|integrate|merge|合并|数据整合/i],
-    steps: [
-      { skill: 'csv-skill', tool: 'transform_data', params: { operation: 'normalize' } },
-    ],
-  },
-  // 可以继续添加更多分析类型
-];
+  finalOutput?: string;
+}> = [];
 
 /**
  * 解析实际文件路径
@@ -425,25 +400,79 @@ async function resolveActualFilePath(
 }
 
 /**
- * 生成工具链（通用版本）
- * 根据数据源和分析目标动态生成执行步骤
+ * 生成工具链（LLM 驱动版本）
+ * 使用 LLM 分析需求并智能选择和编排 skills
  */
 export async function generateToolChain(doc: RequirementDocument): Promise<Array<{ skill: string; tool: string; params: Record<string, unknown> }>> {
-  const chain: Array<{ skill: string; tool: string; params: Record<string, unknown> }> = [];
+  // 定义可用的 Skills
+  const availableSkills = [
+    {
+      name: 'csv-skill',
+      description: 'CSV/TSV/Excel 文件处理',
+      tools: [
+        { name: 'read_file', description: '读取文件并返回基本概览' },
+        { name: 'explore_data', description: '数据探索，返回统计信息' },
+        { name: 'transform_data', description: '数据转换（filter、normalize、log2）' },
+        { name: 'merge_data', description: '按键合并多个数据集' },
+        { name: 'transpose', description: '矩阵转置，交换行和列' },
+      ],
+    },
+    {
+      name: 'bioinfo-skill',
+      description: '生物信息学分析',
+      tools: [
+        { name: 'quality_control', description: '数据质量控制' },
+        { name: 'normalize_counts', description: '数据标准化' },
+        { name: 'find_markers', description: '寻找 marker 基因' },
+      ],
+    },
+  ];
 
-  // 存储解析后的文件路径，用于后续分析步骤
+  // 尝试使用 LLM 分析需求
+  try {
+    const { analyzeRequirement } = await import('./requirement-analyzer.js');
+    const plan = await analyzeRequirement(doc, availableSkills);
+    
+    if (plan && plan.steps.length > 0) {
+      const chain = plan.steps
+        .filter(step => step.skill && step.tool)
+        .map(step => ({
+          skill: step.skill!,
+          tool: step.tool!,
+          params: step.params || {},
+        }));
+      
+      if (chain.length > 0) {
+        logger.info(`[generateToolChain] LLM generated ${chain.length} steps`);
+        return chain;
+      }
+    }
+  } catch (error) {
+    logger.warn('[generateToolChain] LLM analysis failed, using fallback:', error);
+  }
+
+  // 回退：默认只读取文件
+  return generateDefaultToolChain(doc);
+}
+
+/**
+ * 默认工具链生成（简单回退）
+ */
+async function generateDefaultToolChain(doc: RequirementDocument): Promise<Array<{ skill: string; tool: string; params: Record<string, unknown> }>> {
+  const chain: Array<{ skill: string; tool: string; params: Record<string, unknown> }> = [];
+  
+  // 存储解析后的文件路径
   const resolvedPaths: Map<string, string> = new Map();
 
-  // 步骤1: 加载所有数据文件
+  // 读取所有数据文件
   for (const ds of doc.datasets) {
     const ext = path.extname(ds.file).toLowerCase();
     
     if (['.csv', '.tsv', '.xlsx', '.xls'].includes(ext)) {
-      // 解析实际文件路径（带时间戳前缀）
+      // 解析实际文件路径
       const actualPath = await resolveActualFilePath(ds.file, doc.jobId);
       const resolvedPath = actualPath || ds.file;
       
-      // 存储解析结果
       resolvedPaths.set(ds.file, resolvedPath);
       
       chain.push({
@@ -451,43 +480,10 @@ export async function generateToolChain(doc: RequirementDocument): Promise<Array
         tool: 'read_file',
         params: { 
           path: resolvedPath,
-          displayName: ds.file, // 保留原始文件名用于显示
+          displayName: ds.file,
           description: ds.description || ds.type 
         },
       });
-    }
-  }
-
-  // 步骤2: 根据目标匹配分析类型
-  const goals = doc.goals.join(' ');
-  const analysisPlan = doc.analysisPlan.map(s => s.description).join(' ');
-  const searchText = `${goals} ${analysisPlan}`;
-
-  // 匹配分析模式
-  for (const pattern of ANALYSIS_PATTERNS) {
-    const matched = pattern.patterns.some(p => p.test(searchText));
-    if (matched && doc.datasets.length > 0) {
-      const firstDataOriginal = doc.datasets[0]?.file;
-      // 使用解析后的实际路径
-      const firstDataResolved = resolvedPaths.get(firstDataOriginal) || firstDataOriginal;
-      
-      const steps = pattern.steps;
-      for (let i = 0; i < steps.length; i++) {
-        const step = steps[i];
-        const isLastStep = i === steps.length - 1;
-        
-        // 如果是最后一步且定义了 finalOutput，添加 output_path 参数
-        const params: Record<string, unknown> = { ...step.params, path: firstDataResolved };
-        if (isLastStep && pattern.finalOutput) {
-          params.output_path = path.join(config.data.dir, doc.jobId || '', 'outputs', pattern.finalOutput);
-        }
-        
-        chain.push({
-          ...step,
-          params,
-        });
-      }
-      break; // 只匹配第一个
     }
   }
 

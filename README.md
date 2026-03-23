@@ -196,8 +196,16 @@ curl -X POST http://localhost:3000/api/upload \
 - `question`：回答行数、列数、列名等基础问题
 - `transform`：数据转换（`filter` / `normalize` / `log2`）
 - `merge`：支持两份表格按公共列合并
-- `requirement`：需求讨论，自动生成工具链
+- `requirement`：需求讨论，**LLM 驱动的任务分解和代码生成**
 - `execute`：执行已确认的分析方案
+
+### LLM 驱动的数据处理
+
+系统使用 LLM 来：
+1. **理解需求文档**：解析数据源、处理目标、输出要求
+2. **预分析数据结构**：读取列名、形状、样本数据
+3. **生成处理代码**：根据需求和数据结构生成完整的 Python 代码
+4. **执行并验证**：运行代码并检查输出文件
 
 ## Skill 系统
 
