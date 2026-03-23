@@ -54,6 +54,7 @@ export class BioinfoSkill extends BaseSkill {
         properties: {
           path: { type: 'string', description: '表达矩阵文件路径' },
           method: { type: 'string', description: '标准化方法: cpm, tpm, log1p, scanpy' },
+          output_path: { type: 'string', description: '输出 CSV 文件路径（可选）' },
         },
         required: ['path', 'method'],
       },
@@ -95,7 +96,8 @@ export class BioinfoSkill extends BaseSkill {
         return this.runPython(
           this.generateNormalizeCode(
             String(params.path || ''),
-            String(params.method || 'log1p')
+            String(params.method || 'log1p'),
+            params.output_path as string | undefined
           )
         );
       case 'find_markers':
@@ -225,11 +227,12 @@ print(json.dumps(result, ensure_ascii=False))
 `;
   }
 
-  private generateNormalizeCode(filePath: string, method: string): string {
+  private generateNormalizeCode(filePath: string, method: string, outputPath?: string): string {
     return `${this.pythonPrelude()}
 
 file_path = ${JSON.stringify(filePath)}
 method = ${JSON.stringify(method)}
+output_path = ${outputPath ? JSON.stringify(outputPath) : 'None'}
 
 df = read_table(file_path)
 
@@ -262,11 +265,19 @@ elif method == 'scanpy':
 else:
     normalized = df
 
+# 保存输出
+if output_path:
+    normalized.to_csv(output_path)
+    saved = True
+else:
+    saved = False
+
 preview_df = normalized.head(5).where(pd.notna(normalized.head(5)), None)
 result = {
     "path": file_path,
     "method": method,
     "shape": {"cells": int(len(normalized)), "genes": int(len(normalized.columns))},
+    "saved_to": output_path if saved else None,
     "preview": preview_df.to_dict(orient="records")
 }
 print(json.dumps(result, ensure_ascii=False))

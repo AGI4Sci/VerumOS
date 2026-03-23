@@ -300,6 +300,7 @@ const ANALYSIS_PATTERNS: Array<{
   name: string;
   patterns: RegExp[];
   steps: Array<{ skill: string; tool: string; params: Record<string, unknown> }>;
+  finalOutput?: string; // 最终输出文件名
 }> = [
   {
     name: 'single-cell',
@@ -308,6 +309,7 @@ const ANALYSIS_PATTERNS: Array<{
       { skill: 'bioinfo-skill', tool: 'quality_control', params: {} },
       { skill: 'bioinfo-skill', tool: 'normalize_counts', params: { method: 'log1p' } },
     ],
+    finalOutput: 'normalized_matrix.csv',
   },
   {
     name: 'differential-expression',
@@ -407,10 +409,20 @@ export async function generateToolChain(doc: RequirementDocument): Promise<Array
       // 使用解析后的实际路径
       const firstDataResolved = resolvedPaths.get(firstDataOriginal) || firstDataOriginal;
       
-      for (const step of pattern.steps) {
+      const steps = pattern.steps;
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        const isLastStep = i === steps.length - 1;
+        
+        // 如果是最后一步且定义了 finalOutput，添加 output_path 参数
+        const params: Record<string, unknown> = { ...step.params, path: firstDataResolved };
+        if (isLastStep && pattern.finalOutput) {
+          params.output_path = path.join(config.data.dir, doc.jobId || '', 'outputs', pattern.finalOutput);
+        }
+        
         chain.push({
           ...step,
-          params: { ...step.params, path: firstDataResolved },
+          params,
         });
       }
       break; // 只匹配第一个
