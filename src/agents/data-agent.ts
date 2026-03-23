@@ -22,6 +22,7 @@ import {
   generateToolChain,
   generatePythonScript,
 } from './requirement-doc.js';
+import { analyzeRequirement, generateDataProcessingCode, executeGeneratedCode } from './requirement-analyzer.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 
@@ -667,20 +668,18 @@ export class DataAgentProcessor {
     logger.info(`[handleExecute] Starting execution for session ${context.sessionId}`);
     logger.info(`[handleExecute] Document status: ${doc.status}, datasets: ${doc.datasets.length}`);
 
+    // 检查数据源
+    if (doc.datasets.length === 0) {
+      return {
+        type: 'text',
+        content: '需求文档中没有定义数据源。请确保"数据来源"部分包含文件名（如 `cell_metadata.csv`）。',
+      };
+    }
+
     // 如果状态不是 confirmed，先更新为 confirmed
     if (doc.status !== 'confirmed' && doc.status !== 'executing') {
       await updateRequirementDocument(context.sessionId, { status: 'confirmed' });
       doc.status = 'confirmed';
-    }
-
-    const toolChain = await generateToolChain(doc);
-    logger.info(`[handleExecute] Generated toolchain with ${toolChain.length} steps: ${JSON.stringify(toolChain.map(t => `${t.skill}.${t.tool}`))}`);
-    
-    if (toolChain.length === 0) {
-      return {
-        type: 'text',
-        content: '未找到可执行的工具链。请在需求文档中配置数据源。\n\n提示：确保"数据源"部分包含文件名（如 count_matrix.csv）。',
-      };
     }
 
     // 更新状态为执行中
@@ -695,50 +694,173 @@ export class DataAgentProcessor {
       await fs.mkdir(outputsDir, { recursive: true });
     }
 
-    // 生成 Python 脚本
-    let pythonScript: string | undefined;
-    if (outputsDir && doc.datasets.length > 0) {
-      pythonScript = await generatePythonScript(doc, outputsDir);
-      const scriptPath = path.join(jobDir!, 'analysis.py');
-      await fs.writeFile(scriptPath, pythonScript, 'utf-8');
-      results.push({
-        step: 0,
-        tool: 'generate_script',
-        success: true,
-        message: `Python 脚本已生成: analysis.py`,
-        output: scriptPath,
-      });
+    // 解析实际文件路径（处理时间戳前缀）
+    const resolvedPaths = new Map<string, string>();
+    for (const ds of doc.datasets) {
+      if (doc.jobId) {
+        const inputsDir = path.join(config.data.dir, doc.jobId, 'inputs');
+        try {
+          const entries = await fs.readdir(inputsDir);
+          // 查找以原始文件名结尾的文件（带时间戳前缀）
+          const matchedFile = entries.find(entry => entry.endsWith(`-${ds.file}`));
+          if (matchedFile) {
+            resolvedPaths.set(ds.file, path.join(inputsDir, matchedFile));
+          } else {
+            // 精确匹配
+            const exactMatch = entries.find(entry => entry === ds.file);
+            if (exactMatch) {
+              resolvedPaths.set(ds.file, path.join(inputsDir, exactMatch));
+            }
+          }
+        } catch {
+          logger.warn(`[handleExecute] Could not resolve path for ${ds.file}`);
+        }
+      }
     }
 
-    for (let i = 0; i < toolChain.length; i++) {
-      const step = toolChain[i];
-      try {
-        const skill = step.skill === 'csv-skill' ? csvSkill : bioinfoSkill;
-        const result = await skill.execute(step.tool, step.params);
-        
-        // 如果有输出目录，保存结果
-        let outputFile: string | undefined;
-        if (outputsDir && result) {
-          const resultData = typeof result === 'object' ? result : { result };
-          outputFile = path.join(outputsDir, `step_${i + 1}_${step.tool}.json`);
-          await fs.writeFile(outputFile, JSON.stringify(resultData, null, 2), 'utf-8');
-        }
+    // 使用 LLM 生成数据处理代码
+    let pythonScript: string | undefined;
+    let codeGenerationSuccess = false;
+
+    if (outputsDir) {
+      logger.info('[handleExecute] Attempting LLM-based code generation...');
+      
+      const generatedCode = await generateDataProcessingCode(doc, resolvedPaths, outputsDir);
+      
+      if (generatedCode) {
+        pythonScript = generatedCode.code;
+        const scriptPath = path.join(jobDir!, 'analysis.py');
+        await fs.writeFile(scriptPath, pythonScript, 'utf-8');
         
         results.push({
-          step: i + 1,
-          tool: `${step.skill}.${step.tool}`,
+          step: 0,
+          tool: 'llm_code_generation',
           success: true,
-          message: typeof result === 'object' ? JSON.stringify(result).slice(0, 200) : String(result).slice(0, 200),
-          output: outputFile,
+          message: `Python 脚本已生成: analysis.py\n\n${generatedCode.explanation}`,
+          output: scriptPath,
         });
-      } catch (error) {
+
+        // 执行生成的代码
+        logger.info('[handleExecute] Executing generated code...');
+        
+        // 将代码保存为临时文件并执行
+        const tempScriptPath = path.join(jobDir!, 'run_analysis.py');
+        await fs.writeFile(tempScriptPath, pythonScript, 'utf-8');
+        
+        try {
+          const { exec } = await import('child_process');
+          const { promisify } = await import('util');
+          const execAsync = promisify(exec);
+          
+          const { stdout, stderr } = await execAsync(`cd "${jobDir}" && ${config.python.path} run_analysis.py`, {
+            maxBuffer: 1024 * 1024 * 10,
+          });
+          
+          results.push({
+            step: 1,
+            tool: 'execute_python',
+            success: true,
+            message: stdout.slice(0, 500) || '代码执行成功',
+          });
+          
+          codeGenerationSuccess = true;
+          
+          // 检查输出文件是否生成
+          const outputFilename = doc.outputRequirements?.filename || 'integrated_data.csv';
+          const outputPath = path.join(outputsDir, outputFilename);
+          try {
+            await fs.access(outputPath);
+            results.push({
+              step: 2,
+              tool: 'verify_output',
+              success: true,
+              message: `输出文件已生成: ${outputFilename}`,
+              output: outputPath,
+            });
+          } catch {
+            results.push({
+              step: 2,
+              tool: 'verify_output',
+              success: false,
+              message: `输出文件 ${outputFilename} 未找到，请检查代码`,
+            });
+          }
+        } catch (execError) {
+          results.push({
+            step: 1,
+            tool: 'execute_python',
+            success: false,
+            message: execError instanceof Error ? execError.message : String(execError),
+          });
+        }
+      } else {
         results.push({
-          step: i + 1,
-          tool: `${step.skill}.${step.tool}`,
+          step: 0,
+          tool: 'llm_code_generation',
           success: false,
-          message: error instanceof Error ? error.message : String(error),
+          message: 'LLM 代码生成失败，回退到模板模式',
         });
-        break;
+      }
+    }
+
+    // 如果 LLM 方式失败，回退到模式匹配方式
+    if (!codeGenerationSuccess) {
+      logger.info('[handleExecute] Falling back to pattern-based approach...');
+      
+      const toolChain = await generateToolChain(doc);
+      logger.info(`[handleExecute] Generated toolchain with ${toolChain.length} steps`);
+
+      if (toolChain.length === 0) {
+        return {
+          type: 'text',
+          content: '无法生成执行计划。请确保需求文档中包含清晰的数据源和处理目标。',
+        };
+      }
+
+      // 生成模板 Python 脚本
+      if (outputsDir && doc.datasets.length > 0) {
+        pythonScript = await generatePythonScript(doc, outputsDir);
+        const scriptPath = path.join(jobDir!, 'analysis.py');
+        await fs.writeFile(scriptPath, pythonScript, 'utf-8');
+        results.push({
+          step: 0,
+          tool: 'generate_script',
+          success: true,
+          message: `Python 脚本模板已生成: analysis.py`,
+          output: scriptPath,
+        });
+      }
+
+      // 执行工具链
+      for (let i = 0; i < toolChain.length; i++) {
+        const step = toolChain[i];
+        try {
+          const skill = step.skill === 'csv-skill' ? csvSkill : bioinfoSkill;
+          const result = await skill.execute(step.tool, step.params);
+          
+          let outputFile: string | undefined;
+          if (outputsDir && result) {
+            const resultData = typeof result === 'object' ? result : { result };
+            outputFile = path.join(outputsDir, `step_${i + 1}_${step.tool}.json`);
+            await fs.writeFile(outputFile, JSON.stringify(resultData, null, 2), 'utf-8');
+          }
+          
+          results.push({
+            step: i + 1,
+            tool: `${step.skill}.${step.tool}`,
+            success: true,
+            message: typeof result === 'object' ? JSON.stringify(result).slice(0, 200) : String(result).slice(0, 200),
+            output: outputFile,
+          });
+        } catch (error) {
+          results.push({
+            step: i + 1,
+            tool: `${step.skill}.${step.tool}`,
+            success: false,
+            message: error instanceof Error ? error.message : String(error),
+          });
+          break;
+        }
       }
     }
 
@@ -746,7 +868,7 @@ export class DataAgentProcessor {
     if (allSuccess) {
       await updateRequirementDocument(context.sessionId, { status: 'completed' });
     } else {
-      await updateRequirementDocument(context.sessionId, { status: 'confirmed' });  // 回滚到 confirmed
+      await updateRequirementDocument(context.sessionId, { status: 'confirmed' });
     }
 
     const summary = results
@@ -765,7 +887,7 @@ export class DataAgentProcessor {
       content: allSuccess 
         ? `✅ 执行完成！\n\n${summary}\n\n输出已保存到 outputs 目录。` 
         : `❌ 执行过程中遇到问题：\n\n${summary}`,
-      result: { results, toolChain, outputsDir },
+      result: { results, outputsDir },
     };
   }
 

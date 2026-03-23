@@ -1735,7 +1735,7 @@ function quickAction(action) {
   input.focus();
 }
 
-function addMessage(role, content, extraHtml = '') {
+function addMessage(role, content, extraHtml = '', messageIndex = -1) {
   const chatArea = document.getElementById('chatArea');
   const welcome = document.getElementById('welcome');
   if (welcome) welcome.style.display = 'none';
@@ -1746,8 +1746,24 @@ function addMessage(role, content, extraHtml = '') {
     system: { icon: '⚡', name: 'System' },
   }[role] || { icon: '💬', name: 'Assistant' };
 
+  // 如果没有传入索引，则计算当前消息索引
+  if (messageIndex < 0) {
+    const job = jobs.find(j => j.id === currentJobId);
+    messageIndex = job?.state?.messages?.length ?? 0;
+  }
+
+  // 为用户消息添加编辑按钮
+  const editBtn = role === 'user' ? `<button class="message-edit-btn" onclick="editMessage(${messageIndex})">✏️</button>` : '';
+  const editWrapper = role === 'user' ? 
+    `<div class="message-text-wrapper">
+      <div class="message-text">${formatText(content)}</div>
+      ${editBtn}
+    </div>` :
+    `<div class="message-text">${formatText(content)}</div>`;
+
   const node = document.createElement('div');
   node.className = 'message';
+  node.dataset.messageIndex = messageIndex;  // 保存消息索引
   node.innerHTML = `
     <div class="message-avatar ${role === 'user' ? 'user' : 'data'}">${meta.icon}</div>
     <div class="message-content">
@@ -1755,7 +1771,7 @@ function addMessage(role, content, extraHtml = '') {
         <span class="message-name">${meta.name}</span>
         <span class="message-time">${new Date().toLocaleTimeString()}</span>
       </div>
-      <div class="message-text">${formatText(content)}</div>
+      ${editWrapper}
       ${extraHtml}
     </div>
   `;
@@ -1939,6 +1955,7 @@ function renderHistoryMessages(messages) {
     
     const node = document.createElement('div');
     node.className = 'message';
+    node.dataset.messageIndex = i;  // 添加消息索引属性
     node.innerHTML = `
       <div class="message-avatar ${msg.role === 'user' ? 'user' : 'data'}">${meta.icon}</div>
       <div class="message-content">
@@ -2157,7 +2174,12 @@ async function sendMessage() {
   await ensureSession();
   isBusy = true;
   sendBtn.disabled = true;
-  addMessage('user', text);
+  
+  // 计算用户消息的索引（发送前的消息数量）
+  const job = jobs.find(j => j.id === currentJobId);
+  const userMessageIndex = job?.state?.messages?.length ?? 0;
+  
+  addMessage('user', text, '', userMessageIndex);
   input.value = '';
 
   try {
@@ -2168,6 +2190,12 @@ async function sendMessage() {
     });
     const payload = await response.json();
     if (!response.ok || !payload.ok) throw new Error(payload.error || 'Chat request failed');
+    
+    // 更新本地 job.state.messages
+    if (payload.context?.messages && job) {
+      job.state.messages = payload.context.messages;
+    }
+    
     refreshDataPanel(payload.context?.datasets || []);
 
     // Check if response has requirement document
@@ -2203,7 +2231,11 @@ async function uploadFile() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    addMessage('user', `上传文件：${file.name}`);
+    // 计算用户消息的索引（上传前的消息数量）
+    const job = jobs.find(j => j.id === currentJobId);
+    const userMessageIndex = job?.state?.messages?.length ?? 0;
+    
+    addMessage('user', `上传文件：${file.name}`, '', userMessageIndex);
 
     const formData = new FormData();
     formData.append('sessionId', sessionId);
@@ -2213,6 +2245,11 @@ async function uploadFile() {
       const response = await fetch('/api/upload', { method: 'POST', body: formData });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.error || 'Upload failed');
+
+      // 更新本地 job.state.messages
+      if (payload.context?.messages && job) {
+        job.state.messages = payload.context.messages;
+      }
 
       refreshDataPanel(payload.context?.datasets || []);
       loadJobFiles(currentJobId);
@@ -3033,11 +3070,25 @@ let editingMessageIndex = null;
 
 function editMessage(index) {
   const job = jobs.find(j => j.id === currentJobId);
-  if (!job || !job.state.messages[index]) return;
+  
+  // 优先从 job.state.messages 获取消息内容
+  let message = null;
+  if (job && job.state.messages[index]) {
+    message = job.state.messages[index];
+  } else {
+    // 如果 job.state.messages 还没更新，从 DOM 获取消息内容
+    const messageNodes = document.querySelectorAll('.message[data-message-index="' + index + '"]');
+    if (messageNodes.length > 0) {
+      const messageTextEl = messageNodes[0].querySelector('.message-text');
+      if (messageTextEl) {
+        message = { content: messageTextEl.textContent || '' };
+      }
+    }
+  }
+  
+  if (!message) return;
   
   editingMessageIndex = index;
-  const message = job.state.messages[index];
-  
   document.getElementById('editDialogInput').value = message.content;
   document.getElementById('editDialog').style.display = 'flex';
 }

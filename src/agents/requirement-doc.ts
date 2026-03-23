@@ -12,7 +12,16 @@ export interface RequirementDocument {
   datasets: DatasetInfo[];
   goals: string[];
   analysisPlan: AnalysisStep[];
+  outputRequirements?: OutputRequirements;  // 新增：输出要求
   updatedAt: string;
+}
+
+export interface OutputRequirements {
+  format?: string;       // 输出格式，如 "CSV"
+  filename?: string;     // 输出文件名，如 "integrated_data.csv"
+  deduplication?: boolean;  // 是否去重
+  noIndex?: boolean;     // 是否无索引列
+  additional?: string[]; // 其他要求
 }
 
 export interface DatasetInfo {
@@ -140,20 +149,44 @@ export function parseMarkdownToDocument(markdown: string): Partial<RequirementDo
     result.title = titleMatch[1];
   }
 
-  // 解析数据源表格 - 改进正则以支持 "数据源" 或 "数据"
-  const dataSection = markdown.match(/##\s*数据[源]?\s*\n([\s\S]*?)(?=\n##|$)/i);
+  // 解析数据源表格 - 支持多种标题格式：数据源、数据、数据来源
+  const dataSection = markdown.match(/##\s*数据(?:来源|源)?\s*\n([\s\S]*?)(?=\n##|$)/i);
   if (dataSection) {
     // 优先解析表格格式
     const tableRows = dataSection[1].match(/\|.+\|/g);
     if (tableRows && tableRows.length > 2) {
-      const tableDatasets = tableRows.slice(2).map((row) => {
+      // 解析表头确定列映射
+      const headerRow = tableRows[0];
+      const headers = headerRow.split('|').map((c) => c.trim().toLowerCase()).filter(Boolean);
+      
+      // 查找关键列的位置
+      const fileColIndex = headers.findIndex(h => h.includes('文件') || h.includes('file') || h.includes('名称') || h.includes('name'));
+      const descColIndex = headers.findIndex(h => h.includes('描述') || h.includes('说明') || h.includes('desc'));
+      
+      const tableDatasets: DatasetInfo[] = [];
+      
+      for (let i = 2; i < tableRows.length; i++) {
+        const row = tableRows[i];
         const cells = row.split('|').map((c) => c.trim()).filter(Boolean);
-        return {
-          file: cells[0] || '',
-          type: cells[1] || '',
-          description: cells[2] || '',
-        };
-      }).filter(d => d.file && !d.file.startsWith('-') && d.file !== '');
+        
+        // 确定文件名列
+        let fileCell = fileColIndex >= 0 ? cells[fileColIndex] : cells[0];
+        // 移除反引号
+        fileCell = fileCell?.replace(/[`]/g, '').trim() || '';
+        
+        // 确定描述列
+        let descCell = descColIndex >= 0 ? cells[descColIndex] : (cells[1] || '');
+        
+        // 跳过分隔行和空行
+        if (fileCell && !fileCell.startsWith('-') && fileCell !== '' && 
+            /[a-zA-Z0-9_\-./]+\.(?:csv|tsv|xlsx|xls)/i.test(fileCell)) {
+          tableDatasets.push({
+            file: fileCell,
+            type: 'data file',
+            description: descCell,
+          });
+        }
+      }
       
       if (tableDatasets.length > 0) {
         result.datasets = tableDatasets;
@@ -177,8 +210,8 @@ export function parseMarkdownToDocument(markdown: string): Partial<RequirementDo
     }
   }
 
-  // 解析目标
-  const goalSection = markdown.match(/##\s*目标\s*\n([\s\S]*?)(?=\n##|$)/i);
+  // 解析目标 - 支持 "目标" 或 "处理目标"
+  const goalSection = markdown.match(/##\s*(?:处理)?目标\s*\n([\s\S]*?)(?=\n##|$)/i);
   if (goalSection) {
     // 提取核心目标
     const coreGoal = goalSection[1].match(/\*\*核心\*\*[：:]\s*(.+?)(?:\n|$)/i);
@@ -222,6 +255,39 @@ export function parseMarkdownToDocument(markdown: string): Partial<RequirementDo
       result.status = 'discussing';
     } else {
       result.status = 'draft';
+    }
+  }
+
+  // 解析输出要求
+  const outputSection = markdown.match(/##\s*输出要求\s*\n([\s\S]*?)(?=\n##|$)/i);
+  if (outputSection) {
+    const outputText = outputSection[1];
+    const output: OutputRequirements = {};
+    
+    // 解析格式
+    const formatMatch = outputText.match(/格式[：:]\s*(\w+)/i);
+    if (formatMatch) {
+      output.format = formatMatch[1].toUpperCase();
+    }
+    
+    // 解析文件名
+    const filenameMatch = outputText.match(/文件名[：:]\s*`?([^`\n]+)`?/i);
+    if (filenameMatch) {
+      output.filename = filenameMatch[1].replace(/[`]/g, '').trim();
+    }
+    
+    // 解析去重要求
+    if (/无重复行|去重|deduplicate/i.test(outputText)) {
+      output.deduplication = true;
+    }
+    
+    // 解析无索引列要求
+    if (/无.*索引列|无多余索引|no.*index/i.test(outputText)) {
+      output.noIndex = true;
+    }
+    
+    if (Object.keys(output).length > 0) {
+      result.outputRequirements = output;
     }
   }
 
@@ -330,7 +396,7 @@ const ANALYSIS_PATTERNS: Array<{
 
 /**
  * 解析实际文件路径
- * 根据原始文件名在 inputs 目录中查找带时间戳前缀的实际文件
+ * 在 inputs 目录中查找匹配的文件
  */
 async function resolveActualFilePath(
   originalFileName: string,
@@ -345,21 +411,17 @@ async function resolveActualFilePath(
   
   try {
     const entries = await fs.readdir(inputsDir);
-    // 查找以原始文件名结尾的文件（带时间戳前缀）
-    const matchedFile = entries.find(entry => entry.endsWith(`-${originalFileName}`));
-    if (matchedFile) {
-      return path.join(inputsDir, matchedFile);
-    }
-    // 也尝试精确匹配（无时间戳前缀的情况）
+    // 精确匹配
     const exactMatch = entries.find(entry => entry === originalFileName);
     if (exactMatch) {
       return path.join(inputsDir, exactMatch);
     }
+    // 如果找不到精确匹配，返回期望路径
+    return path.join(inputsDir, originalFileName);
   } catch {
-    // 目录不存在
+    // 目录不存在，返回期望路径
+    return path.join(inputsDir, originalFileName);
   }
-
-  return null;
 }
 
 /**

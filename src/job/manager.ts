@@ -173,6 +173,7 @@ export async function resumeJob(jobId: string): Promise<{
 
 /**
  * 保存文件到 inputs
+ * 保留原始文件名，不添加时间戳前缀
  */
 export async function saveToInputs(
   jobId: string,
@@ -184,7 +185,8 @@ export async function saveToInputs(
   // 确保目录存在
   await fs.mkdir(inputsDir, { recursive: true });
 
-  const safeName = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  // 只对文件名中的特殊字符进行清理，保留原始文件名
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
   const savedPath = path.join(inputsDir, safeName);
   await fs.writeFile(savedPath, content);
   return savedPath;
