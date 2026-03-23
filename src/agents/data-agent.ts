@@ -1,10 +1,10 @@
 /**
  * Data Agent - 声明式配置
  *
- * 不继承 runtime，只声明能力：
- * - systemPrompt
- * - tools
- * - convertToLlm
+ * 遵循 debug.md 的架构设计：
+ * - Application 层 agent 只输出一个 AgentDef 配置对象
+ * - 不继承 runtime，只声明能力
+ * - 个性化行为通过 hooks 表达
  */
 
 import fs from 'node:fs/promises';
@@ -12,6 +12,7 @@ import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentConfig, AgentTool, AgentMessage } from '../runtime/agent-loop.js';
 import type { AgentCapabilities, AgentResponse, ConversationContext, Dataset, DatasetColumn, DatasetMetadata, Intent, IntentRule, IntentType } from './types.js';
+import type { AgentDef, RouteRule } from '../core/types.js';
 import { csvSkill } from '../skills/csv-skill.js';
 import { bioinfoSkill } from '../skills/bioinfo-skill.js';
 import {
@@ -134,6 +135,84 @@ export const dataAgentSystemPrompt = `你是一个数据分析助手，帮助用
 - 执行已确认的分析方案
 
 请根据用户的需求，选择合适的工具来完成任务。`;
+
+// ============================================================================
+// 新版 AgentDef - 纯配置对象
+// ============================================================================
+
+/**
+ * Data Agent 路由规则
+ */
+export const DATA_AGENT_ROUTES: RouteRule[] = [
+  // 高优先级：明确意图
+  { match: { intent: ['execute'] }, priority: 100 },
+  { match: { intent: ['upload'] }, priority: 90 },
+  { match: { intent: ['explore'] }, priority: 80 },
+  { match: { intent: ['merge'] }, priority: 70 },
+  { match: { intent: ['transform'] }, priority: 60 },
+  { match: { intent: ['question'] }, priority: 50 },
+  { match: { intent: ['requirement'] }, priority: 40 },
+  
+  // 中优先级：正则匹配
+  { match: { pattern: /执行|开始|run|execute|确认执行/i }, priority: 85 },
+  { match: { pattern: /上传|加载|读取|导入|file|csv|xlsx|xls|tsv/i }, priority: 50 },
+  { match: { pattern: /探索|预览|概览|统计|summary|describe/i }, priority: 50 },
+  { match: { pattern: /合并|merge|join/i }, priority: 50 },
+  { match: { pattern: /过滤|标准化|归一化|log2|transform|normalize|filter/i }, priority: 50 },
+  { match: { pattern: /需求|目标|想做|分析方案/i }, priority: 45 },
+  { match: { pattern: /多少行|几行|多少列|几列|列名|行数|列数/i }, priority: 50 },
+];
+
+/**
+ * Data Agent 定义 - 纯配置对象
+ *
+ * 这是 Application 层的唯一输出，符合 debug.md 的架构设计：
+ * - 没有 class，没有 import 自 core 内部模块，没有运行时状态
+ * - 个性化行为通过 hooks 表达
+ */
+export const DataAgentDef: AgentDef = {
+  id: 'data-agent',
+  name: 'Data Agent',
+  description: '负责数据文件的上传、探索、清洗、转换和合并。处理 CSV、Excel、单细胞表达矩阵等格式。',
+
+  systemPrompt: dataAgentSystemPrompt,
+
+  skills: ['csv-skill', 'bioinfo-skill'],
+
+  routes: DATA_AGENT_ROUTES,
+
+  memoryPolicy: {
+    workingMemory: {
+      maxMessages: 50,
+      maxTokens: 40000,
+    },
+    jobMemory: {
+      includeDatasetMeta: true,
+      includeRequirementDoc: true,
+      includeRecentTraces: 5,
+    },
+    longTermMemory: {
+      enabled: false,
+    },
+  },
+
+  hooks: {
+    // 消息转换：过滤掉不需要发送给 LLM 的消息类型
+    convertToLlm: (messages) =>
+      messages.filter((m) => ['user', 'assistant', 'system', 'tool'].includes(m.role)),
+
+    // 前置处理：添加当前数据集信息到 system prompt
+    beforeTurn: async (ctx) => {
+      if (ctx.activeDatasetId && ctx.datasets.has(ctx.activeDatasetId)) {
+        const dataset = ctx.datasets.get(ctx.activeDatasetId);
+        if (dataset) {
+          ctx.systemPromptSuffix = `\n当前数据集：${dataset.name} (${dataset.metadata?.shape?.rows ?? '?'} 行 × ${dataset.metadata?.shape?.columns ?? '?'} 列)`;
+        }
+      }
+      return ctx;
+    },
+  },
+};
 
 /**
  * 消息转换函数

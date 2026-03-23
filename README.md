@@ -403,7 +403,13 @@ const dataAgentConfig = {
    - 事件日志记录
    - 快照触发事件：requirement.saved, analysis.before_execute, analysis.after_execute, file.uploaded
 
-7. **Agent Runtime 与业务逻辑分离**
+7. **应用层 Agent 纯化**
+   - DataAgentDef 改为纯配置对象，符合 debug.md 架构设计
+   - 声明 `systemPrompt`、`skills`、`routes`、`memoryPolicy`、`hooks`
+   - 通过 hooks 表达个性化行为（convertToLlm、beforeTurn）
+   - 保留向后兼容的 DataAgentProcessor 和 dataAgent
+
+8. **Agent Runtime 与业务逻辑分离**
    - 新增 `runtime/agent-loop.ts`，实现纯执行引擎
    - Agent 不再继承 BaseAgent，改为声明式配置
    - 支持事件流（agent_start, turn_start, message_update 等）
