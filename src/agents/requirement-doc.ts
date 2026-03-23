@@ -140,24 +140,10 @@ export function parseMarkdownToDocument(markdown: string): Partial<RequirementDo
     result.title = titleMatch[1];
   }
 
-  // 解析数据源表格
-  const dataSection = markdown.match(/##\s*数据\s*\n([\s\S]*?)(?=\n##|$)/i);
+  // 解析数据源表格 - 改进正则以支持 "数据源" 或 "数据"
+  const dataSection = markdown.match(/##\s*数据[源]?\s*\n([\s\S]*?)(?=\n##|$)/i);
   if (dataSection) {
-    // 提取文件列表
-    const fileMatches = dataSection[1].matchAll(/`([^`]+\.(?:csv|tsv|xlsx|xls))`/gi);
-    const datasets: DatasetInfo[] = [];
-    for (const match of fileMatches) {
-      datasets.push({
-        file: match[1],
-        type: 'data file',
-        description: '',
-      });
-    }
-    if (datasets.length > 0) {
-      result.datasets = datasets;
-    }
-    
-    // 也尝试解析表格
+    // 优先解析表格格式
     const tableRows = dataSection[1].match(/\|.+\|/g);
     if (tableRows && tableRows.length > 2) {
       const tableDatasets = tableRows.slice(2).map((row) => {
@@ -168,8 +154,25 @@ export function parseMarkdownToDocument(markdown: string): Partial<RequirementDo
           description: cells[2] || '',
         };
       }).filter(d => d.file && !d.file.startsWith('-') && d.file !== '');
+      
       if (tableDatasets.length > 0) {
         result.datasets = tableDatasets;
+      }
+    }
+
+    // 如果表格解析失败，尝试提取文件名
+    if (!result.datasets || result.datasets.length === 0) {
+      const fileMatches = dataSection[1].matchAll(/([a-zA-Z0-9_\-./]+\.(?:csv|tsv|xlsx|xls))/gi);
+      const datasets: DatasetInfo[] = [];
+      for (const match of fileMatches) {
+        datasets.push({
+          file: match[1],
+          type: 'data file',
+          description: '',
+        });
+      }
+      if (datasets.length > 0) {
+        result.datasets = datasets;
       }
     }
   }

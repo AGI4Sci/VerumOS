@@ -23,6 +23,7 @@ import {
   generatePythonScript,
 } from './requirement-doc.js';
 import { config } from '../config.js';
+import { logger } from '../utils/logger.js';
 
 interface ReadResult extends DatasetMetadata {
   shape: { rows: number; columns: number };
@@ -424,21 +425,45 @@ export class DataAgentProcessor {
 
   /**
    * 启发式意图匹配（使用声明的规则）
+   * 使用优先级机制处理多意图匹配的情况
    */
   private heuristicIntent(message: string, context: ConversationContext): Intent {
     const hasDataset = context.datasets.size > 0;
+    const matches: { intent: IntentType; confidence: number }[] = [];
 
-    // 使用声明的规则匹配
+    // 收集所有匹配的意图
     for (const rule of DATA_AGENT_INTENT_RULES) {
       for (const pattern of rule.patterns) {
         if (pattern.test(message)) {
-          return {
-            type: rule.intent as IntentType,
+          matches.push({
+            intent: rule.intent as IntentType,
             confidence: rule.confidence ?? 0.9,
-            datasetId: context.activeDatasetId,
-          };
+          });
+          break; // 每个规则只匹配一次
         }
       }
+    }
+
+    // 如果有多个匹配，按优先级选择
+    if (matches.length > 0) {
+      // 定义意图优先级（数字越大优先级越高）
+      const priority: Record<string, number> = {
+        'execute': 100,    // 执行是最高优先级
+        'upload': 90,
+        'explore': 80,
+        'merge': 70,
+        'transform': 60,
+        'question': 50,
+        'requirement': 40, // requirement 优先级较低
+      };
+
+      // 按优先级排序，选择最高的
+      matches.sort((a, b) => (priority[b.intent] ?? 0) - (priority[a.intent] ?? 0));
+      return {
+        type: matches[0].intent,
+        confidence: matches[0].confidence,
+        datasetId: context.activeDatasetId,
+      };
     }
 
     // 如果有数据集但没有匹配到具体意图，默认为 question
@@ -638,6 +663,9 @@ export class DataAgentProcessor {
       };
     }
 
+    logger.info(`[handleExecute] Starting execution for session ${context.sessionId}`);
+    logger.info(`[handleExecute] Document status: ${doc.status}, datasets: ${doc.datasets.length}`);
+
     // 如果状态不是 confirmed，先更新为 confirmed
     if (doc.status !== 'confirmed' && doc.status !== 'executing') {
       await updateRequirementDocument(context.sessionId, { status: 'confirmed' });
@@ -645,10 +673,12 @@ export class DataAgentProcessor {
     }
 
     const toolChain = generateToolChain(doc);
+    logger.info(`[handleExecute] Generated toolchain with ${toolChain.length} steps: ${JSON.stringify(toolChain.map(t => `${t.skill}.${t.tool}`))}`);
+    
     if (toolChain.length === 0) {
       return {
         type: 'text',
-        content: '未找到可执行的工具链。请在需求文档中配置数据源。',
+        content: '未找到可执行的工具链。请在需求文档中配置数据源。\n\n提示：确保"数据源"部分包含文件名（如 count_matrix.csv）。',
       };
     }
 

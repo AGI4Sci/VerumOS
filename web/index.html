@@ -1876,7 +1876,14 @@ async function saveRequirement() {
     if (!confirmed) return;
   }
 
-  const content = document.getElementById('requirementTextarea').value;
+  const textarea = document.getElementById('requirementTextarea');
+  let content = textarea.value;
+  
+  // 如果 textarea 为空但 placeholder 有内容，使用 placeholder
+  if (!content && textarea.placeholder) {
+    content = textarea.placeholder;
+    textarea.value = content;  // 同时更新 textarea 的值
+  }
 
   try {
     const response = await fetch(`/api/requirement/${sessionId}`, {
@@ -1931,36 +1938,20 @@ async function executeRequirement() {
     return;
   }
   
-  // 更新状态为已确认，然后执行
-  if (currentRequirement) {
-    try {
-      // 先设置为 confirmed
-      const confirmResponse = await fetch(`/api/requirement/${sessionId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'confirmed' }),
-      });
-      const confirmPayload = await confirmResponse.json();
-      
-      if (!confirmPayload.ok) {
-        addMessage('system', `执行失败：无法确认需求文档`);
-        return;
-      }
-      
-      updateRequirementStatus('confirmed');
-      addMessage('system', '需求文档已确认，开始执行分析方案...');
-      
-      // 发送执行命令到 chat
-      const input = document.getElementById('input');
-      input.value = '执行需求文档中的分析方案';
-      await sendMessage();
-      
-      // 更新状态为执行中
-      updateRequirementStatus('executing');
-      
-    } catch (error) {
-      addMessage('system', `执行失败：${error.message}`);
-    }
+  // 更新状态为已确认
+  updateRequirementStatus('confirmed');
+  addMessage('system', '🚀 开始执行分析方案...');
+  
+  try {
+    // 发送执行命令到 chat
+    const input = document.getElementById('input');
+    input.value = '执行需求文档中的分析方案';
+    await sendMessage();
+    
+    // 更新状态为执行中
+    updateRequirementStatus('executing');
+  } catch (error) {
+    addMessage('system', `❌ 执行失败：${error.message}`);
   }
 }
 
