@@ -11,6 +11,7 @@ import fileRouter from './routes/file.js';
 import snapshotRouter from './routes/snapshot.js';
 import { initializeSkills } from './skills/index.js';
 import { ensureDataDir } from './job/index.js';
+import { createCoreServices, initializeCoreServices } from './core/index.js';
 
 const app = new Hono();
 
@@ -27,10 +28,30 @@ app.route('/api', snapshotRouter);
 app.get('/', serveStatic({ path: './web/index.html' }));
 app.use('/*', serveStatic({ root: './web' }));
 
+/**
+ * Core 服务实例（单例）
+ */
+let coreServicesInstance: ReturnType<typeof createCoreServices> | null = null;
+
+/**
+ * 初始化应用
+ */
 export async function initializeApp(): Promise<Hono> {
   await ensureDataDir();
   await initializeSkills();
+
+  // 初始化 Core 服务
+  coreServicesInstance = createCoreServices();
+  await initializeCoreServices(coreServicesInstance);
+
   return app;
+}
+
+/**
+ * 获取 Core 服务实例
+ */
+export function getCoreServices(): ReturnType<typeof createCoreServices> | null {
+  return coreServicesInstance;
 }
 
 export { app, config };

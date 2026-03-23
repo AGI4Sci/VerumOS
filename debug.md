@@ -590,23 +590,33 @@ routes/requirement.ts  →  保存文件
 
 当前代码与目标架构的主要差距，以及推荐的迁移顺序（每步都保持可运行）：
 
-**Step 1：类型定义先行**
+**✅ Step 1：类型定义先行**（已完成）
 在 `src/core/types.ts` 中定义 `AgentDef`、`MemoryPolicy`、`AgentContext`、`AgentEvent` 等核心类型。不动任何现有逻辑，只是建立类型基础。
 
-**Step 2：提取 SkillRegistry**
+**✅ Step 2：提取 SkillRegistry**（已完成）
 把 `csv-skill` 和 `bioinfo-skill` 从 data-agent 的直接依赖改为注册到 SkillRegistry，DataAgentDef 改为声明 `skills: ['csv-skill', 'bioinfo-skill']`。这是最低风险的一步，不影响执行路径。
 
-**Step 3：抽象 Memory 层**
+**✅ Step 3：抽象 Memory 层**（已完成）
 把 `job.json` 里的 `state.messages` 和 `traces` 封装进 `MemoryManager`，AgentLoop 通过接口访问而不是直接读文件。
 
-**Step 4：重构 Router**
+**⏳ Step 4：重构 Router**（部分完成）
 把现有 intent-classifier 替换为两级路由。现有意图规则迁移为 AgentDef 的 `routes` 字段，保留 LLM 语义路由作为 fallback。
+- ✅ 已定义 RouteRule 类型
+- ⏳ Router 实现还在 runtime/intent-classifier.ts
 
-**Step 5：EventBus 接入**
+**✅ Step 5：EventBus 接入**（已完成）
 在 AgentLoop 和 JobManager 的关键节点加入 `eventBus.publish()`，把 WebSocket 推送从直接调用改为 EventBus 订阅，把快照触发逻辑移入 JobManager 的订阅处理器。
 
-**Step 6：应用层 agent 纯化**
+**新增：EventBus 订阅者**（已完成）
+- `TraceRecorder`：订阅 tool 事件，自动记录执行轨迹
+- `WsPublisher`：订阅所有事件，推送到 WebSocket 客户端
+- `SnapshotCreator`：订阅快照触发事件，自动创建快照
+
+**✅ Step 6：应用层 agent 纯化**（已完成）
 把 DataAgentDef 改为纯配置对象，执行逻辑全部移入 AgentLoop 或对应的 Core 模块。
+
+**✅ Step 7：AgentLoop 集成**（已完成）
+重构 `agentLoop` 接受 CoreServices 注入，使用 MemoryManager、SkillRegistry、EventBus 等服务。
 
 每步完成后跑一次现有测试，确认不回归后再进行下一步。
 

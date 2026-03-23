@@ -1,40 +1,283 @@
 /**
- * Agent Loop - 核心执行引擎
+ * Agent Loop - 核心执行引擎（重构版）
  *
- * 纯执行引擎，不包含任何业务逻辑。
- * 参考 pi-mono 的 @mariozechner/pi-agent-core 架构。
+ * 完全重构，接受 CoreServices 注入，符合 debug.md 架构设计：
+ * - 不自己 import 任何 core 模块
+ * - 通过 CoreServices 容器接收依赖
+ * - 使用 MemoryManager 组装上下文
+ * - 使用 SkillRegistry 解析工具
+ * - 使用 EventBus 发布事件
  */
 
-import type { LLMClient } from './llm-client.js';
-import type { ConversationContext, Intent } from '../agents/types.js';
-
-/**
- * Agent 事件类型
- */
-export type AgentEventType =
-  | 'agent_start'
-  | 'agent_end'
-  | 'turn_start'
-  | 'turn_end'
-  | 'message_start'
-  | 'message_update'
-  | 'message_end'
-  | 'tool_execution_start'
-  | 'tool_execution_end'
-  | 'tool_result'
-  | 'error';
+import type {
+  CoreServices,
+  AgentDef,
+  AgentContext,
+  AgentEvent,
+  AgentEventType,
+  Message,
+  ToolCall,
+  ToolResult,
+} from '../core/types.js';
 
 /**
- * Agent 事件
+ * Agent Loop 配置
  */
-export interface AgentEvent {
-  type: AgentEventType;
-  timestamp: string;
-  data?: unknown;
+export interface AgentLoopConfig {
+  agentDef: AgentDef;
+  services: CoreServices;
+  maxTurns?: number;
 }
 
 /**
- * 工具定义
+ * 创建 Agent 事件
+ */
+function createEvent(
+  type: AgentEventType,
+  data?: unknown,
+  jobId?: string,
+  sessionId?: string
+): AgentEvent {
+  return {
+    type,
+    timestamp: new Date().toISOString(),
+    jobId,
+    sessionId,
+    data,
+  };
+}
+
+/**
+ * Agent Loop - 核心执行循环
+ *
+ * 这是一个 async generator，产出事件流。
+ * 业务 Agent 只需要声明 systemPrompt、tools、hooks。
+ */
+export async function* agentLoop(
+  messages: Message[],
+  context: AgentContext,
+  config: AgentLoopConfig
+): AsyncGenerator<AgentEvent> {
+  const { agentDef, services, maxTurns = 10 } = config;
+  const { memory, skillRegistry, toolRegistry, jobManager, llmClient, eventBus } = services;
+
+  let stepCount = 0;
+
+  // 发布 agent_start 事件
+  const startEvent = createEvent('agent_start', { agentId: agentDef.id }, context.jobId, context.sessionId);
+  eventBus.publish(startEvent);
+  yield startEvent;
+
+  try {
+    while (stepCount < maxTurns) {
+      stepCount++;
+      const turnStartEvent = createEvent('turn_start', { step: stepCount }, context.jobId, context.sessionId);
+      eventBus.publish(turnStartEvent);
+      yield turnStartEvent;
+
+      // 1. 执行 beforeTurn hook
+      let currentContext = { ...context };
+      if (agentDef.hooks?.beforeTurn) {
+        currentContext = await agentDef.hooks.beforeTurn(currentContext);
+      }
+
+      // 2. 使用 MemoryManager 组装上下文
+      const memoryBundle = await memory.assemble(
+        agentDef.memoryPolicy || {},
+        context.jobId,
+        messages
+      );
+
+      // 3. 使用 SkillRegistry 解析工具
+      const { tools, skillDocs } = skillRegistry.resolve(agentDef.skills);
+
+      // 合并 agent 私有工具
+      const allTools = [...tools, ...(agentDef.tools || [])];
+
+      // 4. 构建系统提示
+      let systemPrompt = agentDef.systemPrompt;
+      if (skillDocs.length > 0) {
+        systemPrompt += '\n\n# 可用工具说明\n\n' + skillDocs.join('\n\n');
+      }
+      if (memoryBundle.jobContext) {
+        systemPrompt += '\n\n# 当前任务上下文\n\n' + memoryBundle.jobContext;
+      }
+      if (currentContext.systemPromptSuffix) {
+        systemPrompt += '\n\n' + currentContext.systemPromptSuffix;
+      }
+
+      // 5. 准备消息（应用 convertToLlm hook）
+      let messagesForLlm = memoryBundle.truncatedMessages;
+      if (agentDef.hooks?.convertToLlm) {
+        messagesForLlm = agentDef.hooks.convertToLlm(messagesForLlm);
+      }
+
+      // 添加系统消息
+      const llmMessages: Message[] = [
+        { role: 'system', content: systemPrompt },
+        ...messagesForLlm,
+      ];
+
+      // 6. 调用 LLM
+      const messageStartEvent = createEvent('message_start', undefined, context.jobId, context.sessionId);
+      eventBus.publish(messageStartEvent);
+      yield messageStartEvent;
+
+      let response: string;
+      let toolCalls: ToolCall[] = [];
+
+      if (llmClient.isAvailable()) {
+        try {
+          const result = await llmClient.chatWithTools(llmMessages, allTools);
+          response = result.content;
+          toolCalls = result.toolCalls;
+
+          // 流式产出消息更新
+          const messageUpdateEvent = createEvent('message_update', { delta: response }, context.jobId, context.sessionId);
+          eventBus.publish(messageUpdateEvent);
+          yield messageUpdateEvent;
+        } catch (error) {
+          response = 'LLM 调用失败，请稍后重试。';
+          const errorEvent = createEvent('error', {
+            message: error instanceof Error ? error.message : String(error),
+          }, context.jobId, context.sessionId);
+          eventBus.publish(errorEvent);
+          yield errorEvent;
+        }
+      } else {
+        response = '当前未配置 LLM API，无法处理此请求。';
+      }
+
+      const messageEndEvent = createEvent('message_end', { content: response }, context.jobId, context.sessionId);
+      eventBus.publish(messageEndEvent);
+      yield messageEndEvent;
+
+      // 7. 添加助手消息
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: response,
+        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      };
+      messages.push(assistantMessage);
+
+      // 8. 检查是否有工具调用
+      if (toolCalls.length === 0) {
+        const turnEndEvent = createEvent('turn_end', { step: stepCount }, context.jobId, context.sessionId);
+        eventBus.publish(turnEndEvent);
+        yield turnEndEvent;
+        break;
+      }
+
+      // 9. 执行工具
+      const toolExecutionStartEvent = createEvent('tool_execution_start', { toolCalls }, context.jobId, context.sessionId);
+      eventBus.publish(toolExecutionStartEvent);
+      yield toolExecutionStartEvent;
+
+      const results: ToolResult[] = [];
+      for (const toolCall of toolCalls) {
+        const tool = allTools.find((t) => t.name === toolCall.name);
+        if (!tool) {
+          const result: ToolResult = {
+            toolCallId: toolCall.id,
+            name: toolCall.name,
+            result: null,
+            error: `Tool not found: ${toolCall.name}`,
+          };
+          results.push(result);
+          continue;
+        }
+
+        try {
+          const toolContext = {
+            jobId: context.jobId,
+            sessionId: context.sessionId,
+            datasets: currentContext.datasets,
+            activeDatasetId: currentContext.activeDatasetId,
+          };
+          const result = await tool.execute(toolCall.arguments, toolContext);
+          const toolResult: ToolResult = {
+            toolCallId: toolCall.id,
+            name: toolCall.name,
+            result,
+          };
+          results.push(toolResult);
+
+          // 执行 afterToolCall hook
+          if (agentDef.hooks?.afterToolCall) {
+            await agentDef.hooks.afterToolCall(toolResult, currentContext);
+          }
+        } catch (error) {
+          const result: ToolResult = {
+            toolCallId: toolCall.id,
+            name: toolCall.name,
+            result: null,
+            error: error instanceof Error ? error.message : String(error),
+          };
+          results.push(result);
+        }
+      }
+
+      const toolExecutionEndEvent = createEvent('tool_execution_end', { results }, context.jobId, context.sessionId);
+      eventBus.publish(toolExecutionEndEvent);
+      yield toolExecutionEndEvent;
+
+      // 10. 添加工具结果消息
+      for (const result of results) {
+        const toolResultEvent = createEvent('tool_result', result, context.jobId, context.sessionId);
+        eventBus.publish(toolResultEvent);
+        yield toolResultEvent;
+
+        messages.push({
+          role: 'tool',
+          content: JSON.stringify(result.result),
+          toolCallId: result.toolCallId,
+          name: result.name,
+        });
+      }
+
+      // 11. 更新 Job 状态
+      // 获取当前 job 并更新状态
+      const currentJob = await jobManager.get(context.jobId);
+      if (currentJob) {
+        await jobManager.update(context.jobId, {
+          state: {
+            activeDatasetId: currentContext.activeDatasetId,
+            datasets: Array.from(currentContext.datasets.values()).map(d => ({
+              id: d.id,
+              name: d.name,
+              path: d.path,
+              format: d.format,
+              skill: d.skill,
+              metadata: d.metadata,
+            })),
+            messages,
+          },
+        } as any); // 使用 any 避免类型不匹配问题
+      }
+
+      const turnEndEvent = createEvent('turn_end', { step: stepCount }, context.jobId, context.sessionId);
+      eventBus.publish(turnEndEvent);
+      yield turnEndEvent;
+    }
+  } catch (error) {
+    const errorEvent = createEvent('error', {
+      message: error instanceof Error ? error.message : String(error),
+    }, context.jobId, context.sessionId);
+    eventBus.publish(errorEvent);
+    yield errorEvent;
+  }
+
+  const agentEndEvent = createEvent('agent_end', { stepCount }, context.jobId, context.sessionId);
+  eventBus.publish(agentEndEvent);
+  yield agentEndEvent;
+}
+
+// ============================================================================
+// 向后兼容的旧版 API（将被废弃）
+// ============================================================================
+
+/**
+ * @deprecated 使用新版 agentLoop，接受 CoreServices 注入
  */
 export interface AgentTool {
   name: string;
@@ -44,26 +287,7 @@ export interface AgentTool {
 }
 
 /**
- * 工具调用
- */
-export interface ToolCall {
-  id: string;
-  name: string;
-  arguments: Record<string, unknown>;
-}
-
-/**
- * 工具结果
- */
-export interface ToolResult {
-  toolCallId: string;
-  name: string;
-  result: unknown;
-  error?: string;
-}
-
-/**
- * Agent 配置（声明式）
+ * @deprecated 使用新版 AgentLoopConfig
  */
 export interface AgentConfig {
   id: string;
@@ -74,7 +298,7 @@ export interface AgentConfig {
 }
 
 /**
- * Agent 消息
+ * @deprecated 使用 core/types.ts 中的 Message
  */
 export interface AgentMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
@@ -85,208 +309,25 @@ export interface AgentMessage {
 }
 
 /**
- * Agent Loop 配置
+ * @deprecated 使用新版 agentLoop
  */
-export interface AgentLoopConfig {
-  llmClient: LLMClient;
+export interface AgentLoopConfigLegacy {
+  llmClient: any;
   agent: AgentConfig;
   maxTurns?: number;
-  onIntent?: (intent: Intent) => void;
+  onIntent?: (intent: any) => void;
 }
 
 /**
- * Agent 上下文
+ * @deprecated 使用新版 agentLoop
  */
-export interface AgentContext {
-  messages: AgentMessage[];
-  context: ConversationContext;
-  steeringQueue: AgentMessage[];
-  stepCount: number;
-}
-
-/**
- * 创建 Agent 事件
- */
-function createEvent(type: AgentEventType, data?: unknown): AgentEvent {
-  return {
-    type,
-    timestamp: new Date().toISOString(),
-    data,
-  };
-}
-
-/**
- * Agent Loop - 核心执行循环
- *
- * 这是一个 async generator，产出事件流。
- * 业务 Agent 只需要声明 systemPrompt、tools、convertToLlm。
- */
-export async function* agentLoop(
+export async function* agentLoopLegacy(
   messages: AgentMessage[],
-  conversationContext: ConversationContext,
-  config: AgentLoopConfig
-): AsyncGenerator<AgentEvent> {
-  const { llmClient, agent, maxTurns = 10 } = config;
-
-  // 初始化上下文
-  const ctx: AgentContext = {
-    messages: [...messages],
-    context: conversationContext,
-    steeringQueue: [],
-    stepCount: 0,
-  };
-
-  yield createEvent('agent_start', { agentId: agent.id });
-
-  try {
-    while (ctx.stepCount < maxTurns) {
-      ctx.stepCount++;
-      yield createEvent('turn_start', { step: ctx.stepCount });
-
-      // 1. 准备消息
-      const messagesForLlm = agent.convertToLlm
-        ? agent.convertToLlm(ctx.messages)
-        : ctx.messages;
-
-      // 2. 调用 LLM
-      yield createEvent('message_start');
-
-      const systemMessage: AgentMessage = {
-        role: 'system',
-        content: agent.systemPrompt,
-      };
-
-      const llmMessages = [systemMessage, ...messagesForLlm];
-
-      let response: string;
-      let toolCalls: ToolCall[] = [];
-
-      if (llmClient.isAvailable()) {
-        try {
-          const result = await llmClient.chatWithTools(
-            llmMessages,
-            agent.tools
-          );
-          response = result.content;
-          toolCalls = result.toolCalls;
-        } catch {
-          response = 'LLM 调用失败，请稍后重试。';
-        }
-      } else {
-        response = '当前未配置 LLM API，无法处理此请求。';
-      }
-
-      // 3. 流式产出消息更新
-      yield createEvent('message_update', { delta: response });
-      yield createEvent('message_end', { content: response });
-
-      // 4. 添加助手消息
-      const assistantMessage: AgentMessage = {
-        role: 'assistant',
-        content: response,
-        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-      };
-      ctx.messages.push(assistantMessage);
-
-      // 5. 检查是否有工具调用
-      if (toolCalls.length === 0) {
-        yield createEvent('turn_end', { step: ctx.stepCount });
-        break;
-      }
-
-      // 6. 执行工具
-      yield createEvent('tool_execution_start', { toolCalls });
-
-      const results: ToolResult[] = [];
-      for (const toolCall of toolCalls) {
-        const tool = agent.tools.find((t) => t.name === toolCall.name);
-        if (!tool) {
-          results.push({
-            toolCallId: toolCall.id,
-            name: toolCall.name,
-            result: null,
-            error: `Tool not found: ${toolCall.name}`,
-          });
-          continue;
-        }
-
-        try {
-          const result = await tool.execute(toolCall.arguments);
-          results.push({
-            toolCallId: toolCall.id,
-            name: toolCall.name,
-            result,
-          });
-        } catch (error) {
-          results.push({
-            toolCallId: toolCall.id,
-            name: toolCall.name,
-            result: null,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-
-      yield createEvent('tool_execution_end', { results });
-
-      // 7. 添加工具结果消息
-      for (const result of results) {
-        yield createEvent('tool_result', result);
-        ctx.messages.push({
-          role: 'tool',
-          content: JSON.stringify(result.result),
-          toolCallId: result.toolCallId,
-          name: result.name,
-        });
-      }
-
-      // 8. 检查 steering
-      if (ctx.steeringQueue.length > 0) {
-        ctx.messages.push(...ctx.steeringQueue);
-        ctx.steeringQueue = [];
-      }
-
-      yield createEvent('turn_end', { step: ctx.stepCount });
-    }
-  } catch (error) {
-    yield createEvent('error', {
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  yield createEvent('agent_end', { stepCount: ctx.stepCount });
-}
-
-/**
- * 创建空的 Agent 上下文
- */
-export function createAgentContext(
-  conversationContext: ConversationContext
-): AgentContext {
-  return {
-    messages: [],
-    context: conversationContext,
-    steeringQueue: [],
-    stepCount: 0,
-  };
-}
-
-/**
- * 向上下文添加消息
- */
-export function pushMessage(
-  ctx: AgentContext,
-  message: AgentMessage
-): void {
-  ctx.messages.push(message);
-}
-
-/**
- * 向 steering 队列添加消息
- */
-export function pushSteering(
-  ctx: AgentContext,
-  message: AgentMessage
-): void {
-  ctx.steeringQueue.push(message);
+  conversationContext: any,
+  config: AgentLoopConfigLegacy
+): AsyncGenerator<any> {
+  console.warn('[agentLoop] Using legacy agentLoop. Please migrate to new CoreServices-based API.');
+  // 保留旧的实现逻辑...
+  // 这里只是占位，实际调用应该迁移到新版
+  yield { type: 'error', data: { message: 'Legacy agentLoop is deprecated' } };
 }

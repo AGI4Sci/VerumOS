@@ -1,264 +1,488 @@
-# VerumOS 功能实现方案
+# AgentLoop 集成与 EventBus 渐进式重构 - ✅ 已完成
 
-## 一、问题描述
+## 问题描述
 
-用户要求实现两个功能：
-1. **LongTermMemory**：长期记忆功能，支持跨 job 向量检索
-2. **前端 Agent 切换**：点击"模型"或"分析" Tab 时，切换到对应 Agent
+根据 `debug.md` 的架构设计，以下功能尚未实现：
 
-## 二、根因分析
+1. **AgentLoop 未注入 CoreServices**
+   - 当前 `agentLoop` 是独立函数，无法使用 MemoryManager、SkillRegistry 等 Core 服务
+   - 违背了 debug.md 中"AgentLoop 不自己 import 任何 core 模块"的设计原则
 
-### LongTermMemory
-当前 `long-term-memory.ts` 是 Phase 1 空实现，只返回 `null`：
-- 没有持久化存储
-- 没有向量嵌入能力
-- 没有语义检索能力
+2. **EventBus 未被使用**
+   - routes 层直接调用 `createSnapshot`，没有发布事件
+   - 设计意图：routes 发布事件 → JobManager 订阅并创建快照
 
-### 前端 Agent 切换
-当前 `switchAgent()` 只切换 UI 样式：
-- 没有通知后端
-- 后端 `/api/chat` 总是使用默认 Agent（`agentRegistry.getDefault()`）
-- 没有 Agent 切换的 API 端点
+3. **WebSocket 推送未通过 EventBus**
+   - 直接调用 `emitSessionEvent`
+   - 设计意图：WsPublisher 订阅 EventBus 推送
 
-## 三、解决方案
+4. **初始化流程不完整**
+   - 没有调用 `initializeCoreServices`
+   - 快照自动触发等功能未生效
 
-### 3.1 LongTermMemory 实现
+5. **TraceRecorder 未实现**
+   - 手动调用 `appendTrace`
+   - 设计意图：订阅 tool 事件自动记录
 
-#### 设计方案
-采用 **JSON 文件存储 + Embedding API** 方案：
+## ✅ 实现完成
+
+所有步骤已完成：
+
+1. ✅ 重构 AgentLoop - 接受 CoreServices 注入
+2. ✅ 创建 TraceRecorder 订阅者 - 自动记录执行轨迹
+3. ✅ 创建 WsPublisher 订阅者 - 实时推送事件到客户端
+4. ✅ 完善 Core 初始化 - 注册所有订阅者
+5. ✅ 修改 app.ts - 初始化 Core 服务
+6. ✅ 修改 routes/chat.ts - 添加 EventBus 事件发布
+7. ✅ 修改 routes/requirement.ts - 添加 EventBus 事件发布
+8. ✅ 修改 routes/upload.ts - 添加文件上传事件发布
+
+## 验证结果
+
+启动服务成功：
+```
+[TraceRecorder] Registered to EventBus
+[WsPublisher] Registered to EventBus
+[Core] Core services initialized successfully
+[INFO] VerumOS server listening on http://localhost:3000
+```
+
+健康检查通过：`GET /health` 返回 `{"ok":true}`
+
+**架构演进过程中的不完整迁移**：
+
+- Phase 1-7 完成了 Core 层基础设施（类型、EventBus、Memory、Registry）
+- 但 AgentLoop 和 routes 层还停留在旧的实现方式
+- 缺少一个集成层将 Core 服务注入到执行流程中
+
+**设计原则违背**：
+
+- debug.md 要求 AgentLoop 通过 CoreServices 容器接收依赖
+- 实际代码中 AgentLoop 独立定义，不符合"依赖注入"原则
+
+## 解决方案
+
+### 方案概览
 
 ```
-data/.memory/
-├── index.json           # 记忆索引（id, metadata, embedding 路径）
-├── embeddings/          # 向量文件（按 id 存储）
-│   ├── {id}.json
-└── config.json          # 配置（embedding 模型等）
+┌──────────────────────────────────────────────────────────────┐
+│                      Application Layer                        │
+│                                                               │
+│   DataAgentDef     ModelAgentDef     AnalysisAgentDef        │
+│            每个 agent 只是一个 AgentDef 配置对象              │
+└───────────────────────────┬──────────────────────────────────┘
+                            │ AgentDef（唯一跨层接口）
+┌───────────────────────────▼──────────────────────────────────┐
+│                         Core Layer                            │
+│                                                               │
+│  Router → AgentLoop → Memory, ToolRegistry, SkillRegistry    │
+│  JobManager, EventBus, LLMClient                              │
+│                                                               │
+│  EventBus 订阅者：                                            │
+│  - TraceRecorder: 记录执行轨迹                                │
+│  - WsPublisher: WebSocket 推送                                │
+│  - SnapshotCreator: 自动快照                                  │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-#### 核心功能
-1. **存储记忆**：`store(content, metadata)` → 生成 embedding 并存储
-2. **检索记忆**：`retrieve(query, topK)` → 生成查询 embedding，计算相似度，返回最相关的 K 条
-3. **记忆类型**：`analysis` | `preference` | `feedback` | `insight`
+### 核心改动
 
-#### Embedding 方案
-使用 OpenAI 兼容的 `/v1/embeddings` API（中转站支持），调用方式：
+1. **重构 AgentLoop**
+   - 接受 CoreServices 注入
+   - 使用 MemoryManager 组装上下文
+   - 使用 SkillRegistry 解析工具
+   - 使用 EventBus 发布事件
+
+2. **创建 Core 初始化流程**
+   - 在 `app.ts` 的 `initializeApp()` 中调用 `initializeCoreServices`
+   - 注册内置订阅者（TraceRecorder、WsPublisher、SnapshotCreator）
+
+3. **渐进式引入 EventBus**
+   - 保留 routes 层的直接调用
+   - 同时发布事件到 EventBus（双写）
+   - 验证稳定后再移除直接调用
+
+4. **修改 routes/chat.ts**
+   - 调用新的 AgentLoop（带 CoreServices）
+   - 发布事件到 EventBus
+
+5. **添加 WebSocket 推送订阅**
+   - 创建 WsPublisher 订阅 EventBus
+   - 推送事件到客户端
+
+## 修改步骤
+
+### 步骤 1：重构 AgentLoop（完全重构）
+
+**文件**：`src/runtime/agent-loop.ts`
+
+**修改内容**：
+
+1. 修改函数签名，接受 `CoreServices` 参数：
+
 ```typescript
-const response = await fetch(`${baseUrl}/embeddings`, {
-  method: 'POST',
-  headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ input: text, model: 'text-embedding-3-small' })
-});
-```
+import type { CoreServices, AgentDef, AgentContext, AgentEvent, Message } from '../core/types.js';
 
-如果 embedding API 不可用，降级为 **关键词匹配**（TF-IDF 简化版）。
+export interface AgentLoopConfig {
+  agentDef: AgentDef;
+  services: CoreServices;
+  maxTurns?: number;
+}
 
-#### 记忆存储时机
-- 用户明确表示偏好时（如"我喜欢简洁的输出"）
-- 分析方案执行成功时（存储方案供后续参考）
-- 用户反馈时（如"这个结果不对"）
-
-### 3.2 前端 Agent 切换
-
-#### 方案 A：在 chat 请求中指定 agentId（推荐）
-修改 `/api/chat` 接受可选的 `agentId` 参数：
-```typescript
-// 前端请求
-POST /api/chat
-{
-  "sessionId": "xxx",
-  "message": "分析这份数据",
-  "agentId": "data-agent"  // 可选，不传则使用默认
+export async function* agentLoop(
+  messages: Message[],
+  context: AgentContext,
+  config: AgentLoopConfig
+): AsyncGenerator<AgentEvent> {
+  const { agentDef, services, maxTurns = 10 } = config;
+  
+  // 使用 services.memory 注入上下文
+  // 使用 services.skillRegistry 解析工具
+  // 使用 services.eventBus 发布事件
+  // ...
 }
 ```
 
-#### 前端修改
-```javascript
-let currentAgent = 'data-agent';  // 当前 Agent ID
+2. 实现完整的执行流程：
+   - 调用 `beforeTurn` hook
+   - 使用 MemoryManager 组装上下文
+   - 使用 SkillRegistry 解析工具
+   - 调用 LLM（流式）
+   - 执行工具调用
+   - 发布事件到 EventBus
+   - 更新 Job 状态
 
-function switchAgent(agentId) {
-  currentAgent = agentId;
-  // 更新 UI
-  document.querySelectorAll('.nav-item').forEach(...);
-}
+### 步骤 2：创建 TraceRecorder 订阅者
 
-async function sendMessage() {
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    body: JSON.stringify({
-      sessionId,
-      message: text,
-      agentId: currentAgent  // 传递当前 Agent
-    })
+**新文件**：`src/core/subscribers/trace-recorder.ts`
+
+**功能**：
+- 订阅 `tool_execution_start`、`tool_result` 事件
+- 自动调用 `jobManager.appendTrace()`
+
+```typescript
+import type { EventBus, AgentEvent, JobManager } from '../types.js';
+
+export function registerTraceRecorder(eventBus: EventBus, jobManager: JobManager): void {
+  eventBus.subscribe('tool_execution_start', async (event: AgentEvent) => {
+    if (event.jobId && event.data) {
+      await jobManager.appendTrace(event.jobId, {
+        type: 'tool_call',
+        data: event.data as Record<string, unknown>,
+      });
+    }
+  });
+
+  eventBus.subscribe('tool_result', async (event: AgentEvent) => {
+    if (event.jobId && event.data) {
+      await jobManager.appendTrace(event.jobId, {
+        type: 'tool_result',
+        data: event.data as Record<string, unknown>,
+      });
+    }
   });
 }
 ```
 
-#### 后端修改
+### 步骤 3：创建 WsPublisher 订阅者
+
+**新文件**：`src/core/subscribers/ws-publisher.ts`
+
+**功能**：
+- 订阅所有 Agent 事件
+- 推送到 WebSocket 客户端
+
 ```typescript
-// chat.ts
-const agentId = body.agentId || 'data-agent';
-const agent = agentId === 'data-agent' 
-  ? agentRegistry.getDefault()
-  : agentRegistry.get(agentId) || agentRegistry.getDefault();
+import type { EventBus, AgentEvent } from '../types.js';
+import { emitSessionEvent } from '../../ws/server.js';
+
+export function registerWsPublisher(eventBus: EventBus): void {
+  eventBus.subscribe('*', (event: AgentEvent) => {
+    if (event.sessionId) {
+      emitSessionEvent(event.sessionId, {
+        type: event.type,
+        payload: event.data,
+        timestamp: Date.parse(event.timestamp),
+      });
+    }
+  });
+}
 ```
 
-#### Model/Analysis Agent 占位
-暂时显示"功能开发中"提示：
-```typescript
-// model-agent.ts
-export const ModelAgentDef: AgentDef = {
-  id: 'model-agent',
-  name: 'Model Agent',
-  description: '负责机器学习建模和模型训练...',
-  systemPrompt: '你是模型训练助手。注意：此功能正在开发中，请告知用户暂时无法使用。',
-  skills: [],
-  routes: [
-    { match: { pattern: /训练|模型|预测|机器学习/i }, priority: 10 },
-  ],
-};
+### 步骤 4：完善 Core 初始化
 
-// analysis-agent.ts
-export const AnalysisAgentDef: AgentDef = {
-  id: 'analysis-agent',
-  name: 'Analysis Agent',
-  description: '负责统计分析和可视化...',
-  systemPrompt: '你是数据分析助手。注意：此功能正在开发中，请告知用户暂时无法使用。',
-  skills: [],
-  routes: [
-    { match: { pattern: /分析|可视化|图表|统计/i }, priority: 10 },
-  ],
-};
+**文件**：`src/core/index.ts`
+
+**修改内容**：
+
+在 `initializeCoreServices` 中注册订阅者：
+
+```typescript
+import { registerTraceRecorder } from './subscribers/trace-recorder.js';
+import { registerWsPublisher } from './subscribers/ws-publisher.js';
+
+export async function initializeCoreServices(services: ReturnType<typeof createCoreServices>): Promise<void> {
+  const { skillRegistry, eventBus, jobManager, memory } = services;
+
+  // 初始化 Memory
+  await memory.initialize();
+
+  // 注册内置 Skills
+  const { csvSkill } = await import('../skills/csv-skill.js');
+  const { bioinfoSkill } = await import('../skills/bioinfo-skill.js');
+  skillRegistry.register(csvSkill);
+  skillRegistry.register(bioinfoSkill);
+
+  // 注册订阅者
+  registerTraceRecorder(eventBus, jobManager);
+  registerWsPublisher(eventBus);
+
+  // 订阅快照触发事件
+  const eventToTrigger: Record<string, string> = {
+    'requirement.saved': 'requirement_saved',
+    'analysis.before_execute': 'pre_execute',
+    'analysis.after_execute': 'post_execute',
+    'file.uploaded': 'dataset_changed',
+  };
+
+  for (const [event, trigger] of Object.entries(eventToTrigger)) {
+    eventBus.subscribe(event as any, async (e: any) => {
+      if (e.jobId) {
+        await jobManager.createSnapshot(e.jobId, trigger as any);
+      }
+    });
+  }
+}
 ```
 
-## 四、修改步骤
+### 步骤 5：修改 app.ts 初始化流程
 
-### Step 1: 实现 LongTermMemory（核心）
+**文件**：`src/app.ts`
 
-#### 1.1 更新 `src/core/memory/long-term-memory.ts`
+**修改内容**：
+
 ```typescript
-// 新增：
-// - MemoryStore 类：管理 JSON 文件存储
-// - EmbeddingClient 类：调用 embedding API
-// - LongTermMemory 类增强：
-//   - store(): 存储记忆 + 生成 embedding
-//   - retrieve(): 检索相关记忆
-//   - cosineSimilarity(): 计算余弦相似度
-//   - fallbackKeywordMatch(): 降级关键词匹配
-```
+import { createCoreServices, initializeCoreServices } from './core/index.js';
 
-#### 1.2 更新 `src/config.ts`
-```typescript
-// 新增 embedding 配置
-embedding: z.object({
-  enabled: z.boolean().default(true),
-  model: z.string().default('text-embedding-3-small'),
-}).optional(),
-```
+let coreServices: ReturnType<typeof createCoreServices> | null = null;
 
-#### 1.3 创建存储目录
-```typescript
-// 在 server.ts 启动时
-import fs from 'node:fs/promises';
-await fs.mkdir(path.join(config.data.dir, '.memory', 'embeddings'), { recursive: true });
-```
+export async function initializeApp(): Promise<Hono> {
+  await ensureDataDir();
+  await initializeSkills();
 
-### Step 2: 实现 Agent 切换
+  // 初始化 Core 服务
+  coreServices = createCoreServices();
+  await initializeCoreServices(coreServices);
 
-#### 2.1 创建 `src/agents/model-agent.ts`
-- 实现 ModelAgentDef（占位，提示功能开发中）
-
-#### 2.2 创建 `src/agents/analysis-agent.ts`
-- 实现 AnalysisAgentDef（占位，提示功能开发中）
-
-#### 2.3 更新 `src/agents/index.ts`
-```typescript
-import { ModelAgentDef } from './model-agent.js';
-import { AnalysisAgentDef } from './analysis-agent.js';
-
-agentRegistry.register(DataAgentDef);
-agentRegistry.register(ModelAgentDef);
-agentRegistry.register(AnalysisAgentDef);
-```
-
-#### 2.4 更新 `src/routes/chat.ts`
-```typescript
-// 在 chat handler 中
-const requestedAgentId = body.agentId;
-const agent = requestedAgentId 
-  ? agentRegistry.get(requestedAgentId) || agentRegistry.getDefault()
-  : agentRegistry.getDefault();
-```
-
-#### 2.5 更新 `web/index.html`
-```javascript
-// 修改 switchAgent 函数
-let currentAgent = 'data-agent';
-
-function switchAgent(agentKey) {
-  const agentMap = { 'data': 'data-agent', 'model': 'model-agent', 'analysis': 'analysis-agent' };
-  currentAgent = agentMap[agentKey] || 'data-agent';
-  // 更新 UI...
+  return app;
 }
 
-// 修改 sendMessage 函数
-body: JSON.stringify({ sessionId, message: text, agentId: currentAgent }),
+export function getCoreServices() {
+  return coreServices;
+}
 ```
 
-### Step 3: 集成长期记忆到 AgentLoop
+### 步骤 6：修改 routes/chat.ts（渐进式）
 
-#### 3.1 更新 `src/runtime/agent-loop.ts`
+**文件**：`src/routes/chat.ts`
+
+**修改内容**：
+
+1. 保留现有的 `DataAgentProcessor` 逻辑
+2. 添加 EventBus 事件发布
+3. 后续可以切换到新的 AgentLoop
+
 ```typescript
-// 在消息处理后，检测是否需要存储长期记忆
-// 例如：用户反馈、偏好、成功的分析方案
+import { getCoreServices } from '../app.js';
+import { createAgentEvent } from '../core/types.js';
+
+chatRouter.post('/chat', async (c) => {
+  // ... 现有逻辑 ...
+
+  const coreServices = getCoreServices();
+  
+  // 执行需求前发布事件
+  if (isExecuteIntent && coreServices) {
+    coreServices.eventBus.publish(
+      createAgentEvent('analysis.before_execute', { message }, jobId, sessionId)
+    );
+  }
+
+  // ... 现有的处理逻辑 ...
+
+  // 执行需求后发布事件
+  if (isExecuteIntent && coreServices) {
+    coreServices.eventBus.publish(
+      createAgentEvent('analysis.after_execute', { response }, jobId, sessionId)
+    );
+  }
+
+  // ... 返回响应 ...
+});
 ```
 
-#### 3.2 更新 `src/core/memory/index.ts`
+### 步骤 7：修改 routes/requirement.ts（渐进式）
+
+**文件**：`src/routes/requirement.ts`
+
+**修改内容**：
+
 ```typescript
-// 确保 LongTermMemory 正确初始化并传递
+import { getCoreServices } from '../app.js';
+import { createAgentEvent } from '../core/types.js';
+
+// POST /requirement/:sessionId
+requirementRouter.post('/requirement/:sessionId', async (c) => {
+  // ... 现有的保存逻辑 ...
+
+  const savedPath = await saveRequirementDocument(doc);
+
+  // 保留直接调用（渐进式）
+  if (doc.jobId) {
+    try {
+      await createSnapshot(doc.jobId, 'requirement_saved');
+    } catch (error) {
+      console.error('Failed to create snapshot:', error);
+    }
+  }
+
+  // 同时发布事件到 EventBus
+  const coreServices = getCoreServices();
+  if (coreServices && doc.jobId) {
+    coreServices.eventBus.publish(
+      createAgentEvent('requirement.saved', { document: doc }, doc.jobId, sessionId)
+    );
+  }
+
+  // ... 返回响应 ...
+});
 ```
 
-## 五、测试验证
+### 步骤 8：修改 routes/upload.ts（添加事件发布）
 
-修改完成后，**必须**进行以下测试：
+**文件**：`src/routes/upload.ts`
+
+**修改内容**：
+
+```typescript
+import { getCoreServices } from '../app.js';
+import { createAgentEvent } from '../core/types.js';
+
+// 文件上传成功后
+if (coreServices && jobId) {
+  coreServices.eventBus.publish(
+    createAgentEvent('file.uploaded', { filename, path: savedPath }, jobId, sessionId)
+  );
+}
+```
+
+## 验收标准
 
 ### 功能测试
 
-1. **LongTermMemory 存储**
-   - [ ] 启动服务后，发送消息产生偏好/反馈
-   - [ ] 检查 `data/.memory/index.json` 是否有记录
-   - [ ] 检查 `data/.memory/embeddings/` 是否有向量文件
+1. **AgentLoop 集成测试**
+   - [ ] 启动服务，确认 Core 服务初始化成功
+   - [ ] 发送消息，检查 MemoryManager 是否正常工作
+   - [ ] 检查 SkillRegistry 是否正确解析工具
 
-2. **LongTermMemory 检索**
-   - [ ] 发送相似查询，检查是否返回相关记忆
-   - [ ] 检查日志是否有 `[LongTermMemory]` 相关输出
-   - [ ] 测试 embedding API 不可用时的降级
+2. **EventBus 事件流测试**
+   - [ ] 上传文件，检查 `file.uploaded` 事件是否发布
+   - [ ] 保存需求文档，检查 `requirement.saved` 事件是否发布
+   - [ ] 执行分析，检查 `analysis.before_execute` 和 `analysis.after_execute` 事件
 
-3. **Agent 切换**
-   - [ ] 点击"数据" Tab，发送消息，检查响应来自 data-agent
-   - [ ] 点击"模型" Tab，发送消息，检查响应提示"功能开发中"
-   - [ ] 点击"分析" Tab，发送消息，检查响应提示"功能开发中"
+3. **订阅者功能测试**
+   - [ ] TraceRecorder：检查 traces 是否自动记录到 job.json
+   - [ ] WsPublisher：检查 WebSocket 客户端是否收到事件推送
+   - [ ] SnapshotCreator：检查快照是否在正确时机创建
+
+4. **渐进式双写验证**
+   - [ ] 快照创建：直接调用 + EventBus 订阅者都会执行
+   - [ ] 轨迹记录：手动调用 + EventBus 订阅者都会执行
+   - [ ] 确认没有重复或冲突
 
 ### 边界测试
 
-- [ ] LongTermMemory 在 `enabled: false` 时不工作
-- [ ] 切换到不存在的 agent 时回退到默认
-- [ ] embedding API 超时或失败时降级到关键词匹配
-- [ ] `.memory` 目录不存在时自动创建
+1. **EventBus 异常处理**
+   - [ ] 订阅者抛出异常时，不影响主流程
+   - [ ] 检查日志是否记录异常
+
+2. **WebSocket 断开连接**
+   - [ ] 客户端断开后，EventBus 推送不报错
+   - [ ] 新客户端连接后，能正常接收事件
+
+3. **并发请求**
+   - [ ] 多个并发请求，EventBus 正确路由到对应 session
+   - [ ] 快照创建不冲突
 
 ### 回归测试
 
-- [ ] 原有 data-agent 功能正常（上传、探索、需求讨论）
-- [ ] 快照功能正常
-- [ ] 文件树浏览正常
-- [ ] 控制台无报错
+1. **现有功能不受影响**
+   - [ ] 上传文件功能正常
+   - [ ] 需求文档编辑功能正常
+   - [ ] 执行分析功能正常
+   - [ ] 快照功能正常
 
-## 六、收尾工作
+2. **控制台无报错**
+   - [ ] 启动服务时无错误日志
+   - [ ] 请求处理时无未捕获异常
+
+## 测试验证
+
+修改完成后，**必须**进行以下测试：
+
+### 1. 功能测试：
+
+- [ ] 启动服务：`pnpm dev`
+- [ ] 访问前端：`http://localhost:3000/`
+- [ ] 上传一个 CSV 文件
+- [ ] 检查控制台日志：应该看到 `[Core] Snapshot created for job xxx on file.uploaded`
+- [ ] 检查 job.json：应该有新的 trace 记录
+- [ ] 打开浏览器开发者工具 → Network → WS：应该看到 WebSocket 连接
+- [ ] 发送消息：检查 WebSocket 是否收到事件推送
+
+### 2. 边界测试：
+
+- [ ] 上传不存在的文件路径（应该优雅处理）
+- [ ] 保存空的需求文档（应该不创建快照）
+- [ ] 并发发送多条消息（EventBus 应该正确路由）
+
+### 3. 回归测试：
+
+- [ ] 测试完整的数据分析流程
+- [ ] 测试需求文档编辑和执行
+- [ ] 测试快照创建和回退
+
+**测试方法**：
+- 启动服务：`pnpm dev`
+- 打开浏览器：`http://localhost:3000/`
+- 执行上述测试步骤
+- 如发现问题，记录到 debug.md
+
+## 收尾工作
 
 - [ ] 修改相关代码文件
 - [ ] 执行测试验证（必须）
-- [ ] 更新 README.md：
-  - 添加 LongTermMemory 说明
-  - 添加 Agent 切换说明
-  - 更新 API 端点列表（chat 接受 agentId）
-- [ ] 提交 git commit，message: `feat: implement LongTermMemory and agent switching`
+- [ ] 更新 README.md 说明 Core 服务初始化流程
+- [ ] 提交 git commit，message 格式：`refactor: integrate CoreServices into AgentLoop and add EventBus subscribers`
 - [ ] push 到远程仓库
+
+## 后续优化（可选）
+
+完成本次重构后，可以进一步优化：
+
+1. **移除直接调用**
+   - 验证 EventBus 稳定后，移除 routes 层的直接调用
+   - 只保留事件发布
+
+2. **添加更多订阅者**
+   - 日志记录器
+   - 性能监控器
+   - 审计追踪器
+
+3. **完善 AgentLoop**
+   - 完全迁移 DataAgentProcessor 的逻辑
+   - 使用声明式配置 + hooks
+
+4. **添加单元测试**
+   - EventBus 订阅者测试
+   - AgentLoop 集成测试

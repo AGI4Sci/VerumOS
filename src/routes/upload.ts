@@ -16,6 +16,8 @@ import {
 } from '../job/index.js';
 import type { Job } from '../job/types.js';
 import { emitSessionEvent } from '../ws/server.js';
+import { getCoreServices } from '../app.js';
+import { createAgentEvent } from '../core/types.js';
 
 const uploadRouter = new Hono();
 
@@ -132,6 +134,18 @@ uploadRouter.post('/upload', async (c) => {
       type: 'tool_result',
       data: { dataset: (response.result as { dataset?: unknown })?.dataset },
     });
+
+    // 7. 发布文件上传事件到 EventBus（渐进式）
+    const coreServices = getCoreServices();
+    if (coreServices) {
+      coreServices.eventBus.publish(
+        createAgentEvent('file.uploaded', 
+          { filename: file.name, path: savedPath, size: file.size }, 
+          jobId, 
+          context.sessionId
+        )
+      );
+    }
 
     emitSessionEvent(context.sessionId, {
       type: 'dataset.registered',

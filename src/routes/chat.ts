@@ -12,6 +12,8 @@ import {
 import type { Job } from '../job/types.js';
 import { emitSessionEvent } from '../ws/server.js';
 import { createSnapshot } from '../job/snapshot-manager.js';
+import { getCoreServices } from '../app.js';
+import { createAgentEvent } from '../core/types.js';
 
 const chatRouter = new Hono();
 
@@ -119,12 +121,21 @@ chatRouter.post('/chat', async (c) => {
                              message.includes('执行分析方案') ||
                              message.includes('开始执行');
 
-    // 执行需求前创建快照
+    // 执行需求前创建快照 + 发布事件
     if (isExecuteIntent) {
       try {
+        // 直接调用（渐进式）
         await createSnapshot(jobId, 'pre_execute');
       } catch (error) {
         console.error('Failed to create pre-execute snapshot:', error);
+      }
+
+      // 发布事件到 EventBus（渐进式）
+      const coreServices = getCoreServices();
+      if (coreServices) {
+        coreServices.eventBus.publish(
+          createAgentEvent('analysis.before_execute', { message }, jobId, context.sessionId)
+        );
       }
     }
 
@@ -173,12 +184,21 @@ chatRouter.post('/chat', async (c) => {
       },
     });
 
-    // 执行需求后创建快照
+    // 执行需求后创建快照 + 发布事件
     if (isExecuteIntent) {
       try {
+        // 直接调用（渐进式）
         await createSnapshot(jobId, 'post_execute');
       } catch (error) {
         console.error('Failed to create post-execute snapshot:', error);
+      }
+
+      // 发布事件到 EventBus（渐进式）
+      const coreServices = getCoreServices();
+      if (coreServices) {
+        coreServices.eventBus.publish(
+          createAgentEvent('analysis.after_execute', { response }, jobId, context.sessionId)
+        );
       }
     }
 

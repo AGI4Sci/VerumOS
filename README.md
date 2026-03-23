@@ -418,10 +418,19 @@ const dataAgentConfig = {
 - `initializeCoreServices()` 注册内置 Skills 和事件订阅
 - 快照自动触发：通过 EventBus 订阅实现
 
+#### 9. AgentLoop 集成与 EventBus 订阅者
+- 重构 `agentLoop` 接受 CoreServices 注入
+- 使用 MemoryManager 组装上下文、SkillRegistry 解析工具
+- 新增 `src/core/subscribers/` 目录：
+  - **TraceRecorder**：订阅 tool 事件，自动记录执行轨迹
+  - **WsPublisher**：订阅所有事件，推送到 WebSocket 客户端
+- 渐进式引入 EventBus：
+  - routes 层保留直接调用 + 发布事件（双写）
+  - 验证稳定后移除直接调用
+- 在 `app.ts` 初始化时调用 `initializeCoreServices()`
+
 ### 待完成（后续 Phase）
 
-- **AgentLoop 集成**：将 Core 服务注入 AgentLoop
-- **WebSocket 推送**：通过 EventBus 订阅推送到客户端
 - **LongTermMemory**：实现向量检索（Phase 2）
 
 ### 架构设计原则

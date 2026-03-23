@@ -9,6 +9,8 @@ import {
   generateToolChain,
 } from '../agents/requirement-doc.js';
 import { createSnapshot } from '../job/snapshot-manager.js';
+import { getCoreServices } from '../app.js';
+import { createAgentEvent } from '../core/types.js';
 
 const requirementRouter = new Hono();
 
@@ -64,12 +66,21 @@ requirementRouter.post('/requirement/:sessionId', async (c) => {
 
   const savedPath = await saveRequirementDocument(doc);
 
-  // 创建快照
+  // 创建快照（渐进式：保留直接调用 + EventBus 事件发布）
   if (doc.jobId) {
     try {
+      // 直接调用（渐进式）
       await createSnapshot(doc.jobId, 'requirement_saved');
     } catch (error) {
       console.error('Failed to create snapshot:', error);
+    }
+
+    // 发布事件到 EventBus（渐进式）
+    const coreServices = getCoreServices();
+    if (coreServices) {
+      coreServices.eventBus.publish(
+        createAgentEvent('requirement.saved', { document: doc }, doc.jobId, sessionId)
+      );
     }
   }
 

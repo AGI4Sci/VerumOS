@@ -4,7 +4,11 @@
 
 import OpenAI from 'openai';
 import type { ConversationContext, Intent } from '../agents/types.js';
-import type { AgentMessage, AgentTool, ToolCall } from './agent-loop.js';
+import type { Message, ToolCall, ToolDef } from '../core/types.js';
+
+// 向后兼容的类型别名
+export type AgentMessage = Message;
+export type AgentTool = ToolDef;
 
 export interface LLMClientConfig {
   apiKey: string;

@@ -12,18 +12,16 @@ export {
   createEmptyContext,
   appendMessage,
 } from './conversation-state.js';
-export {
-  agentLoop,
-  createAgentContext,
-  pushMessage,
-  pushSteering,
-  type AgentEventType,
-  type AgentEvent,
-  type AgentTool,
-  type ToolCall,
-  type ToolResult,
-  type AgentConfig,
-  type AgentMessage,
-  type AgentLoopConfig,
-  type AgentContext,
-} from './agent-loop.js';
+
+// AgentLoop 相关类型从 core/types.ts 导入
+export type {
+  AgentEventType,
+  AgentEvent,
+  ToolCall,
+  ToolResult,
+  Message,
+  AgentContext,
+} from '../core/types.js';
+
+// 新版 AgentLoop（带 CoreServices 注入）
+export { agentLoop, type AgentLoopConfig } from './agent-loop.js';

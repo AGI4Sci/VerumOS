@@ -13,6 +13,7 @@ import { LLMClient } from '../runtime/llm-client.js';
 import { config } from '../config.js';
 import * as jobManager from '../job/manager.js';
 import * as snapshotManager from '../job/snapshot-manager.js';
+import { registerTraceRecorder, registerWsPublisher } from './subscribers/index.js';
 
 /**
  * Core 服务容器配置
@@ -41,8 +42,10 @@ export function createCoreServices(coreConfig?: CoreServicesConfig) {
   });
   const eventBus = createEventBus();
 
-  // Job Manager 封装
-  const jobManagerApi = {
+  // Job Manager 封装（直接使用 job/manager 的函数）
+  // 注意：这里使用 any 来避免类型系统的复杂性
+  // 实际类型由 job/manager.ts 保证
+  const jobManagerApi: any = {
     create: jobManager.createJob,
     get: jobManager.getJob,
     update: jobManager.updateJob,
@@ -78,6 +81,10 @@ export async function initializeCoreServices(services: ReturnType<typeof createC
   skillRegistry.register(csvSkill);
   skillRegistry.register(bioinfoSkill);
 
+  // 注册订阅者
+  registerTraceRecorder(eventBus, jobManager);
+  registerWsPublisher(eventBus);
+
   // 订阅快照触发事件（映射到 SnapshotTrigger 类型）
   const eventToTrigger: Record<string, string> = {
     'requirement.saved': 'requirement_saved',
@@ -98,6 +105,8 @@ export async function initializeCoreServices(services: ReturnType<typeof createC
       }
     });
   }
+
+  console.log('[Core] Core services initialized successfully');
 }
 
 // 导出类型和模块
