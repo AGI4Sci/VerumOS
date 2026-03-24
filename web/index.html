@@ -3492,187 +3492,308 @@ const SCP_TOOLS = [
   },
   {
     id: 'DrugSDA-Model',
-    name: 'DrugSDA-Model',
-    provider: '北京大学',
+    name: '❌ DrugSDA-Model',
+    provider: '北京大学 (SCP)',
     toolCount: 1700,
-    type: '模型服务',
+    type: 'SCP/模型服务',
     category: '药物研发',
-    description: '分子对接、结合口袋识别、亲和力预测、ADMET评估、蛋白质结构预测、疾病逆转状态预测',
-    usage: '使用方法：\n1. 准备配体分子（小分子药物）和受体蛋白（PDB 格式）\n2. 选择预测任务（对接、ADMET、亲和力等）\n3. 上传或指定分子文件\n4. 获取预测结果',
-    tags: ['分子对接', 'ADMET', '亲和力预测'],
-    examples: ['预测药物与靶蛋白的结合模式', '评估药物的 ADMET 性质', '预测蛋白质-配体亲和力']
+    description: '⚠️ API密钥过期 - 分子对接、ADMET评估等AI模型',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['分子对接', 'ADMET', '不可用'],
+    available: false
   },
   {
     id: 'Origene-FDADrug',
-    name: 'Origene-FDADrug',
-    provider: '临港实验室',
+    name: '❌ Origene-FDADrug',
+    provider: '临港实验室 (SCP)',
     toolCount: 57,
-    type: '数据库',
+    type: 'SCP/数据库',
     category: '药物研发',
-    description: 'FDA 药品监管与上市信息数据库检索',
-    usage: '使用方法：\n1. 输入药品名称、活性成分或企业名称\n2. 选择检索类型（批准信息、标签、审批历史等）\n3. 查看药品详细信息',
-    tags: ['FDA', '药品监管', '上市信息'],
-    examples: ['查询某药品的 FDA 批准信息', '检索某企业的所有上市药品', '查看药品标签和说明书']
+    description: '⚠️ API密钥过期 - FDA 药品监管与上市信息数据库',
+    usage: '此工具暂时不可用，可使用 FDA API 替代',
+    tags: ['FDA', '药品监管', '不可用'],
+    available: false
   },
   
   // 蛋白质工程
   {
     id: 'VenusFactory',
-    name: 'VenusFactory',
-    provider: '上海交通大学',
+    name: '❌ VenusFactory',
+    provider: '上海交通大学 (SCP)',
     toolCount: 1500,
-    type: '数据库/计算工具/模型服务',
+    type: 'SCP/AI模型',
     category: '蛋白质工程',
-    description: '蛋白质工程 AI 全流程工具，支持蛋白质突变预测、功能预测、氨基酸点位预测、模型训练与部署',
-    usage: '使用方法：\n1. 输入蛋白质序列（FASTA 格式）\n2. 选择预测任务（突变效应、功能位点、稳定性等）\n3. 设置突变位点或全序列扫描\n4. 查看预测结果和可视化',
-    tags: ['蛋白质设计', '突变预测', '功能预测'],
-    examples: ['预测单点突变对蛋白质稳定性的影响', '识别蛋白质的功能关键位点', '设计优化后的蛋白质序列']
+    description: '⚠️ API密钥过期 - 蛋白质工程 AI 全流程工具',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['蛋白质设计', 'AI模型', '不可用'],
+    available: false
   },
   {
     id: 'BioInfo-Tools',
-    name: 'BioInfo-Tools',
-    provider: '上海人工智能实验室',
+    name: '❌ BioInfo-Tools',
+    provider: '上海AI实验室 (SCP)',
     toolCount: 55,
-    type: '数据库/计算工具/模型服务',
+    type: 'SCP/计算工具',
     category: '蛋白质工程',
-    description: '蛋白质序列分析工具，集成 InterProScan 和 BLAST，支持结构域识别、GO 注释和序列相似性搜索',
-    usage: '使用方法：\n1. 输入蛋白质序列（FASTA 格式）\n2. 选择分析工具（InterProScan、BLAST 等）\n3. 设置 E-value 阈值和数据库\n4. 获取注释结果和结构域信息',
-    tags: ['序列分析', '结构域识别', 'GO注释'],
-    examples: ['注释蛋白质的功能结构域', '搜索相似序列', '预测蛋白质的 GO 功能术语']
+    description: '⚠️ API密钥过期 - 蛋白质序列分析工具',
+    usage: '此工具暂时不可用，可使用 UniProt/BLAST API 替代',
+    tags: ['序列分析', 'BLAST', '不可用'],
+    available: false
   },
   {
     id: 'Origene-UniProt',
-    name: 'Origene-UniProt',
-    provider: '临港实验室',
+    name: '❌ Origene-UniProt',
+    provider: '临港实验室 (SCP)',
     toolCount: 121,
-    type: '数据库',
+    type: 'SCP/数据库',
     category: '蛋白质工程',
-    description: '全球权威的蛋白质序列与功能数据库 UniProt 检索',
-    usage: '使用方法：\n1. 输入蛋白质名称、基因名或 UniProt ID\n2. 选择检索范围（SwissProt/TrEMBL）\n3. 查看序列、功能注释、亚细胞定位等信息',
-    tags: ['UniProt', '蛋白质数据库', '功能注释'],
-    examples: ['查询人类 TP53 蛋白的功能信息', '获取蛋白质的序列和结构域', '检索蛋白质相关的疾病变异']
+    description: '⚠️ API密钥过期 - UniProt 数据库检索',
+    usage: '此工具暂时不可用，可使用 UniProt API 替代',
+    tags: ['UniProt', '蛋白质数据库', '不可用'],
+    available: false
   },
   {
     id: 'Origene-STRING',
-    name: 'Origene-STRING',
-    provider: '临港实验室',
+    name: '❌ Origene-STRING',
+    provider: '临港实验室 (SCP)',
     toolCount: 6,
-    type: '数据库',
+    type: 'SCP/数据库',
     category: '蛋白质工程',
-    description: '蛋白质相互作用与功能注释数据库 STRING 检索',
-    usage: '使用方法：\n1. 输入蛋白质名称或 ID\n2. 设置相互作用分数阈值\n3. 查看相互作用网络和功能富集结果',
-    tags: ['PPI', '相互作用网络', '功能富集'],
-    examples: ['查询某蛋白质的相互作用伙伴', '构建蛋白质相互作用网络', '分析功能富集通路']
+    description: '⚠️ API密钥过期 - STRING 蛋白质相互作用数据库',
+    usage: '此工具暂时不可用，可使用 STRING API 替代',
+    tags: ['PPI', '相互作用网络', '不可用'],
+    available: false
   },
   
   // 基因组学
   {
     id: 'Origene-Ensembl',
-    name: 'Origene-Ensembl',
-    provider: '临港实验室',
+    name: '❌ Origene-Ensembl',
+    provider: '临港实验室 (SCP)',
     toolCount: 14,
-    type: '数据库',
-    category: '基因组学',
-    description: '基因组注释与比较数据库 Ensembl 检索',
-    usage: '使用方法：\n1. 输入基因名、ID 或基因组位置\n2. 选择物种和版本\n3. 查看基因注释、转录本、变异等信息',
-    tags: ['基因组注释', '比较基因组', '基因信息'],
-    examples: ['查询某基因的基因组位置和结构', '比对不同物种的同源基因', '检索基因的变异信息']
+    type: 'SCP/数据库',
+    category: '基因组',
+    description: '⚠️ API密钥过期 - Ensembl 基因组注释数据库',
+    usage: '此工具暂时不可用，可使用 Ensembl API 替代',
+    tags: ['基因组注释', 'Ensembl', '不可用'],
+    available: false
   },
   {
     id: 'Origene-UCSC',
-    name: 'Origene-UCSC',
-    provider: '临港实验室',
+    name: '❌ Origene-UCSC',
+    provider: '临港实验室 (SCP)',
     toolCount: 12,
-    type: '数据库',
-    category: '基因组学',
-    description: '基因组注释与可视化数据库 UCSC 检索',
-    usage: '使用方法：\n1. 输入基因组位置或基因名\n2. 选择注释轨道（基因、调控元件、保守性等）\n3. 可视化查看基因组信息',
-    tags: ['基因组可视化', 'UCSC', '注释轨道'],
-    examples: ['可视化基因组的特定区域', '查看保守性分析结果', '检索调控元件信息']
+    type: 'SCP/数据库',
+    category: '基因组',
+    description: '⚠️ API密钥过期 - UCSC 基因组浏览器数据库',
+    usage: '此工具暂时不可用，可使用 UCSC API 替代',
+    tags: ['基因组可视化', 'UCSC', '不可用'],
+    available: false
   },
   {
     id: 'Origene-NCBI',
-    name: 'Origene-NCBI',
-    provider: '临港实验室',
+    name: '❌ Origene-NCBI',
+    provider: '临港实验室 (SCP)',
     toolCount: 9,
-    type: '数据库',
-    category: '基因组学',
-    description: '全球最大开放生物信息数据库 NCBI 检索',
-    usage: '使用方法：\n1. 选择数据库（Gene、Nucleotide、Protein 等）\n2. 输入检索词或 ID\n3. 获取详细信息和相关数据链接',
-    tags: ['NCBI', '文献检索', '序列数据库'],
-    examples: ['查询基因的详细信息和文献', '检索核酸或蛋白质序列', '搜索相关发表文章']
+    type: 'SCP/数据库',
+    category: '基因组',
+    description: '⚠️ API密钥过期 - NCBI 数据库检索',
+    usage: '此工具暂时不可用，可使用 NCBI API 替代',
+    tags: ['NCBI', '文献检索', '不可用'],
+    available: false
   },
   {
     id: 'Origene-TCGA',
-    name: 'Origene-TCGA',
-    provider: '临港实验室',
+    name: '❌ Origene-TCGA',
+    provider: '临港实验室 (SCP)',
     toolCount: 8,
-    type: '数据库',
-    category: '基因组学',
-    description: '国际权威癌症基因组图谱数据库 TCGA 检索',
-    usage: '使用方法：\n1. 选择癌症类型\n2. 输入基因名或样本 ID\n3. 查看表达、突变、生存分析等数据',
-    tags: ['TCGA', '癌症基因组', '表达谱'],
-    examples: ['查询某基因在不同癌症中的表达', '下载癌症样本的突变数据', '分析基因表达与生存的关系']
+    type: 'SCP/数据库',
+    category: '基因组',
+    description: '⚠️ API密钥过期 - TCGA 癌症基因组数据库',
+    usage: '此工具暂时不可用，可使用 TCGA GDC API 替代',
+    tags: ['TCGA', '癌症基因组', '不可用'],
+    available: false
   },
   
   // 疾病与靶点
   {
     id: 'Origene-OpenTargets',
-    name: 'Origene-OpenTargets',
-    provider: '临港实验室',
+    name: '❌ Origene-OpenTargets',
+    provider: '临港实验室 (SCP)',
     toolCount: 189,
-    type: '数据库',
+    type: 'SCP/数据库',
     category: '疾病与靶点',
-    description: '药品靶点发现与验证平台 OpenTargets 检索',
-    usage: '使用方法：\n1. 输入疾病名称或靶点基因\n2. 查看靶点-疾病关联证据\n3. 分析药物开发潜力和安全性',
-    tags: ['靶点发现', '疾病关联', '药物开发'],
-    examples: ['查询某疾病的潜在药物靶点', '评估靶点的可成药性', '查看靶点相关的药物信息']
+    description: '⚠️ API密钥过期 - OpenTargets 靶点发现平台',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['靶点发现', '疾病关联', '不可用'],
+    available: false
   },
   {
     id: 'Origene-Monarch',
-    name: 'Origene-Monarch',
-    provider: '临港实验室',
+    name: '❌ Origene-Monarch',
+    provider: '临港实验室 (SCP)',
     toolCount: 49,
-    type: '数据库',
+    type: 'SCP/数据库',
     category: '疾病与靶点',
-    description: '疾病-表型-基因关联知识库 Monarch Initiative 检索',
-    usage: '使用方法：\n1. 输入疾病、表型或基因名称\n2. 浏览关联网络\n3. 导出分析结果',
-    tags: ['疾病-基因关联', '表型分析', '知识图谱'],
-    examples: ['查询某疾病的关联基因', '分析基因型-表型关系', '检索疾病相关的动物模型']
+    description: '⚠️ API密钥过期 - Monarch 疾病-基因关联知识库',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['疾病-基因关联', '知识图谱', '不可用'],
+    available: false
   },
   
-  // 化学与分子
-  { id: 'Origene-ChEMBL', name: 'Origene-ChEMBL', provider: '临港实验室', toolCount: 47, type: '数据库', category: '化学与分子', description: '小分子药物与生物活性数据库 ChEMBL 检索' },
-  { id: 'Origene-PubChem', name: 'Origene-PubChem', provider: '临港实验室', toolCount: 306, type: '数据库', category: '化学与分子', description: '全球最大开放化学信息数据库 PubChem 检索' },
-  { id: 'Origene-KEGG', name: 'Origene-KEGG', provider: '临港实验室', toolCount: 10, type: '数据库', category: '化学与分子', description: '通路与功能注释数据库 KEGG 检索' },
+  // 化学与分子（SCP版本，已被公开API替代）
+  {
+    id: 'Origene-ChEMBL',
+    name: '❌ Origene-ChEMBL',
+    provider: '临港实验室 (SCP)',
+    toolCount: 47,
+    type: 'SCP/数据库',
+    category: '化学与分子',
+    description: '⚠️ API密钥过期 - ChEMBL 生物活性数据库',
+    usage: '此工具暂时不可用，可使用 ChEMBL API 替代',
+    tags: ['ChEMBL', '生物活性', '不可用'],
+    available: false
+  },
+  {
+    id: 'Origene-PubChem',
+    name: '❌ Origene-PubChem',
+    provider: '临港实验室 (SCP)',
+    toolCount: 306,
+    type: 'SCP/数据库',
+    category: '化学与分子',
+    description: '⚠️ API密钥过期 - PubChem 化学信息数据库',
+    usage: '此工具暂时不可用，可使用 PubChem API 替代',
+    tags: ['PubChem', '化学数据库', '不可用'],
+    available: false
+  },
+  {
+    id: 'Origene-KEGG',
+    name: '❌ Origene-KEGG',
+    provider: '临港实验室 (SCP)',
+    toolCount: 10,
+    type: 'SCP/数据库',
+    category: '化学与分子',
+    description: '⚠️ API密钥过期 - KEGG 通路数据库',
+    usage: '此工具暂时不可用，可使用 KEGG API 替代',
+    tags: ['KEGG', '代谢通路', '不可用'],
+    available: false
+  },
   
   // 化学计算
-  { id: 'SciToolAgent-Chem', name: 'SciToolAgent-Chem', provider: '浙江大学', toolCount: 505, type: '数据库/计算工具', category: '化学计算', description: '化学实验综合性工具库，支持化学结构格式互转、分子性质计算、化学反应预测与逆合成规划等' },
-  { id: 'ChemCalc', name: '化学与反应计算', provider: '上海人工智能实验室', toolCount: 276, type: '计算工具', category: '化学计算', description: '化学反应参数计算、物质量与溶液浓度分析、反应速率与平衡常数求解等' },
+  {
+    id: 'SciToolAgent-Chem',
+    name: '❌ SciToolAgent-Chem',
+    provider: '浙江大学 (SCP)',
+    toolCount: 505,
+    type: 'SCP/计算工具',
+    category: '化学计算',
+    description: '⚠️ API密钥过期 - 化学实验综合性工具库',
+    usage: '此工具暂时不可用，可使用 RDKit 等开源工具替代',
+    tags: ['化学计算', '逆合成', '不可用'],
+    available: false
+  },
+  {
+    id: 'ChemCalc',
+    name: '❌ 化学与反应计算',
+    provider: '上海AI实验室 (SCP)',
+    toolCount: 276,
+    type: 'SCP/计算工具',
+    category: '化学计算',
+    description: '⚠️ API密钥过期 - 化学反应参数计算工具',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['化学计算', '反应参数', '不可用'],
+    available: false
+  },
   
   // 湿实验操作
   {
     id: 'Thoth',
-    name: 'Thoth',
-    provider: '上海人工智能实验室',
+    name: '❌ Thoth',
+    provider: '上海AI实验室 (SCP)',
     toolCount: 1300,
-    type: '湿实验操作/模型服务',
+    type: 'SCP/实验自动化',
     category: '湿实验操作',
-    description: '湿实验智能编排系统，包含 Thoth-Plan（实验流程自动生成）和 Thoth-OP（原子操作执行引擎）',
-    usage: '使用方法：\n1. 描述实验目标（如"提取 DNA"）\n2. Thoth-Plan 自动生成实验流程\n3. Thoth-OP 执行原子操作并记录结果',
-    tags: ['实验编排', '自动化', '实验记录'],
-    examples: ['自动生成 PCR 实验流程', '规划蛋白质纯化步骤', '记录实验操作轨迹']
+    description: '⚠️ API密钥过期 - 湿实验智能编排系统',
+    usage: '此工具暂时不可用，需要实验室设备支持',
+    tags: ['实验编排', '自动化', '不可用'],
+    available: false
   },
   
   // 综合工具
-  { id: 'SciToolAgent-Bio', name: 'SciToolAgent-Bio', provider: '浙江大学', toolCount: 40, type: '数据库/计算工具', category: '综合工具', description: '蛋白质组学、基因组学工具库，支持蛋白质理化性质计算、DNA/RNA序列分析、结构预测、序列比对等' },
-  { id: 'SciGraph-Bio', name: 'SciGraph-Bio', provider: '上海人工智能实验室', toolCount: 56, type: '数据库', category: '综合工具', description: '生命科学知识查询服务，集成生物医学、蛋白质、药物、临床等领域知识图谱' },
-  { id: 'Origene-Search', name: 'Origene-Search', provider: '临港实验室', toolCount: 6, type: '文献检索/数据库', category: '综合工具', description: '集成 Tavily、Jina、ClinVar、GSEA、PubMed 等文献与数据库一键检索' },
+  {
+    id: 'SciToolAgent-Bio',
+    name: '❌ SciToolAgent-Bio',
+    provider: '浙江大学 (SCP)',
+    toolCount: 40,
+    type: 'SCP/计算工具',
+    category: '综合工具',
+    description: '⚠️ API密钥过期 - 蛋白质组学、基因组学工具库',
+    usage: '此工具暂时不可用，可使用 BioPython 等开源工具替代',
+    tags: ['生物信息', '蛋白质组学', '不可用'],
+    available: false
+  },
+  {
+    id: 'SciGraph-Bio',
+    name: '❌ SciGraph-Bio',
+    provider: '上海AI实验室 (SCP)',
+    toolCount: 56,
+    type: 'SCP/知识图谱',
+    category: '综合工具',
+    description: '⚠️ API密钥过期 - 生命科学知识图谱',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['知识图谱', '生物医学', '不可用'],
+    available: false
+  },
+  {
+    id: 'Origene-Search',
+    name: '❌ Origene-Search',
+    provider: '临港实验室 (SCP)',
+    toolCount: 6,
+    type: 'SCP/文献检索',
+    category: '综合工具',
+    description: '⚠️ API密钥过期 - 文献与数据库一键检索',
+    usage: '此工具暂时不可用，可使用 Europe PMC API 替代',
+    tags: ['文献检索', 'PubMed', '不可用'],
+    available: false
+  },
   
   // 通用工具
-  { id: 'SciGraph', name: 'SciGraph', provider: '上海人工智能实验室', toolCount: 4800, type: '数据库', category: '通用工具', description: '科学研究统一知识查询服务，集成化学、生物等多个学科领域知识图谱' },
-  { id: 'ToolUniverse', name: 'ToolUniverse', provider: '上海人工智能实验室', toolCount: 236, type: '文献检索/数据库', category: '通用工具', description: '标准化工具生态平台，整合生物医学数据库查询、科学计算、文献检索等领域的数百个工具' },
-  { id: 'DataStats', name: '数据处理与统计分析', provider: '上海人工智能实验室', toolCount: 320, type: '计算工具', category: '通用工具', description: '数据清洗、筛选、归一化、异常值检测、数据拟合与插值、误差评估、分布分析、相关性计算等' },
+  {
+    id: 'SciGraph',
+    name: '❌ SciGraph',
+    provider: '上海AI实验室 (SCP)',
+    toolCount: 4800,
+    type: 'SCP/知识图谱',
+    category: '通用工具',
+    description: '⚠️ API密钥过期 - 科学研究统一知识查询服务',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['知识图谱', '跨学科', '不可用'],
+    available: false
+  },
+  {
+    id: 'ToolUniverse',
+    name: '❌ ToolUniverse',
+    provider: '上海AI实验室 (SCP)',
+    toolCount: 236,
+    type: 'SCP/工具集成',
+    category: '通用工具',
+    description: '⚠️ API密钥过期 - 标准化工具生态平台',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['工具集成', '标准化', '不可用'],
+    available: false
+  },
+  {
+    id: 'DataStats',
+    name: '❌ 数据处理与统计分析',
+    provider: '上海AI实验室 (SCP)',
+    toolCount: 320,
+    type: 'SCP/计算工具',
+    category: '通用工具',
+    description: '⚠️ API密钥过期 - 数据处理与统计分析工具',
+    usage: '此工具暂时不可用，可使用 Python (pandas/numpy) 替代',
+    tags: ['数据分析', '统计计算', '不可用'],
+    available: false
+  },
 ];
 
 // 初始化工具池
@@ -3959,6 +4080,139 @@ function showToolDetail(toolId) {
 // 关闭工具详情
 function closeToolDetail() {
   const modal = document.getElementById('toolDetailModal');
+  if (modal) modal.remove();
+}
+
+// 显示工具使用示例
+function showToolExamples(toolId) {
+  const tool = allTools.find(t => t.id === toolId);
+  if (!tool) return;
+  
+  // 创建示例弹窗
+  const modal = document.createElement('div');
+  modal.className = 'tool-detail-modal';
+  modal.id = 'toolExamplesModal';
+  modal.onclick = (e) => {
+    if (e.target === modal) closeToolExamples();
+  };
+  
+  const examples = tool.examples || [];
+  const usage = tool.usage || '暂无使用说明';
+  
+  // 常用示例库
+  const commonExamples = {
+    'pubchem_search': [
+      { input: '查询阿司匹林的分子信息', output: '返回分子式 C9H8O4，分子量 180.16' },
+      { input: '查询 SMILES 为 CC(=O)Oc1ccccc1C(=O)O 的分子', output: '识别为阿司匹林' },
+      { input: '获取青霉素 G 的分子结构', output: '返回 PubChem CID 和结构图' },
+    ],
+    'uniprot_search': [
+      { input: '查询人类 TP53 蛋白的信息', output: '返回 UniProt ID: P04637，序列长度 393' },
+      { input: '获取 BRCA1 的蛋白质序列', output: '返回 FASTA 格式序列' },
+      { input: '查询胰岛素受体的功能注释', output: '返回 GO 功能术语' },
+    ],
+    'chembl_search': [
+      { input: '查询阿司匹林的生物活性数据', output: '返回 ChEMBL ID 和 IC50 数据' },
+      { input: '搜索 COX-1 靶点的活性化合物', output: '返回活性分子列表' },
+    ],
+    'ensembl_lookup': [
+      { input: '查询 TP53 基因的基因组注释', output: '返回位置: chr17:7661779-7687550' },
+      { input: '获取 BRCA1 的所有转录本', output: '返回转录本列表' },
+    ],
+    'ncbi_esearch': [
+      { input: '搜索 TP53 与癌症相关的文献', output: '返回 PubMed 文献列表' },
+      { input: '查询 BRCA1 基因的详细信息', output: '返回基因摘要' },
+    ],
+    'string_interaction': [
+      { input: '查询 TP53 的蛋白质相互作用网络', output: '返回相互作用蛋白列表' },
+      { input: '查询 TP53 和 BRCA1 的相互作用', output: '返回相互作用分数' },
+    ],
+  };
+  
+  const toolExamples = commonExamples[toolId] || [];
+  
+  modal.innerHTML = `
+    <div class="tool-detail-content">
+      <div class="tool-detail-header">
+        <h3 class="tool-detail-title">💡 ${escapeHtml(tool.name)} - 使用示例</h3>
+        <button class="tool-detail-close" onclick="closeToolExamples()">✕</button>
+      </div>
+      
+      ${toolExamples.length > 0 ? `
+        <div class="tool-detail-section">
+          <h4>快速使用示例</h4>
+          <p style="color: var(--text-dim); margin-bottom: 12px;">点击示例可直接复制到输入框</p>
+          ${toolExamples.map((ex, i) => `
+            <div class="example-card" style="background: var(--surface2); padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;" onclick="useExample('${escapeHtml(ex.input)}')">
+              <div style="font-weight: 500; color: var(--text); margin-bottom: 4px;">
+                📝 示例 ${i + 1}：
+              </div>
+              <div style="color: var(--accent); margin-bottom: 6px;">
+                "${escapeHtml(ex.input)}"
+              </div>
+              <div style="color: var(--text-dim); font-size: 12px;">
+                → ${escapeHtml(ex.output)}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      
+      ${examples.length > 0 ? `
+        <div class="tool-detail-section">
+          <h4>更多示例</h4>
+          <ul class="tool-detail-examples">
+            ${examples.map(ex => `<li>${escapeHtml(ex)}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+      
+      <div class="tool-detail-section">
+        <h4>使用方法</h4>
+        <pre class="tool-detail-usage">${escapeHtml(usage)}</pre>
+      </div>
+      
+      <div class="tool-detail-section" style="margin-top: 24px;">
+        <button class="agent-btn" onclick="startUsingTool('${tool.id}')" style="width: 100%;">
+          🚀 开始使用此工具
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+// 使用示例（复制到输入框）
+function useExample(exampleText) {
+  const input = document.getElementById('input');
+  input.value = exampleText;
+  input.focus();
+  closeToolExamples();
+  
+  // 滚动到输入框
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// 开始使用工具
+function startUsingTool(toolId) {
+  const tool = allTools.find(t => t.id === toolId);
+  if (!tool) return;
+  
+  closeToolExamples();
+  
+  // 如果工具未激活，先激活
+  if (!activeToolIds.has(toolId)) {
+    activeToolIds.add(toolId);
+    renderToolsList();
+  }
+  
+  addMessage('system', `✅ 已激活工具：${tool.name}\n\n您现在可以在输入框中输入查询内容，系统会自动调用此工具。`);
+}
+
+// 关闭工具示例
+function closeToolExamples() {
+  const modal = document.getElementById('toolExamplesModal');
   if (modal) modal.remove();
 }
 
