@@ -260,6 +260,49 @@ curl -X POST http://localhost:3000/api/upload \
 4. 点击"📋 查看详情"查看使用说明
 5. 勾选需要的工具并保存
 
+### 如何使用 SCP 工具
+
+1. **配置 API 密钥**：在 `.env` 文件中设置 `SCP_API_KEY`
+   ```bash
+   SCP_API_KEY=sk-35a787a0-98f2-4e39-94ae-416a43c38dc2
+   SCP_BASE_URL=https://scphub.intern-ai.org.cn
+   ```
+
+2. **启动服务**：`pnpm dev`
+
+3. **切换到 Analysis Agent**：点击顶部导航的"分析"标签
+
+4. **查看工具池**：右侧面板显示"工具池"标签
+
+5. **浏览和选择工具**：
+   - 使用分类过滤器筛选
+   - 使用搜索框查找特定工具
+   - 点击"📋 查看详情"查看使用说明
+   - 勾选需要的工具
+
+6. **激活工具**：点击"保存选择"按钮激活工具
+
+7. **使用工具**：
+   - **方式一**：在聊天中直接描述需求，系统会自动调用相应的 SCP 工具
+   - **方式二**：通过 API 直接调用
+     ```bash
+     curl -X POST http://localhost:3000/api/scp/invoke \
+       -H "Content-Type: application/json" \
+       -d '{
+         "tool_id": "DrugSDA-Tool",
+         "action": "format_convert",
+         "parameters": {
+           "input": "CCO",
+           "output_format": "sdf"
+         }
+       }'
+     ```
+
+8. **测试连接**：
+   ```bash
+   curl http://localhost:3000/api/scp/test
+   ```
+
 ## Data Agent 能力
 
 当前支持：
