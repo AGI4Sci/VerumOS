@@ -1,124 +1,134 @@
 /**
  * SCP Tools API Routes - SCP 工具 API 路由
+ * 
+ * 使用 MCP 协议调用 SCP Hub 工具
  */
 
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { config } from '../config.js';
 
 const app = new Hono();
 
 /**
- * 列出可用的 SCP 工具
+ * SCP 服务配置
+ */
+const SCP_SERVERS: Record<string, { id: number; name: string; description: string }> = {
+  'Origene-OpenTargets': { id: 15, name: 'Origene-OpenTargets', description: '靶点发现与验证' },
+  'Origene-ChEMBL': { id: 4, name: 'Origene-ChEMBL', description: '生物活性数据库' },
+  'Origene-UniProt': { id: 10, name: 'Origene-UniProt', description: 'UniProt 蛋白质数据库' },
+  'Origene-TCGA': { id: 11, name: 'Origene-TCGA', description: 'TCGA 癌症基因组数据' },
+  'Origene-KEGG': { id: 19, name: 'Origene-KEGG', description: '代谢通路数据库' },
+};
+
+/**
+ * 获取 MCP URL
+ */
+function getMCPUrl(serverId: number, serverName: string): string {
+  const baseUrl = config.scp.baseUrl || 'https://scphub.intern-ai.org.cn';
+  const url = `${baseUrl}/api/v1/mcp/${serverId}/${serverName}`;
+  console.log('[SCP] MCP URL:', url);
+  return url;
+}
+
+/**
+ * 调用 MCP 工具
+ */
+async function callMCPTool(url: string, method: string, params: any = {}): Promise<any> {
+  const apiKey = config.scp.apiKey;
+  
+  console.log('[SCP] Calling MCP:', method);
+  console.log('[SCP] API Key:', apiKey ? `${apiKey.slice(0, 10)}...` : 'NOT SET');
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'SCP-HUB-API-KEY': apiKey,
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: Date.now(),
+      method,
+      params,
+    }),
+  });
+
+  console.log('[SCP] Response status:', response.status);
+  
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('[SCP] Error response:', text);
+    throw new Error(`MCP ${method} failed (${response.status}): ${text}`);
+  }
+
+  const result = await response.json();
+  
+  if (result.error) {
+    throw new Error(`MCP error: ${result.error.message || JSON.stringify(result.error)}`);
+  }
+  
+  return result;
+}
+
+/**
+ * 列出可用的 SCP 服务
  */
 app.get('/', async (c) => {
-  const tools = [
-    {
-      id: 'DrugSDA-Tool',
-      name: 'DrugSDA-Tool',
-      category: 'drug_discovery',
-      provider: '北京大学',
-      toolCount: 28600,
-      type: '数据库/计算工具',
-      description: '药物分子筛选、设计与分析工具集',
-      usage: '使用方法：\n1. 输入分子结构（SMILES 格式或上传 SDF 文件）\n2. 选择分析类型（格式转换、相似度计算、分子对接等）\n3. 设置参数阈值\n4. 运行并查看结果',
-      tags: ['分子筛选', '药物设计', '格式转换'],
-    },
-    {
-      id: 'DrugSDA-Model',
-      name: 'DrugSDA-Model',
-      category: 'drug_discovery',
-      provider: '北京大学',
-      toolCount: 1700,
-      type: '模型服务',
-      description: '分子对接、结合口袋识别、亲和力预测、ADMET评估',
-      usage: '使用方法：\n1. 准备配体分子和受体蛋白\n2. 选择预测任务\n3. 上传或指定分子文件\n4. 获取预测结果',
-      tags: ['分子对接', 'ADMET', '亲和力预测'],
-    },
-    {
-      id: 'VenusFactory',
-      name: 'VenusFactory',
-      category: 'protein_engineering',
-      provider: '上海交通大学',
-      toolCount: 1500,
-      type: '数据库/计算工具/模型服务',
-      description: '蛋白质工程 AI 全流程工具',
-      usage: '使用方法：\n1. 输入蛋白质序列（FASTA 格式）\n2. 选择预测任务\n3. 设置突变位点或全序列扫描\n4. 查看预测结果和可视化',
-      tags: ['蛋白质设计', '突变预测', '功能预测'],
-    },
-    {
-      id: 'BioInfo-Tools',
-      name: 'BioInfo-Tools',
-      category: 'protein_engineering',
-      provider: '上海人工智能实验室',
-      toolCount: 55,
-      type: '数据库/计算工具/模型服务',
-      description: '蛋白质序列分析工具',
-      usage: '使用方法：\n1. 输入蛋白质序列\n2. 选择分析工具\n3. 设置 E-value 阈值和数据库\n4. 获取注释结果',
-      tags: ['序列分析', '结构域识别', 'GO注释'],
-    },
-    {
-      id: 'Origene-UniProt',
-      name: 'Origene-UniProt',
-      category: 'protein_engineering',
-      provider: '临港实验室',
-      toolCount: 121,
-      type: '数据库',
-      description: 'UniProt 蛋白质数据库检索',
-      usage: '使用方法：\n1. 输入蛋白质名称、基因名或 UniProt ID\n2. 选择检索范围\n3. 查看序列、功能注释等信息',
-      tags: ['UniProt', '蛋白质数据库', '功能注释'],
-    },
-    {
-      id: 'Origene-TCGA',
-      name: 'Origene-TCGA',
-      category: 'genomics',
-      provider: '临港实验室',
-      toolCount: 8,
-      type: '数据库',
-      description: 'TCGA 癌症基因组数据库检索',
-      usage: '使用方法：\n1. 选择癌症类型\n2. 输入基因名或样本 ID\n3. 查看表达、突变、生存分析等数据',
-      tags: ['TCGA', '癌症基因组', '表达谱'],
-    },
-    {
-      id: 'Origene-KEGG',
-      name: 'Origene-KEGG',
-      category: 'pathway',
-      provider: '临港实验室',
-      toolCount: 10,
-      type: '数据库',
-      description: 'KEGG 通路数据库检索',
-      usage: '使用方法：\n1. 输入基因或通路名称\n2. 查看代谢通路、信号通路图\n3. 分析基因在通路中的位置和功能',
-      tags: ['KEGG', '代谢通路', '信号通路'],
-    },
-    {
-      id: 'SciGraph',
-      name: 'SciGraph',
-      category: 'knowledge_graph',
-      provider: '上海人工智能实验室',
-      toolCount: 4800,
-      type: '数据库',
-      description: '科学研究统一知识查询服务',
-      usage: '使用方法：\n1. 输入科学实体或概念\n2. 查询跨学科知识关联\n3. 探索知识图谱网络',
-      tags: ['跨学科', '知识图谱', '科学查询'],
-    },
-    {
-      id: 'Thoth',
-      name: 'Thoth',
-      category: 'wetlab',
-      provider: '上海人工智能实验室',
-      toolCount: 1300,
-      type: '湿实验操作/模型服务',
-      description: '湿实验智能编排系统',
-      usage: '使用方法：\n1. 描述实验目标\n2. Thoth-Plan 自动生成实验流程\n3. Thoth-OP 执行原子操作并记录结果',
-      tags: ['实验编排', '自动化', '实验记录'],
-    },
-  ];
+  const servers = Object.entries(SCP_SERVERS).map(([name, info]) => ({
+    id: info.id,
+    name,
+    description: info.description,
+  }));
 
   return c.json({
     ok: true,
-    tools,
-    total: tools.length,
+    servers,
+    total: servers.length,
+    scpConfigured: !!config.scp.apiKey,
   });
+});
+
+/**
+ * 列出指定服务的工具
+ */
+app.get('/tools/:serverName', async (c) => {
+  const serverName = c.req.param('serverName');
+  const server = SCP_SERVERS[serverName];
+  
+  if (!server) {
+    return c.json({
+      ok: false,
+      error: `Unknown server: ${serverName}`,
+    }, 400);
+  }
+
+  if (!config.scp.apiKey) {
+    return c.json({
+      ok: false,
+      error: 'SCP_API_KEY not configured',
+    }, 500);
+  }
+
+  try {
+    const url = getMCPUrl(server.id, server.name);
+    const result = await callMCPTool(url, 'tools/list', {});
+    const tools = result.result?.tools || [];
+    
+    return c.json({
+      ok: true,
+      server: serverName,
+      tools: tools.map((t: any) => ({
+        name: t.name,
+        description: t.description,
+      })),
+      total: tools.length,
+    });
+  } catch (error) {
+    return c.json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }, 500);
+  }
 });
 
 /**
@@ -127,63 +137,62 @@ app.get('/', async (c) => {
 app.post('/invoke', async (c) => {
   try {
     const body = await c.req.json();
-    const { tool_id, action, parameters } = body;
+    const { server_name, tool_name, arguments: toolArgs } = body;
 
-    if (!tool_id || !action) {
+    if (!server_name || !tool_name) {
       return c.json({
         ok: false,
-        error: 'Missing required fields: tool_id, action',
+        error: 'Missing required fields: server_name, tool_name',
       }, 400);
     }
 
-    const { apiKey, baseUrl } = config.scp;
-
-    if (!apiKey) {
+    const server = SCP_SERVERS[server_name];
+    if (!server) {
       return c.json({
         ok: false,
-        error: 'SCP_API_KEY not configured. Please set SCP_API_KEY in .env file.',
+        error: `Unknown server: ${server_name}`,
+      }, 400);
+    }
+
+    if (!config.scp.apiKey) {
+      return c.json({
+        ok: false,
+        error: 'SCP_API_KEY not configured',
       }, 500);
     }
 
-    console.log(`[SCP API] Invoking ${tool_id}.${action}`);
-    console.log(`[SCP API] Parameters:`, parameters);
+    console.log(`[SCP] Invoking ${server_name}.${tool_name}`);
 
-    // 调用 SCP Hub API
-    const response = await fetch(`${baseUrl}/api/v1/tools/invoke`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        tool_id,
-        action,
-        parameters: parameters || {},
-      }),
+    const url = getMCPUrl(server.id, server.name);
+    const result = await callMCPTool(url, 'tools/call', {
+      name: tool_name,
+      arguments: toolArgs || {},
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[SCP API] Error (${response.status}):`, errorText);
-      return c.json({
-        ok: false,
-        error: `SCP API error (${response.status}): ${errorText}`,
-      }, 500);
+    // 解析结果
+    const content = result.result?.content;
+    let data = result.result;
+    
+    if (Array.isArray(content) && content.length > 0) {
+      const textContent = content.find((c: any) => c.type === 'text');
+      if (textContent?.text) {
+        try {
+          data = JSON.parse(textContent.text);
+        } catch {
+          data = textContent.text;
+        }
+      }
     }
-
-    const data = await response.json();
-    console.log(`[SCP API] Success:`, data);
 
     return c.json({
       ok: true,
-      result: data.result || data,
-      metadata: data.metadata,
+      result: data,
     });
   } catch (error) {
-    console.error('[SCP API] Error:', error);
+    console.error('[SCP] Error:', error);
     return c.json({
       ok: false,
-      error: `Failed to invoke SCP tool: ${error instanceof Error ? error.message : String(error)}`,
+      error: error instanceof Error ? error.message : String(error),
     }, 500);
   }
 });
@@ -192,9 +201,13 @@ app.post('/invoke', async (c) => {
  * 测试 SCP API 连接
  */
 app.get('/test', async (c) => {
-  const { apiKey, baseUrl } = config.scp;
+  console.log('[SCP Test] Starting test...');
+  console.log('[SCP Test] Config:', {
+    apiKey: config.scp.apiKey ? `${config.scp.apiKey.slice(0, 10)}...` : 'NOT SET',
+    baseUrl: config.scp.baseUrl,
+  });
 
-  if (!apiKey) {
+  if (!config.scp.apiKey) {
     return c.json({
       ok: false,
       error: 'SCP_API_KEY not configured',
@@ -203,33 +216,55 @@ app.get('/test', async (c) => {
   }
 
   try {
-    // 尝试调用一个简单的工具来测试连接
-    const response = await fetch(`${baseUrl}/api/v1/tools/list`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
+    const server = SCP_SERVERS['Origene-OpenTargets'];
+    const url = getMCPUrl(server.id, server.name);
+    
+    // 测试 initialize
+    console.log('[SCP Test] Testing initialize...');
+    await callMCPTool(url, 'initialize', {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'VerumOS', version: '0.1.0' },
     });
+    
+    // 测试 tools/list
+    console.log('[SCP Test] Testing tools/list...');
+    const listResult = await callMCPTool(url, 'tools/list', {});
+    const tools = listResult.result?.tools || [];
+    console.log('[SCP Test] Found', tools.length, 'tools');
 
-    if (response.ok) {
-      return c.json({
-        ok: true,
-        configured: true,
-        baseUrl,
-        message: 'SCP API connection successful',
-      });
-    } else {
-      return c.json({
-        ok: false,
-        configured: true,
-        error: `Connection failed with status ${response.status}`,
-      });
+    // 测试工具调用
+    console.log('[SCP Test] Testing tool call...');
+    const callResult = await callMCPTool(url, 'tools/call', {
+      name: 'get_associated_targets_by_disease_efoId',
+      arguments: { efoId: 'EFO_0000311' },
+    });
+    
+    const content = callResult.result?.content;
+    let testData = null;
+    if (Array.isArray(content) && content[0]?.text) {
+      try {
+        testData = JSON.parse(content[0].text);
+      } catch {
+        testData = content[0].text;
+      }
     }
+
+    return c.json({
+      ok: true,
+      configured: true,
+      baseUrl: config.scp.baseUrl,
+      testServer: 'Origene-OpenTargets',
+      toolCount: tools.length,
+      sampleTools: tools.slice(0, 5).map((t: any) => t.name),
+      testCallResult: testData ? 'success' : 'null',
+    });
   } catch (error) {
+    console.error('[SCP Test] Error:', error);
     return c.json({
       ok: false,
       configured: true,
-      error: `Failed to connect to SCP API: ${error instanceof Error ? error.message : String(error)}`,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 });

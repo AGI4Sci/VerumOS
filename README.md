@@ -590,3 +590,7 @@ const dataAgentConfig = {
 - **Application 层**：只输出 AgentDef 配置对象，无 class，无运行时状态
 - **Core 层**：只消费 AgentDef，不 import Application 层模块
 - **EventBus**：观测旁路，不是控制流；状态变更走直接调用，EventBus 影子发布
+
+## 重要
+目前web应用端口是:http://localhost:3000/
+调试端口是: http://localhost:7681/
