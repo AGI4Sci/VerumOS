@@ -3307,20 +3307,188 @@ let allTools = [];
 let activeToolIds = new Set();
 let currentToolCategory = 'all';
 
-// SCP 工具数据
+// 生命科学工具数据
 const SCP_TOOLS = [
+  // ==================== ✅ 可用工具（公开API）====================
+  
+  // 分子与化学
+  {
+    id: 'pubchem_search',
+    name: '✅ PubChem API',
+    provider: 'PubChem (公开)',
+    toolCount: 111000000,
+    type: '公开API/数据库',
+    category: '分子与化学',
+    description: '全球最大公开化学信息数据库，查询分子性质、结构、生物活性数据',
+    usage: '使用方法：\n1. 输入分子名称、SMILES 或 CID\n2. 选择要获取的属性\n3. 查看分子信息',
+    tags: ['分子查询', '化学结构', '免费'],
+    examples: ['查询阿司匹林的分子信息', '通过 SMILES 获取分子式', '搜索相似化合物'],
+    available: true
+  },
+  {
+    id: 'chembl_search',
+    name: '✅ ChEMBL API',
+    provider: 'ChEMBL (公开)',
+    toolCount: 2000000,
+    type: '公开API/数据库',
+    category: '分子与化学',
+    description: '生物活性数据库，查询化合物的靶点、活性数据和药物开发信息',
+    usage: '使用方法：\n1. 输入化合物名称或 ChEMBL ID\n2. 查询生物活性和靶点信息',
+    tags: ['生物活性', '药物靶点', '免费'],
+    examples: ['查询化合物的 IC50 数据', '搜索某靶点的活性分子'],
+    available: true
+  },
+  {
+    id: 'fda_drug_search',
+    name: '✅ FDA API',
+    provider: 'FDA (公开)',
+    toolCount: 100000,
+    type: '公开API/数据库',
+    category: '分子与化学',
+    description: 'FDA 药品监管数据库，查询药品标签、批准信息',
+    usage: '使用方法：\n1. 输入药品名称或活性成分\n2. 查看 FDA 批准信息',
+    tags: ['药品监管', 'FDA', '免费'],
+    examples: ['查询阿司匹林的 FDA 标签', '搜索某药品的批准历史'],
+    available: true
+  },
+  {
+    id: 'kegg_find',
+    name: '✅ KEGG API',
+    provider: 'KEGG (公开)',
+    toolCount: 500000,
+    type: '公开API/数据库',
+    category: '分子与化学',
+    description: '代谢通路数据库，查询通路、基因功能注释',
+    usage: '使用方法：\n1. 选择数据库类型\n2. 输入查询关键词',
+    tags: ['代谢通路', '功能注释', '免费'],
+    examples: ['查询糖酵解通路', '搜索基因参与的代谢途径'],
+    available: true
+  },
+  
+  // 蛋白质
+  {
+    id: 'uniprot_search',
+    name: '✅ UniProt API',
+    provider: 'UniProt (公开)',
+    toolCount: 230000000,
+    type: '公开API/数据库',
+    category: '蛋白质',
+    description: '全球权威蛋白质数据库，查询蛋白质序列、功能注释',
+    usage: '使用方法：\n1. 输入基因名或蛋白质 ID\n2. 获取序列和功能信息',
+    tags: ['蛋白质序列', '功能注释', '免费'],
+    examples: ['查询 TP53 蛋白质信息', '获取蛋白质序列'],
+    available: true
+  },
+  {
+    id: 'string_interaction',
+    name: '✅ STRING API',
+    provider: 'STRING DB (公开)',
+    toolCount: 10000000,
+    type: '公开API/数据库',
+    category: '蛋白质',
+    description: '蛋白质相互作用数据库，查询蛋白质相互作用网络',
+    usage: '使用方法：\n1. 输入蛋白质名称\n2. 查看相互作用网络',
+    tags: ['PPI', '相互作用网络', '免费'],
+    examples: ['查询 TP53 的相互作用蛋白', '构建蛋白质网络'],
+    available: true
+  },
+  
+  // 基因组
+  {
+    id: 'ensembl_lookup',
+    name: '✅ Ensembl API',
+    provider: 'Ensembl (公开)',
+    toolCount: 100000000,
+    type: '公开API/数据库',
+    category: '基因组',
+    description: '基因组注释数据库，查询基因、转录本、变异信息',
+    usage: '使用方法：\n1. 输入基因符号\n2. 查看基因组注释',
+    tags: ['基因组注释', '基因信息', '免费'],
+    examples: ['查询 TP53 基因信息', '获取基因的转录本'],
+    available: true
+  },
+  {
+    id: 'ncbi_esearch',
+    name: '✅ NCBI API',
+    provider: 'NCBI (公开)',
+    toolCount: 500000000,
+    type: '公开API/数据库',
+    category: '基因组',
+    description: '全球最大生物信息数据库，搜索文献、基因、序列',
+    usage: '使用方法：\n1. 选择数据库类型\n2. 输入搜索词\n注意：限速 3次/秒',
+    tags: ['文献检索', '序列数据库', '免费'],
+    examples: ['搜索 TP53 相关文献', '查询基因信息'],
+    available: true
+  },
+  {
+    id: 'tcga_gdc_search',
+    name: '✅ TCGA API',
+    provider: 'GDC (公开)',
+    toolCount: 10000000,
+    type: '公开API/数据库',
+    category: '基因组',
+    description: '癌症基因组图谱数据库，查询癌症基因组数据',
+    usage: '使用方法：\n1. 选择数据类型\n2. 查询癌症数据',
+    tags: ['TCGA', '癌症基因组', '免费'],
+    examples: ['查询乳腺癌项目的数据', '获取基因表达数据'],
+    available: true
+  },
+  {
+    id: 'ucsc_genome',
+    name: '✅ UCSC API',
+    provider: 'UCSC (公开)',
+    toolCount: 50000000,
+    type: '公开API/数据库',
+    category: '基因组',
+    description: '基因组浏览器数据库，查询基因组注释',
+    usage: '使用方法：\n1. 输入基因组版本\n2. 查看注释轨道',
+    tags: ['基因组可视化', '注释轨道', '免费'],
+    examples: ['查询 hg38 的注释轨道'],
+    available: true
+  },
+  
+  // 文献
+  {
+    id: 'europe_pmc_search',
+    name: '✅ Europe PMC API',
+    provider: 'Europe PMC (公开)',
+    toolCount: 40000000,
+    type: '公开API/数据库',
+    category: '文献',
+    description: '科学文献检索数据库',
+    usage: '使用方法：\n1. 输入搜索词\n2. 查询文献信息',
+    tags: ['文献检索', '免费'],
+    examples: ['搜索 CRISPR 相关文献'],
+    available: true
+  },
+  {
+    id: 'blast_search',
+    name: '✅ BLAST API',
+    provider: 'NCBI (公开)',
+    toolCount: 100000000,
+    type: '公开API/工具',
+    category: '文献',
+    description: '序列比对工具',
+    usage: '使用方法：\n1. 输入序列\n2. 执行 BLAST 比对',
+    tags: ['序列比对', '免费'],
+    examples: ['比对蛋白质序列'],
+    available: true
+  },
+  
+  // ==================== ❌ 不可用工具（SCP API过期）====================
+  
   // 药物研发
   {
     id: 'DrugSDA-Tool',
-    name: 'DrugSDA-Tool',
-    provider: '北京大学',
+    name: '❌ DrugSDA-Tool',
+    provider: '北京大学 (SCP)',
     toolCount: 28600,
-    type: '数据库/计算工具',
+    type: 'SCP/计算工具',
     category: '药物研发',
-    description: '药物分子筛选、设计与分析工具集，支持格式转换、蛋白质结构修复、分子规范化、相似度计算等',
-    usage: '使用方法：\n1. 输入分子结构（SMILES 格式或上传 SDF 文件）\n2. 选择分析类型（格式转换、相似度计算、分子对接等）\n3. 设置参数阈值\n4. 运行并查看结果',
-    tags: ['分子筛选', '药物设计', '格式转换'],
-    examples: ['将 SMILES 转换为 3D 结构', '计算两个分子的 Tanimoto 相似度', '批量规范化分子结构']
+    description: '⚠️ API密钥过期 - 药物分子筛选、设计与分析工具集',
+    usage: '此工具暂时不可用，请联系管理员更新 SCP API 密钥',
+    tags: ['分子筛选', '药物设计', '不可用'],
+    available: false
   },
   {
     id: 'DrugSDA-Model',
