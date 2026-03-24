@@ -5893,20 +5893,3 @@ function updateProviderHint() {
 
 </body>
 </html>
-  }
-}
-
-function updateProviderHint() {
-  const provider = document.querySelector('input[name="apiProvider"]:checked')?.value;
-  const baseUrlInput = document.getElementById('settingsBaseUrl');
-  
-  if (provider === 'openai') {
-    baseUrlInput.placeholder = 'https://api.openai.com/v1/';
-  } else if (provider === 'anthropic') {
-    baseUrlInput.placeholder = 'https://api.anthropic.com';
-  }
-}
-</script>
-
-</body>
-</html>
