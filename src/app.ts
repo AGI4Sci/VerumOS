@@ -15,6 +15,7 @@ import { initializeSkills } from './skills/index.js';
 import { ensureDataDir } from './job/index.js';
 import { createCoreServices, initializeCoreServices } from './core/index.js';
 import { registerSCPTools } from './tools/scp-tool-invoker.js';
+import { registerLifeScienceTools } from './tools/life-science-tools.js';
 
 const app = new Hono();
 
@@ -52,6 +53,8 @@ export async function initializeApp(): Promise<Hono> {
   // 注册 SCP 工具
   if (coreServicesInstance) {
     registerSCPTools(coreServicesInstance.toolRegistry);
+    // 注册生命科学工具
+    registerLifeScienceTools(coreServicesInstance.toolRegistry);
   }
 
   return app;
