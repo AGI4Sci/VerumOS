@@ -24,7 +24,7 @@ const SCP_SERVERS: Record<string, { id: number; name: string; description: strin
  * 获取 MCP URL
  */
 function getMCPUrl(serverId: number, serverName: string): string {
-  const baseUrl = config.scp.baseUrl || 'https://scphub.intern-ai.org.cn';
+  const baseUrl = config.scp.baseUrl || 'https://scp.intern-ai.org.cn';
   const url = `${baseUrl}/api/v1/mcp/${serverId}/${serverName}`;
   console.log('[SCP] MCP URL:', url);
   return url;
@@ -195,6 +195,23 @@ app.post('/invoke', async (c) => {
       error: error instanceof Error ? error.message : String(error),
     }, 500);
   }
+});
+
+/**
+ * 调试信息
+ */
+app.get('/debug', async (c) => {
+  return c.json({
+    scpConfig: {
+      apiKey: config.scp.apiKey ? `${config.scp.apiKey.slice(0, 10)}...${config.scp.apiKey.slice(-4)}` : 'NOT SET',
+      baseUrl: config.scp.baseUrl,
+      keyLength: config.scp.apiKey?.length || 0,
+    },
+    envCheck: {
+      SCP_API_KEY: process.env.SCP_API_KEY ? 'SET' : 'NOT SET',
+      SCP_BASE_URL: process.env.SCP_BASE_URL || 'NOT SET',
+    },
+  });
 });
 
 /**
