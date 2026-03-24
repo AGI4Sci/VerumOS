@@ -168,7 +168,7 @@ app.post('/invoke', async (c) => {
       return c.json({
         ok: false,
         error: `SCP API error (${response.status}): ${errorText}`,
-      }, response.status);
+      }, 500);
     }
 
     const data = await response.json();

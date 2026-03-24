@@ -100,7 +100,7 @@ export function createSCPToolInvoker(): ToolDef {
       required: ['tool_id', 'action', 'parameters'],
     },
     execute: async (params) => {
-      const { tool_id, action, parameters } = params as SCPToolRequest;
+      const { tool_id, action, parameters } = params as unknown as SCPToolRequest;
 
       console.log(`[SCP Tool] Invoking ${tool_id}.${action}`);
       console.log(`[SCP Tool] Parameters:`, parameters);
