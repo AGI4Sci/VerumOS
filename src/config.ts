@@ -7,6 +7,10 @@ const schema = z.object({
     baseUrl: z.string(),
     model: z.string().default('glm-5'),
   }),
+  scp: z.object({
+    apiKey: z.string(),
+    baseUrl: z.string().default('https://scphub.intern-ai.org.cn'),
+  }),
   embedding: z.object({
     enabled: z.boolean().default(true),
     model: z.string().default('text-embedding-3-small'),
@@ -28,6 +32,8 @@ export function loadConfig(): AppConfig {
   const apiKey = process.env.LLM_API_KEY;
   const baseUrl = process.env.LLM_BASE_URL;
   const pythonPath = process.env.PYTHON_PATH;
+  const scpApiKey = process.env.SCP_API_KEY;
+  const scpBaseUrl = process.env.SCP_BASE_URL;
 
   // 检查关键配置
   const warnings: string[] = [];
@@ -44,6 +50,10 @@ export function loadConfig(): AppConfig {
     warnings.push('[config] PYTHON_PATH not set, Python skills may not work');
   }
 
+  if (!scpApiKey) {
+    warnings.push('[config] SCP_API_KEY not set, SCP tools will be disabled');
+  }
+
   // 输出警告
   for (const warning of warnings) {
     console.warn(warning);
@@ -54,6 +64,10 @@ export function loadConfig(): AppConfig {
       apiKey: apiKey || '',
       baseUrl: baseUrl || '',
       model: process.env.LLM_MODEL || 'glm-5',
+    },
+    scp: {
+      apiKey: scpApiKey || '',
+      baseUrl: scpBaseUrl || 'https://scphub.intern-ai.org.cn',
     },
     embedding: {
       enabled: process.env.EMBEDDING_ENABLED !== 'false',

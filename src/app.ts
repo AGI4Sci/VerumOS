@@ -10,9 +10,11 @@ import jobRouter from './routes/job.js';
 import fileRouter from './routes/file.js';
 import snapshotRouter from './routes/snapshot.js';
 import configRouter from './routes/config.js';
+import scpRouter from './routes/scp.js';
 import { initializeSkills } from './skills/index.js';
 import { ensureDataDir } from './job/index.js';
 import { createCoreServices, initializeCoreServices } from './core/index.js';
+import { registerSCPTools } from './tools/scp-tool-invoker.js';
 
 const app = new Hono();
 
@@ -27,6 +29,7 @@ app.route('/api', jobRouter);
 app.route('/api', fileRouter);
 app.route('/api', snapshotRouter);
 app.route('/api', configRouter);
+app.route('/api/scp', scpRouter);
 app.get('/', serveStatic({ path: './web/index.html' }));
 app.use('/*', serveStatic({ root: './web' }));
 
@@ -45,6 +48,11 @@ export async function initializeApp(): Promise<Hono> {
   // 初始化 Core 服务
   coreServicesInstance = createCoreServices();
   await initializeCoreServices(coreServicesInstance);
+
+  // 注册 SCP 工具
+  if (coreServicesInstance) {
+    registerSCPTools(coreServicesInstance.toolRegistry);
+  }
 
   return app;
 }

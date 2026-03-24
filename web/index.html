@@ -3685,8 +3685,34 @@ function updateToolsCount() {
 // 保存选择
 async function saveToolSelection() {
   const selectedTools = Array.from(activeToolIds);
-  addMessage('system', `✅ 已保存工具选择：${selectedTools.length} 个服务已激活\n激活的服务：${selectedTools.join(', ')}`);
-  // TODO: 调用 API 持久化到 job state
+  
+  if (selectedTools.length === 0) {
+    addMessage('system', '⚠️ 请先选择要激活的工具');
+    return;
+  }
+  
+  addMessage('system', `💾 正在激活 ${selectedTools.length} 个工具...`);
+  
+  try {
+    // 调用 API 测试 SCP 连接
+    const response = await fetch('/api/scp/test');
+    const testResult = await response.json();
+    
+    if (!testResult.ok) {
+      addMessage('system', `❌ SCP API 未配置：${testResult.error}`);
+      return;
+    }
+    
+    // 成功激活
+    addMessage('system', `✅ 已激活 ${selectedTools.length} 个工具：\n${selectedTools.join(', ')}`);
+    addMessage('system', `💡 提示：您可以在聊天中直接描述需求，系统会自动调用相应的 SCP 工具。`);
+    
+    // 保存到 localStorage 以便恢复
+    localStorage.setItem('activeToolIds', JSON.stringify(selectedTools));
+    
+  } catch (error) {
+    addMessage('system', `❌ 激活失败：${error.message}`);
+  }
 }
 
 // 显示工具详情
